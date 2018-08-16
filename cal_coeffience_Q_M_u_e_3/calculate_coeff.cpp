@@ -1,6 +1,6 @@
 #include "calculate_coeff.h"
 
-void iit_exp_ide_r_t_pq(iden *ide, int ide_num) {
+void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 
 	puts("initializing coeffients(R,t,pq)...");
 	for (int i = 0; i < ide_num; i++) {
@@ -75,10 +75,10 @@ float cal_exp_ide_R_t(
 				Eigen::VectorXi out_land_cor(15);
 				update_slt(f,ide,bldshps,id_idx,exp_idx,slt_line, slt_point_rect,out_land_cor);
 				out_land_cor(6) = inner_land_cor(59),out_land_cor(7) = inner_land_cor(60),out_land_cor(8) = inner_land_cor(61);
-				cal_3dpaper_ide();
 				cal_3dpaper_exp();
+				cal_3dpaper_ide();
 			}
-			cal_ide();
+			cal_fixed_exp_same_ide();
 		}
 		//error = cal_err();
 		printf("%d %.10f\n", rounds, error);
@@ -164,10 +164,10 @@ void update_slt(
 			Eigen::Vector3f nor;
 			nor.setZero();
 			Eigen::Vector3f V[2], point[3];
+			for (int axis = 0; axis < 3; axis++) 
+				point[0](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
 			for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
-
-				for (int axis = 0; axis < 3; axis++) {
-					point[0](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+				for (int axis = 0; axis < 3; axis++) {				
 					point[1](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].first, axis);
 					point[2](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].second, axis);
 				}
@@ -201,4 +201,9 @@ void update_slt(
 	}
 }
 					
+void cal_3dpaper_exp(
+	float f, iden* ide, Eigen::MatrixXf bldshps, int id_idx, int exp_idx, Eigen::VectorXf inner_land_cor,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::VectorXf out_land_cor){
+
+	for (int i_exp;i_exp<G_nShape;i_exp++){
 

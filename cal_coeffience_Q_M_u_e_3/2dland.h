@@ -49,4 +49,4 @@ void test_data_2dland(
 	iden *ide, int id_idx, int img_idx);
 
 void load_inner_land_corr(Eigen::VectorXi &cor);
-void load_slt(std::vector <int> *slt_line, std::vector <int> *slt_point_rect);
+void load_slt(std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect);
