@@ -108,12 +108,14 @@ void test_data_2dland(
 }
 
 void load_inner_land_corr(Eigen::VectorXi &cor) {
+	puts("loading inner landmarks correspondence...");
 	FILE *fp;
 	fopen_s(&fp, "inner_vertex_corr.txt", "r");
-	for (int i = 0; i < G_inner_land_num; i++) fscanf_s(fp, "%d", &cor(i));
+	for (int i = 0; i < 62; i++) fscanf_s(fp, "%d", &cor(i));
 }
 
 void load_slt(std:: vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect) {
+	puts("loading silhouette line&vertices...");
 	FILE *fp;
 	fopen_s(&fp, "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt.txt", "r");
 	for (int i = 0; i < G_line_num; i++) {

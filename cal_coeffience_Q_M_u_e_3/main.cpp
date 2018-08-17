@@ -6,9 +6,11 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 std :: string fwhs_path = "D:/sydney/first/data_me/FaceWarehouse";
 std::string lfw_path = "D:/sydney/first/data_me/lfw_image";
 std::string gtav_path = "D:/sydney/first/data_me/GTAV_image";
+std::string test_path = "D:/sydney/first/data_me/test";
 std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd.lv";
+
 std::vector< std::vector<cv::Mat_<uchar> > > imgs;
-Eigen::VectorXi inner_land_corr(G_inner_land_num);
+Eigen::VectorXi inner_land_corr(G_inner_land_num+3);
 std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
 std::vector<int> slt_line[G_line_num];
 
@@ -16,22 +18,25 @@ std::vector<int> slt_line[G_line_num];
 int main() {
 	int id_idx = 0;
 
-	load_img_land(fwhs_path,".jpg",ide,id_idx,imgs);
+	//load_img_land(fwhs_path,".jpg",ide,id_idx,imgs);
 	printf("%d\n", id_idx);
 	//load_img_land(lfw_path, ".jpg", ide, id_idx, imgs);
 	printf("%d\n", id_idx);
 	//load_img_land(gtav_path, ".bmp", ide, id_idx,imgs);
+	load_img_land(test_path, ".jpg", ide, id_idx, imgs);
 	printf("%d\n", id_idx);
-	test_data_2dland(imgs, ide, 3, 9);
+	//test_data_2dland(imgs, ide, 3, 9);
 
 	//14 13
 	//9 17
-	//init_r_t_pq(ide, id_idx);
-	
+	//init_r_t_pq(ide, id_idx);	
 	load_inner_land_corr(inner_land_corr);
 	load_slt(slt_line,slt_point_rect);
 	load_bldshps(bldshps,bldshps_path);
-	//cal_f
+	init_exp_ide_r_t_pq(ide, id_idx);
+	cal_f(ide, bldshps, inner_land_corr, slt_line, slt_point_rect);
 	system("pause");
 	return 0;
 }
+
+

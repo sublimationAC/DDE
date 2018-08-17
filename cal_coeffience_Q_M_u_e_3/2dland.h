@@ -23,7 +23,7 @@ const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 25;
-const int G_inner_land_num = 62;
+const int G_inner_land_num = 59;
 const int G_line_num = 74;
 
 struct iden
@@ -32,10 +32,10 @@ struct iden
 	Eigen::MatrixX2f land_2d;
 	Eigen::MatrixX2f center;
 	Eigen::MatrixXf exp;
-	Eigen::MatrixXf user;
+	Eigen::VectorXf user;
 	Eigen::MatrixX3f rot;
 	Eigen::MatrixX3f tslt;
-
+	float fcs;
 };
 
 void load_img_land(std::string path, std::string sfx, iden *ide, int &id_idx,std::vector< std::vector<cv::Mat_<uchar> > > &imgs);
