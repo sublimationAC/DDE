@@ -144,7 +144,7 @@ void check_2d_3d_corr(Mesh_my &mesh,Eigen :: VectorXi &cor) {
 }
 std::vector<int> E[G_line_num];
 void check_2d_3d_out_corr(Mesh_my &mesh) {
-	double scale = 1.0001;
+	double scale = 1.1;
 	FILE *fp;
 	fopen_s(&fp, "sillht.txt", "r");
 	for (int i = 0; i < G_line_num; i++) {
@@ -157,15 +157,15 @@ void check_2d_3d_out_corr(Mesh_my &mesh) {
 		}
 	}
 	fclose(fp);
-	glPointSize(5);
+	/*glPointSize(5);
 	for (int i = 0; i < G_line_num; i++)
 		for (int j = 0; j < E[i].size(); j++) {
 			glBegin(GL_POINTS);
 			glVertex3f(mesh.vtx(E[i][j], 0), mesh.vtx(E[i][j], 1), mesh.vtx(E[i][j], 2));
 			glEnd();
-		}
+		}*/
 	//puts("asd");
-	/*glLineWidth(5);
+	glLineWidth(5);
 	for (int i = 0; i < G_line_num; i++)
 		for (int j = 0; j < E[i].size()-1; j++) {
 			glBegin(GL_LINES);
@@ -173,7 +173,7 @@ void check_2d_3d_out_corr(Mesh_my &mesh) {
 			glVertex3f(mesh.vtx(E[i][j+1], 0)*scale, mesh.vtx(E[i][j + 1], 1)*scale, mesh.vtx(E[i][j + 1], 2)*scale);
 			
 			glEnd();
-		} */
+		} 
 	//glLineWidth(5);
 	//for (int i = 0; i < mesh.num_rect; ++i) {
 	//	//printf("%d\n",i);
@@ -285,11 +285,25 @@ void get_silhouette_vertex(Mesh_my &mesh) {
 	fclose(fp);
 
 	fopen_s(&fp, "slt_point_rect.txt", "w");
+	mesh.vtx.row(1);
 	for (int i=0;i<mesh.num_rect;i++)
 		for (int j = 0; j < 4; j++) {
 			int idx = mesh.rect(i, j);
-			if (use[idx]) slt_point_rect[idx].push_back(
-				std::make_pair(mesh.rect(i, (j+3)%4), mesh.rect(i, (j +1)%4 )));
+			if (use[idx]) 
+				if (slt_point_rect[idx].size()==0) 
+					slt_point_rect[idx].push_back(
+						std::make_pair(mesh.rect(i, (j+3)%4), mesh.rect(i, (j +1)%4 )));
+				else {
+					Eigen::RowVector3d V[2];
+					cal_nor_vec(V[0], mesh.vtx.row(slt_point_rect[idx][0].first), mesh.vtx.row(slt_point_rect[idx][0].second),mesh.vtx.row(idx));
+					cal_nor_vec(V[1], mesh.vtx.row(mesh.rect(i, (j + 3) % 4)), mesh.vtx.row(mesh.rect(i, (j + 1) % 4)), mesh.vtx.row(idx));
+					if (V[0].dot(V[1]) > 0)
+						slt_point_rect[idx].push_back(
+							std::make_pair(mesh.rect(i, (j + 3) % 4), mesh.rect(i, (j + 1) % 4)));
+					else
+						slt_point_rect[idx].push_back(
+							std::make_pair(mesh.rect(i, (j + 1) % 4), mesh.rect(i, (j + 3) % 4)));
+				}
 		}
 
 	for (int i = 0; i < 20000; i++) {
@@ -302,3 +316,7 @@ void get_silhouette_vertex(Mesh_my &mesh) {
 	}
 	fclose(fp);
 } 
+
+void cal_nor_vec(Eigen::RowVector3d &nor, Eigen::RowVector3d a, Eigen::RowVector3d b, Eigen::RowVector3d o) {
+	nor = (a - o).cross(b - o);
+}
