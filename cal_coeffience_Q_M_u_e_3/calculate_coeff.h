@@ -34,12 +34,15 @@ void update_slt(
 	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::VectorXi &out_land_cor);
 
+void test_slt(float f ,iden *ide, Eigen::MatrixXf &bldshps,
+	Eigen::VectorXi &land_cor, int id_idx, int exp_idx);
+
 float cal_3dpaper_exp(
 	float f, iden* ide, Eigen::MatrixXf &bldshps,
 	int id_idx, int exp_idx, Eigen::VectorXi &land_cor);
 
 void cal_exp_point_matrix(
-	iden *ide, Eigen::MatrixXf &bldshps, int id_idx, Eigen::VectorXi &land_cor,
+	iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx, Eigen::VectorXi &land_cor,
 	Eigen::MatrixXf &result);
 
 

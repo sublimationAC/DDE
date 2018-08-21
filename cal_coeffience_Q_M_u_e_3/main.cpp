@@ -31,6 +31,7 @@ int main() {
 	//9 17
 	//init_r_t_pq(ide, id_idx);	
 	load_inner_land_corr(inner_land_corr);
+	//std::cout << inner_land_corr << '\n';
 	load_slt(slt_line,slt_point_rect);
 	load_bldshps(bldshps,bldshps_path);
 	init_exp_ide_r_t_pq(ide, id_idx);

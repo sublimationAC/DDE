@@ -112,6 +112,8 @@ void load_inner_land_corr(Eigen::VectorXi &cor) {
 	FILE *fp;
 	fopen_s(&fp, "inner_vertex_corr.txt", "r");
 	for (int i = 0; i < 62; i++) fscanf_s(fp, "%d", &cor(i));
+	//std::cout << cor <<"------------------------------\n"<< '\n';
+	fclose(fp);
 }
 
 void load_slt(std:: vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect) {
