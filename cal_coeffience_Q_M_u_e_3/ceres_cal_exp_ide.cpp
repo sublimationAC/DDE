@@ -1,0 +1,215 @@
+// Ceres Solver - A fast non-linear least squares minimizer
+// Copyright 2015 Google Inc. All rights reserved.
+// http://ceres-solver.org/
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// * Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// * Neither the name of Google Inc. nor the names of its contributors may be
+//   used to endorse or promote products derived from this software without
+//   specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: sameeragarwal@google.com (Sameer Agarwal)
+
+#include "ceres/ceres.h"
+#include "glog/logging.h"
+#include "calculate_coeff.h"
+
+using ceres::AutoDiffCostFunction;
+using ceres::CostFunction;
+using ceres::Problem;
+using ceres::Solver;
+using ceres::Solve;
+
+
+struct ceres_cal_exp {
+	ceres_cal_exp(
+		const float f_, const iden* ide_, const int id_idx_, const int exp_idx_,
+		const Eigen::MatrixXf exp_point_) :
+			ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), exp_point(exp_point_) {}
+
+	template <typename T> bool operator()(const T* const x_exp,T *residual) const {
+		//puts("TT");
+		//Eigen::Matrix3f rot = ide[id_idx].rot.block(exp_idx * 3, 0, 3, 3);
+		//Eigen::Vector3d tslt;
+		T tslt[3];
+		for (int j = 0; j < 3; j++)
+			tslt[j] = (T)(ide[id_idx].tslt(exp_idx, j));
+		
+		/*std::cout << rot << '\n';
+		std::cout << tslt << '\n';*/
+		//T ans = (T)0;
+		for (int i_v = 0; i_v < G_land_num; i_v++) {
+			T V[3];
+			for (int j = 0; j < 3; j++) V[j] = (T)(0);
+			//printf("%d\n", i_v);
+			//V.setZero();
+
+			//puts("QAQ");
+
+			for (int axis = 0; axis < 3; axis++)
+				for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+					V[axis] =V[axis] + ((double)(exp_point(i_shape, i_v * 3 + axis)))*x_exp[i_shape];
+			//std::cout << V.transpose() << '\n';
+			//puts("TAT");
+			for (int j=0;j<3;j++)
+				V[j] = V[j] + tslt[j];
+
+			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
+			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
+			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0]*(double)f / V[2];
+			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1]*(double)f / V[2];
+
+			//printf("+++++++++%.10f \n", f / V(2));
+			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
+			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
+				V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
+		}
+		//printf("- - %.10f\n", ans);
+		//fprintf(fp, "%.10f\n", ans);
+		return true;
+	}
+
+private:
+	const float f;
+	const iden *ide;
+	const int id_idx;
+	const int exp_idx;
+	const Eigen::MatrixXf exp_point;
+};
+
+float ceres_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp) {
+	//google::InitGoogleLogging(argv[0]);
+	double x_exp[G_nShape];
+	for (int i = 0; i < G_nShape; i++) x_exp[i] = exp(i);
+
+	Problem problem;
+	problem.AddResidualBlock(
+		new AutoDiffCostFunction<ceres_cal_exp, G_land_num*2, G_nShape>(
+			new ceres_cal_exp(focus, ide, id_idx, exp_idx, exp_point)),
+		NULL,x_exp);
+	for (int i = 0; i < G_nShape; i++) {
+		problem.SetParameterLowerBound(x_exp, i, 0.0);
+		problem.SetParameterUpperBound(x_exp, i, 1.0);
+	}
+
+	Solver::Options options;
+	//options.max_num_iterations = 1;
+	options.linear_solver_type = ceres::DENSE_QR;
+	options.minimizer_progress_to_stdout = true;
+
+	Solver::Summary summary;
+	Solve(options, &problem, &summary);
+	std::cout << summary.BriefReport() << "\n";
+	std::cout << "Initial : " << exp.transpose() << "\n";
+	for (int i = 0; i < G_nShape; i++)  exp(i) = (float)x_exp[i];
+	std::cout << "Final   : " << exp.transpose() << "\n";
+
+	system("pause");
+	return 0;
+}
+
+//
+//struct ceres_cal_user {
+//	ceres_cal_user(
+//		const float f_, const iden* ide_, const int id_idx_, const int exp_idx_,
+//		const Eigen::MatrixXf user_point_) :
+//		ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), user_point(user_point_) {}
+//
+//	//template <typename T> bool operator()(const T* const x_exp, T *residual) const {
+//	//	//puts("TT");
+//	//	//Eigen::Matrix3f rot = ide[id_idx].rot.block(exp_idx * 3, 0, 3, 3);
+//	//	//Eigen::Vector3d tslt;
+//	//	T tslt[3];
+//	//	for (int j = 0; j < 3; j++)
+//	//		tslt[j] = (T)(ide[id_idx].tslt(exp_idx, j));
+//
+//	//	/*std::cout << rot << '\n';
+//	//	std::cout << tslt << '\n';*/
+//	//	//T ans = (T)0;
+//	//	for (int i_v = 0; i_v < G_land_num; i_v++) {
+//	//		T V[3];
+//	//		for (int j = 0; j < 3; j++) V[j] = (T)(0);
+//	//		//printf("%d\n", i_v);
+//	//		//V.setZero();
+//
+//	//		//puts("QAQ");
+//
+//	//		for (int axis = 0; axis < 3; axis++)
+//	//			for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+//	//				V[axis] = V[axis] + ((double)(exp_point(i_shape, i_v * 3 + axis)))*x_exp[i_shape];
+//	//		//std::cout << V.transpose() << '\n';
+//	//		//puts("TAT");
+//	//		for (int j = 0; j<3; j++)
+//	//			V[j] = V[j] + tslt[j];
+//
+//	//		//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
+//	//		//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
+//	//		residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
+//	//		residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
+//
+//	//		//printf("+++++++++%.10f \n", f / V(2));
+//	//		printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
+//	//			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
+//	//			V[0] * (double)f / V[2], V[1] * (double)f / V[2]);
+//	//	}
+//	//	//printf("- - %.10f\n", ans);
+//	//	//fprintf(fp, "%.10f\n", ans);
+//	//	return true;
+//	//}
+//
+//private:
+//	const float f;
+//	const iden *ide;
+//	const int id_idx;
+//	const int exp_idx;
+//	const Eigen::MatrixXf user_point;
+//};
+//
+//float ceres_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &user_point, Eigen::VectorXf &exp) {
+//	//google::InitGoogleLogging(argv[0]);
+//	double x_exp[G_nShape];
+//	for (int i = 0; i < G_nShape; i++) x_exp[i] = exp(i);
+//
+//	Problem problem;
+//	problem.AddResidualBlock(
+//		new AutoDiffCostFunction<ceres_cal_exp, G_land_num * 2, G_nShape>(
+//			new ceres_cal_exp(focus, ide, id_idx, exp_idx, exp_point)),
+//		NULL, x_exp);
+//	for (int i = 0; i < G_nShape; i++) {
+//		problem.SetParameterLowerBound(x_exp, i, 0.0);
+//		problem.SetParameterUpperBound(x_exp, i, 1.0);
+//	}
+//
+//	Solver::Options options;
+//	options.max_num_iterations = 1;
+//	options.linear_solver_type = ceres::DENSE_QR;
+//	options.minimizer_progress_to_stdout = true;
+//
+//	Solver::Summary summary;
+//	Solve(options, &problem, &summary);
+//	std::cout << summary.BriefReport() << "\n";
+//	std::cout << "Initial : " << exp.transpose() << "\n";
+//	for (int i = 0; i < G_nShape; i++)  exp(i) = (float)x_exp[i];
+//	std::cout << "Final   : " << exp.transpose() << "\n";
+//
+//	system("pause");
+//	return 0;
+//}
