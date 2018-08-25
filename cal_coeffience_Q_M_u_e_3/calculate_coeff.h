@@ -45,17 +45,26 @@ void cal_exp_point_matrix(
 	iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx, Eigen::VectorXi &land_cor,
 	Eigen::MatrixXf &result);
 
+float cal_3dpaper_ide(
+	float f, iden* ide, Eigen::MatrixXf &bldshps,
+	int id_idx, int exp_idx, Eigen::VectorXi &land_cor);
 
-
-
-
-
-
-
-
-
+void cal_id_point_matrix(
+	iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx, Eigen::VectorXi &land_cor,
+	Eigen::MatrixXf &result);
 
 
 
 //bfgs
 float bfgs_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp);
+
+
+
+
+
+
+
+//ceres
+float ceres_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp);
+
+float ceres_user_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &id_point, Eigen::VectorXf &user);
