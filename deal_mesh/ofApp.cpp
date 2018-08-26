@@ -1,9 +1,11 @@
 #include "ofApp.h"
 Mesh_my mesh;
 Eigen::VectorXi cor(G_inner_land_num);
+Eigen::MatrixX3f coef_land;
+Eigen::MatrixX3f coef_mesh;
 //--------------------------------------------------------------
 void ofApp::setup(){
-	init_mesh("D:\\sydney\\first\\data\\Tester_ (1)\\TrainingPose/pose_0.obj",mesh);
+	init_mesh("D:\\sydney\\first\\data\\Tester_ (1)\\TrainingPose/pose_1.obj",mesh);
 	FILE *fp;
 	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/inner_vertex_corr.txt", "r");
 	
@@ -11,10 +13,15 @@ void ofApp::setup(){
 		fscanf_s(fp, "%d", &cor(i));
 	fclose(fp);
 	get_silhouette_vertex(mesh);
+	get_coef_land(coef_land);
+	/*get_coef_mesh(coef_mesh);
+	test_coef_mesh(mesh, coef_mesh, 2);*/
+
+
 	lights.resize(2);
 	float light_distance = 300.;
 	lights[0].setPosition(2.0*light_distance, 1.0*light_distance, 0.);
-	lights[1].setPosition(-2.0*light_distance, -1.0*light_distance, 1.0* light_distance);
+	lights[1].setPosition(-1.0*light_distance, -1.0*light_distance, -1.0* light_distance);
 }
 
 //--------------------------------------------------------------
@@ -36,13 +43,20 @@ void ofApp::draw(){
 	//ofPushMatrix();
 	//ofTranslate(500, 250);
 
-	ofSetColor(ofColor(255, 5, 0));
-	ofScale(ofGetWidth() / 5);
-	check_2d_3d_corr(mesh, cor);
-	ofSetColor(ofColor(255, 255, 250));
-	check_2d_3d_out_corr(mesh);
+	/*ofSetColor(ofColor(255, 5, 0));
+	ofScale(ofGetWidth() / 5);*/
+	//check_2d_3d_corr(mesh, cor);
+	//ofSetColor(ofColor(255, 255, 250));
+	//check_2d_3d_out_corr(mesh);
+	//test_slt();
+	//test_coef_land(coef_land, 0);
+	/*ofSetColor(ofColor(5, 255, 0));
+	test_coef_land(coef_land,1);*/
+	/*ofSetColor(ofColor(5, 0, 255));
+	test_coef_land(coef_land, 2);*/
+
 	ofSetColor(ofColor(133, 180, 250));
-	//ofScale(ofGetWidth() / 5);
+	ofScale(ofGetWidth() / 5);
 
 	draw_mesh(mesh);
 	//ofSetColor(ofColor(255, 255, 250));

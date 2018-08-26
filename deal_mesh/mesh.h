@@ -5,6 +5,8 @@
 #include <cstring>
 const int G_inner_land_num = 62;
 const int G_line_num = 74;
+const int G_nVerts = 11510;
+
 struct Mesh_my
 {
 	int num_vtx = 0, num_rect = 0;
@@ -22,3 +24,8 @@ void check_2d_3d_corr(Mesh_my &mesh, Eigen::VectorXi &cor);
 void get_silhouette_vertex(Mesh_my &mesh);
 void check_2d_3d_out_corr(Mesh_my &mesh);
 void cal_nor_vec(Eigen::RowVector3d &nor, Eigen::RowVector3d a, Eigen::RowVector3d b, Eigen::RowVector3d o);
+void test_slt();
+void get_coef_land(Eigen::MatrixX3f &coef_land);
+void test_coef_land(Eigen::MatrixX3f &coef_land, int idx);
+void get_coef_mesh(Eigen::MatrixX3f &coef_mesh);
+void test_coef_mesh(Mesh_my &mesh, Eigen::MatrixX3f &coef_mesh, int idx);

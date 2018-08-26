@@ -60,7 +60,7 @@ void draw_mesh(Mesh_my &mesh) {
 	glLineWidth(0.3);
 	for (int i = 0; i < mesh.num_rect; ++i) {
 		//printf("%d\n",i);
-		bool fl = 0;
+		/*bool fl = 0;
 		for (int j = 0; j < 4; j++) {
 			if (mesh.vtx(mesh.rect(i, j), 2) < -0.1 ) fl = 1;
 			if (mesh.vtx(mesh.rect(i, j), 1) > 0.7  || mesh.vtx(mesh.rect(i, j), 1)<-0.6) fl = 1;
@@ -69,7 +69,7 @@ void draw_mesh(Mesh_my &mesh) {
 			}
 			else if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.4) fl = 1;
 		}
-		if (fl) continue;
+		if (fl) continue;*/
 		glBegin(GL_QUADS);
 
 		for (int j = 0; j < 4; ++j) {
@@ -319,4 +319,60 @@ void get_silhouette_vertex(Mesh_my &mesh) {
 
 void cal_nor_vec(Eigen::RowVector3d &nor, Eigen::RowVector3d a, Eigen::RowVector3d b, Eigen::RowVector3d o) {
 	nor = (a - o).cross(b - o);
+}
+
+void test_slt() {
+	FILE *fp;
+	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_slt_picked_out.txt", "r");
+	float x, y, z;
+	glPointSize(5);
+	while (fscanf_s(fp,"%f",&x)>0)
+	{
+		fscanf_s(fp, "%f%f", &y, &z);
+		glBegin(GL_POINTS);
+		glVertex3f(x, y, z);
+		glEnd();
+	}
+	fclose(fp);
+}
+
+void get_coef_land(Eigen::MatrixX3f &coef_land) {
+	FILE *fp;
+	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_land.txt", "r");
+	int num;
+	fscanf_s(fp, "%d", &num);
+	coef_land.resize(num * G_line_num, 3);
+	for (int j = 0; j < num * G_line_num; j++)
+		fscanf_s(fp, "%f%f%f", &coef_land(j, 0), &coef_land(j, 1), &coef_land(j, 2));
+	fclose(fp);
+}
+
+void test_coef_land(Eigen::MatrixX3f &coef_land,int idx) {
+
+	glPointSize(5);
+	for (int i = idx* G_line_num; i < G_line_num*(idx+1); i++) {
+		glBegin(GL_POINTS);
+		glVertex3f(coef_land(i,0), coef_land(i, 1), coef_land(i, 2));
+		glEnd();
+	}
+}
+
+void get_coef_mesh(Eigen::MatrixX3f &coef_mesh) {
+	FILE *fp;
+	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_mesh.txt", "r");
+	int num;
+	fscanf_s(fp, "%d", &num);
+	coef_mesh.resize(num * G_nVerts, 3);
+	for (int j = 0; j < num * G_nVerts; j++)
+		fscanf_s(fp, "%f%f%f", &coef_mesh(j, 0), &coef_mesh(j, 1), &coef_mesh(j, 2));
+	fclose(fp);
+}
+
+void test_coef_mesh(Mesh_my &mesh, Eigen::MatrixX3f &coef_mesh, int idx) {
+
+	for (int i = 0; i < mesh.num_vtx; i++)
+		for (int j = 0; j < 3; j++)
+			mesh.vtx(i, j) = coef_mesh(idx*G_nVerts + i, j);
+
+	cal_norm(mesh);
 }
