@@ -6,6 +6,7 @@ void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 	for (int i = 0; i < ide_num; i++) {
 		ide[i].center.resize(ide[i].num,2);
 		ide[i].exp.resize(ide[i].num, G_nShape);
+		ide[i].land_cor.resize(ide[i].num, G_land_num);
 		ide[i].user.resize(G_iden_num);
 		ide[i].rot.resize(3 * ide[i].num,3);
 		ide[i].tslt.resize(ide[i].num,3);
@@ -66,8 +67,6 @@ void cal_f(
 	}
 }
 
-
-
 float pre_cal_exp_ide_R_t(
 	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
 	std::vector <int> *slt_line, std::vector<std::pair<int,int> > *slt_point_rect,int id_idx ) {
@@ -75,11 +74,23 @@ float pre_cal_exp_ide_R_t(
 	puts("preparing expression & other coeffients...");
 	init_exp_ide(ide, G_train_pic_id_num);
 	float error = 0;
-	//for (int rounds = 0; rounds < 5; rounds++) {
-		///////////////////////////////////////////////paper's solution
+	
+	int tot_r = 2;
+	//fprintf(fp, "%d\n",tot_r);
+	FILE *fp;
+	fopen_s(&fp, "test_coef_land.txt", "w");
+	fprintf(fp, "%d\n", tot_r+1);
+	fclose(fp);
 
-		Eigen::VectorXi land_cor(G_land_num);/////////////////////////////////////////////////////////////////////
+	fopen_s(&fp, "test_coef_mesh.txt", "w");
+	fprintf(fp, "%d\n", tot_r+1);
+	fclose(fp);
+
+	for (int rounds = 0; rounds < tot_r; rounds++) {
+		///////////////////////////////////////////////paper's solution
+		
 		for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
+			printf("calculate %d id %d exp:\n", id_idx, i_exp);
 			cal_rt_posit(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
 			//test_posit(f, ide, bldshps, inner_land_cor, id_idx, i_shape);
 			Eigen::VectorXi out_land_cor(15);
@@ -88,18 +99,25 @@ float pre_cal_exp_ide_R_t(
 			out_land_cor(6) = inner_land_cor(59), out_land_cor(7) = inner_land_cor(60), out_land_cor(8) = inner_land_cor(61);
 			/*std::cout << inner_land_cor << '\n';
 			std::cout <<"--------------\n"<< out_land_cor << '\n';*/
-			
+			Eigen::VectorXi land_cor(G_land_num);
 			for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
 			for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
+			ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
 			//test_slt(f,ide, bldshps, land_cor, id_idx, i_exp);
+			if (rounds == 0) {
+				test_coef_land(ide, bldshps, id_idx, 0);
+				test_coef_mesh(ide, bldshps, id_idx, 0);
+			}
 			error=cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
-			error=cal_3dpaper_ide(f, ide, bldshps, id_idx, i_exp, land_cor);
+			error=cal_3dpaper_ide(f, ide, bldshps, id_idx, i_exp, land_cor);			
 		}
-		cal_fixed_exp_same_ide(f, ide, bldshps, id_idx, land_cor);
+		error=cal_fixed_exp_same_ide(f, ide, bldshps, id_idx);
 
-		//error = cal_err();
-		//printf("%d %.10f\n", rounds, error);
-	//}
+		printf("+++++++++++++%d %.10f\n", rounds, error);
+
+		test_coef_land(ide,bldshps,id_idx,0);
+		test_coef_mesh(ide, bldshps, id_idx, 0);
+	}
 	return error;
 }
 
@@ -382,7 +400,6 @@ float cal_3dpaper_ide(
 	ide[id_idx].user = user;
 	return error;
 }
-
 void cal_id_point_matrix(
 	iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx, Eigen::VectorXi &land_cor,
 	Eigen::MatrixXf &result) {
@@ -401,4 +418,53 @@ void cal_id_point_matrix(
 			for (int j = 0; j < 3; j++)
 				result(i_id, i_v * 3 + j) = V(j);
 		}
+}
+
+
+float cal_fixed_exp_same_ide(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx) {
+
+	puts("calculating identity coeffients by 3dpaper's way while fixing the expression coeffients");
+	float error = 0;
+	Eigen::MatrixXf id_point_fix_exp(ide[id_idx].num*G_iden_num,G_land_num*3);
+
+	for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
+		Eigen::VectorXi land_cor(G_land_num);
+		Eigen::MatrixXf id_point(G_iden_num, 3 * G_land_num);
+		land_cor = ide[id_idx].land_cor.row(i_exp);
+		cal_id_point_matrix(ide, bldshps, id_idx, i_exp, land_cor, id_point);
+		
+		id_point_fix_exp.block(i_exp*G_iden_num, 0, G_iden_num, G_land_num * 3)= id_point;
+	}
+	Eigen::VectorXf user = ide[id_idx].user;
+	error = ceres_user_fixed_exp(f, ide, id_idx, id_point_fix_exp, user);
+	ide[id_idx].user = user;
+	return error;
+}
+
+void test_coef_land(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx) {
+
+	Eigen::MatrixX3f bs(G_land_num, 3);
+	for (int i = 0; i < G_land_num; i++)
+		for (int axis = 0; axis < 3; axis++)
+			bs(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), axis);
+
+	FILE *fp;
+	fopen_s(&fp, "test_coef_land.txt", "a");
+	for (int i = 0; i < G_land_num; i++)
+		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
+	fclose(fp);
+}
+
+void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx) {
+
+	Eigen::MatrixX3f bs(G_nVerts, 3);
+	for (int i = 0; i < G_nVerts; i++)
+		for (int axis = 0; axis < 3; axis++)
+			bs(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, i, axis);
+
+	FILE *fp;
+	fopen_s(&fp, "test_coef_mesh.txt", "a");
+	for (int i = 0; i < G_nVerts; i++)
+		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
+	fclose(fp);
 }

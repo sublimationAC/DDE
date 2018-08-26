@@ -53,12 +53,7 @@ void cal_id_point_matrix(
 	iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx, Eigen::VectorXi &land_cor,
 	Eigen::MatrixXf &result);
 
-
-
-//bfgs
-float bfgs_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp);
-
-
+float cal_fixed_exp_same_ide(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx);
 
 
 
@@ -68,3 +63,15 @@ float bfgs_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::Matri
 float ceres_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp);
 
 float ceres_user_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &id_point, Eigen::VectorXf &user);
+
+float ceres_user_fixed_exp(float focus, iden *ide, int id_idx, Eigen::MatrixXf &id_point_fix_exp, Eigen::VectorXf &user);
+
+
+
+//bfgs
+float bfgs_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp);
+
+
+
+void test_coef_land(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
+void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
