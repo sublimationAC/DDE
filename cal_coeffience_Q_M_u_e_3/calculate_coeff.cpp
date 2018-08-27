@@ -1,4 +1,5 @@
 #include "calculate_coeff.h"
+#define test_coef
 
 void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 
@@ -57,11 +58,11 @@ void cal_f(
 		/*FILE *fp;
 		fopen_s(&fp, "test_f.txt", "w");*/
 		
-		int st = 450, en = 451, step = 10;
+		int st = 175, en = 180, step = 25;
 		Eigen::VectorXf temp((en-st)/step+1);
 		for (int i = st; i < en; i += step) temp((i-st)/step) = pre_cal_exp_ide_R_t(i, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
 		for (int i = 0; i < (en - st) / step+1; i++)
-			printf("test cal f %d %.10f\n", i, temp(i));
+			printf("test cal f %d %.10f\n", st+i*step, temp(i));
 
 		ide[i_id].fcs = L;
 	}
@@ -75,17 +76,20 @@ float pre_cal_exp_ide_R_t(
 	init_exp_ide(ide, G_train_pic_id_num);
 	float error = 0;
 	
-	int tot_r = 2;
+	int tot_r = 10;
+	Eigen::VectorXf temp(tot_r);
 	//fprintf(fp, "%d\n",tot_r);
+#ifdef test_coef
 	FILE *fp;
-	fopen_s(&fp, "test_coef_land.txt", "w");
+	fopen_s(&fp, "test_coef_land_wtot01.txt", "w");
 	fprintf(fp, "%d\n", tot_r+1);
 	fclose(fp);
 
-	fopen_s(&fp, "test_coef_mesh.txt", "w");
+	fopen_s(&fp, "test_coef_mesh_wtot01.txt", "w");
 	fprintf(fp, "%d\n", tot_r+1);
 	fclose(fp);
-
+#endif
+	float error_last=0;
 	for (int rounds = 0; rounds < tot_r; rounds++) {
 		///////////////////////////////////////////////paper's solution
 		
@@ -104,20 +108,27 @@ float pre_cal_exp_ide_R_t(
 			for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
 			ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
 			//test_slt(f,ide, bldshps, land_cor, id_idx, i_exp);
+#ifdef test_coef
 			if (rounds == 0) {
 				test_coef_land(ide, bldshps, id_idx, 0);
 				test_coef_mesh(ide, bldshps, id_idx, 0);
 			}
+#endif
 			error=cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
 			error=cal_3dpaper_ide(f, ide, bldshps, id_idx, i_exp, land_cor);			
 		}
-		error=cal_fixed_exp_same_ide(f, ide, bldshps, id_idx);
-
+		//error=cal_fixed_exp_same_ide(f, ide, bldshps, id_idx);
+		
 		printf("+++++++++++++%d %.10f\n", rounds, error);
-
+#ifdef test_coef
 		test_coef_land(ide,bldshps,id_idx,0);
 		test_coef_mesh(ide, bldshps, id_idx, 0);
+#endif
+		//if (fabs(error_last - error) < 20) break;
+		error_last = error;
+		temp(rounds) = error;
 	}
+	for (int i = 0; i < tot_r; i++) printf("it %d err %.10f\n",i,temp(i));
 	return error;
 }
 
@@ -158,7 +169,8 @@ void cal_rt_posit(
 	//puts("B");
 	//std::cout << B << '\n';
 	float s;
-	while ((ep - ep_last).norm() > 0.1) {
+	int cnt = 0;
+	while ((ep - ep_last).norm() > 0.1) {		
 		//puts("pp");
 		ep_last = ep;
 		Eigen::MatrixX2f xy(G_inner_land_num,2);
@@ -178,6 +190,7 @@ void cal_rt_posit(
 		/*std::cout << I << '\n';
 		std::cout << J << '\n';*/
 		ep = s / f * ((bs_in*(I.cross(J))).array());
+		if (cnt++ > 10) break;
 		//std::cout << ep << '\n';
 	}
 	ide[id_idx].tslt.row(exp_idx) = Eigen::RowVector3f(m0(0),m0(1),f);
@@ -449,7 +462,7 @@ void test_coef_land(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 			bs(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), axis);
 
 	FILE *fp;
-	fopen_s(&fp, "test_coef_land.txt", "a");
+	fopen_s(&fp, "test_coef_land_wtot01.txt", "a");
 	for (int i = 0; i < G_land_num; i++)
 		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
 	fclose(fp);
@@ -463,8 +476,85 @@ void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 			bs(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, i, axis);
 
 	FILE *fp;
-	fopen_s(&fp, "test_coef_mesh.txt", "a");
+	fopen_s(&fp, "test_coef_mesh_wtot01.txt", "a");
 	for (int i = 0; i < G_nVerts; i++)
 		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
 	fclose(fp);
 }
+
+/*
+test cal f 0 879.8588256836
+test cal f 1 880.0136108398
+test cal f 2 864.6113281250
+test cal f 3 875.2151489258
+test cal f 4 888.7425537109
+test cal f 5 885.1669311523
+test cal f 6 906.4459228516
+test cal f 7 923.1376342773
+test cal f 8 912.3187255859
+test cal f 9 940.9351196289
+test cal f 10 957.6480712891
+test cal f 11 977.1648559570
+test cal f 12 999.8181152344
+test cal f 13 1015.5399169922
+test cal f 14 1030.0798339844
+test cal f 15 1048.9896240234
+test cal f 16 1103.2413330078
+test cal f 17 1165.3564453125
+test cal f 18 1178.8156738281
+test cal f 19 1174.0402832031
+test cal f 20 1190.1907958984
+test cal f 21 1191.0943603516
+test cal f 22 -431602080.0000000000
+
+test cal f 100 11336.4443359375
+test cal f 125 785.0991821289
+test cal f 150 588.3906860352
+test cal f 175 613.8989868164
+test cal f 200 725.7813720703
+test cal f 225 734.6677246094
+test cal f 250 728.8943481445
+test cal f 275 716.5715942383
+test cal f 300 750.6123657227
+test cal f 325 754.9862670898
+test cal f 350 708.9167480469
+test cal f 375 695.1560668945
+test cal f 400 700.0017700195
+test cal f 425 652.4443969727
+test cal f 450 612.8259887695
+test cal f 475 615.2667236328
+test cal f 500 619.5740966797
+test cal f 525 620.4445800781
+test cal f 550 602.8044433594
+test cal f 575 605.1570434570
+test cal f 600 607.3097534180
+test cal f 625 607.7971801758
+test cal f 650 686.6637573242
+test cal f 675 691.1859130859
+test cal f 700 693.2089843750
+test cal f 725 691.2633666992
+test cal f 750 690.7508544922
+test cal f 775 695.6425170898
+test cal f 800 696.4915771484
+test cal f 825 697.4221191406
+test cal f 850 698.5968627930
+test cal f 875 705.6496582031
+test cal f 900 706.4727172852
+test cal f 925 707.5124511719
+test cal f 950 708.5409545898
+test cal f 975 709.5115966797
+test cal f 1000 715.6920776367
+test cal f 1025 716.5400390625
+test cal f 1050 717.3754882813
+test cal f 1075 726.9896850586
+
+test cal f 100 1519.2838134766
+test cal f 125 947.2608642578
+test cal f 150 908.4181518555
+test cal f 175 867.7921142578
+test cal f 200 912.3013916016
+test cal f 225 884.7678222656
+test cal f 250 879.8588256836
+test cal f 275 880.0136108398
+test cal f 300 -431602080.0000000000
+*/

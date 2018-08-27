@@ -31,6 +31,7 @@
 #include "ceres/ceres.h"
 #include "glog/logging.h"
 #include "calculate_coeff.h"
+//#define set_user_bound
 
 using ceres::AutoDiffCostFunction;
 using ceres::CostFunction;
@@ -199,9 +200,18 @@ float ceres_user_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::Mat
 			new ceres_cal_user(focus, ide, id_idx, exp_idx, id_point)),
 		NULL, x_user);
 	//puts("B");
-	//puts("C");
+
 	Solver::Options options;
-	//options.max_num_iterations = 1;
+	
+#ifdef set_user_bound
+	for (int i = 0; i < G_iden_num; i++) {
+		problem.SetParameterLowerBound(x_user, i, 0.0);
+		problem.SetParameterUpperBound(x_user, i, 1.0);
+	}
+	options.max_num_iterations = 25;
+#endif // set_user_bound
+	//puts("C");
+	
 	options.linear_solver_type = ceres::DENSE_QR;
 	options.minimizer_progress_to_stdout = true;
 
@@ -237,7 +247,16 @@ float ceres_user_fixed_exp(float focus, iden *ide, int id_idx, Eigen::MatrixXf &
 
 	//puts("C");
 	Solver::Options options;
-	//options.max_num_iterations = 1;
+	
+#ifdef set_user_bound
+	for (int i = 0; i < G_iden_num; i++) {
+		problem.SetParameterLowerBound(x_user, i, 0.0);
+		problem.SetParameterUpperBound(x_user, i, 1.0);
+	}
+	options.max_num_iterations = 25;
+#endif // set_user_bound
+
+	
 	options.linear_solver_type = ceres::DENSE_QR;
 	options.minimizer_progress_to_stdout = true;
 
