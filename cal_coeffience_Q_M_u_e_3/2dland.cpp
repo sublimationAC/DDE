@@ -16,7 +16,7 @@ void load_img_land(std::string path, std::string sfx, iden *ide, int &id_idx, st
 				id_idx+=load_img_land_same_id(p.assign(path).append("/").append(fileinfo.name).c_str(), sfx, ide, id_idx,img_temp);
 				imgs.push_back(img_temp);
 			}
-			if (id_idx > 5) break;////////////////////////////////////////////////////////////////////////////////////////////////debug
+			//if (id_idx > 5) break;////////////////////////////////////////////////////////////////////////////////////////////////debug
 		} while (_findnext(hFile, &fileinfo) == 0);
 		_findclose(hFile);
 	}
@@ -26,6 +26,7 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 	int hFile = 0,flag=0;
 	struct _finddata_t fileinfo;
 	std::string p;
+	std::cout << path << '\n';
 	if ((hFile = _findfirst(p.assign(path).append("\\*").c_str(), &fileinfo)) != -1) {
 		do {
 			if (fileinfo.name[0] == '.') continue;
@@ -55,7 +56,7 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 }
 
 void load_land(std::string p, iden *ide, int id_idx) {
-	//std::cout << p << '\n';
+	std::cout << p << '\n';
 	FILE *fp;
 	fopen_s(&fp, p.c_str(), "r");
 	int n;
@@ -119,7 +120,7 @@ void load_inner_land_corr(Eigen::VectorXi &cor) {
 void load_slt(std:: vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect) {
 	puts("loading silhouette line&vertices...");
 	FILE *fp;
-	fopen_s(&fp, "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt.txt", "r");
+	fopen_s(&fp, "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/sillht.txt", "r");
 	for (int i = 0; i < G_line_num; i++) {
 		int num;
 		fscanf_s(fp, "%d", &num);
@@ -129,7 +130,7 @@ void load_slt(std:: vector <int> *slt_line, std::vector<std::pair<int, int> > *s
 	}
 	fclose(fp);
 	fopen_s(&fp, "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_point_rect.txt", "r");
-	for (int i = 0; i < 1006; i++) {
+	for (int i = 0; i < 605; i++) {
 		int idx, num;
 		fscanf_s(fp, "%d%d", &idx, &num);
 		slt_point_rect[idx].resize(num);

@@ -1,5 +1,5 @@
 #include "calculate_coeff.h"
-#define test_coef
+//#define test_coef
 
 void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 
@@ -42,8 +42,8 @@ void cal_f(
 	puts("calclating focus for each image...");
 	for (int i_id = 0; i_id < G_train_pic_id_num; i_id++) {
 		if (ide[i_id].num == 0)continue;
-		float L = 1, R = 3000, er_L, er_R;
-		/*er_L = pre_cal_exp_ide_R_t(L, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
+		float L = 100, R = 1000, er_L, er_R;
+		er_L = pre_cal_exp_ide_R_t(L, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
 		er_R = pre_cal_exp_ide_R_t(R, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
 		for (int rounds = 0; rounds < 50; rounds++) {
 			printf("cal f %.5f %.5f %.5f %.5f\n", L, er_L, R, er_R);
@@ -54,18 +54,24 @@ void cal_f(
 			er_mid_r = pre_cal_exp_ide_R_t(mid_r, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
 			if (er_mid_l < er_mid_r) R = mid_r, er_R = er_mid_r;
 			else L = mid_l, er_L = er_mid_l;
-		}*/
+		}
 		/*FILE *fp;
 		fopen_s(&fp, "test_f.txt", "w");*/
 		
-		int st = 175, en = 180, step = 25;
+#ifdef test_coef
+		int st = 150, en = 160, step = 25;
 		Eigen::VectorXf temp((en-st)/step+1);
 		for (int i = st; i < en; i += step) temp((i-st)/step) = pre_cal_exp_ide_R_t(i, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
 		for (int i = 0; i < (en - st) / step+1; i++)
 			printf("test cal f %d %.10f\n", st+i*step, temp(i));
-
+#endif
 		ide[i_id].fcs = L;
 	}
+	FILE *fp;
+	fopen_s(&fp, "test_ide_coeff.txt", "w");
+	for (int i = 0; i < G_iden_num; i++)
+		fprintf(fp, "%.10f\n", ide[0].user(i));
+	fclose(fp);
 }
 
 float pre_cal_exp_ide_R_t(
@@ -76,16 +82,16 @@ float pre_cal_exp_ide_R_t(
 	init_exp_ide(ide, G_train_pic_id_num);
 	float error = 0;
 	
-	int tot_r = 10;
+	int tot_r = 3;
 	Eigen::VectorXf temp(tot_r);
 	//fprintf(fp, "%d\n",tot_r);
 #ifdef test_coef
 	FILE *fp;
-	fopen_s(&fp, "test_coef_land_wtot01.txt", "w");
+	fopen_s(&fp, "test_coef_land_wt01_40.txt", "w");
 	fprintf(fp, "%d\n", tot_r+1);
 	fclose(fp);
 
-	fopen_s(&fp, "test_coef_mesh_wtot01.txt", "w");
+	fopen_s(&fp, "test_coef_mesh_wt01_40.txt", "w");
 	fprintf(fp, "%d\n", tot_r+1);
 	fclose(fp);
 #endif
@@ -117,7 +123,7 @@ float pre_cal_exp_ide_R_t(
 			error=cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
 			error=cal_3dpaper_ide(f, ide, bldshps, id_idx, i_exp, land_cor);			
 		}
-		//error=cal_fixed_exp_same_ide(f, ide, bldshps, id_idx);
+		error=cal_fixed_exp_same_ide(f, ide, bldshps, id_idx);
 		
 		printf("+++++++++++++%d %.10f\n", rounds, error);
 #ifdef test_coef
@@ -462,7 +468,7 @@ void test_coef_land(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 			bs(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), axis);
 
 	FILE *fp;
-	fopen_s(&fp, "test_coef_land_wtot01.txt", "a");
+	fopen_s(&fp, "test_coef_land_wt01_40.txt", "a");
 	for (int i = 0; i < G_land_num; i++)
 		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
 	fclose(fp);
@@ -476,7 +482,7 @@ void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 			bs(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, i, axis);
 
 	FILE *fp;
-	fopen_s(&fp, "test_coef_mesh_wtot01.txt", "a");
+	fopen_s(&fp, "test_coef_mesh_wt01_40.txt", "a");
 	for (int i = 0; i < G_nVerts; i++)
 		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
 	fclose(fp);

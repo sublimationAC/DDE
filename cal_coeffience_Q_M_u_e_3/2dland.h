@@ -22,9 +22,9 @@ const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
-const int G_iden_num = 25;
+const int G_iden_num = 40;
 const int G_inner_land_num = 59;
-const int G_line_num = 74;
+const int G_line_num = 70;
 
 struct iden
 {
