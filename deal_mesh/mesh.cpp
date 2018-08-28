@@ -1,5 +1,6 @@
 #include "mesh.h"
-
+//#define test_slt_drct
+#define slt_file
 
 void init_mesh(std::string name, Mesh_my &mesh) {
 	printf("Initiating mesh...\n");
@@ -60,16 +61,7 @@ void draw_mesh(Mesh_my &mesh) {
 	glLineWidth(0.3);
 	for (int i = 0; i < mesh.num_rect; ++i) {
 		//printf("%d\n",i);
-		/*bool fl = 0;
-		for (int j = 0; j < 4; j++) {
-			if (mesh.vtx(mesh.rect(i, j), 2) < -0.1 ) fl = 1;
-			if (mesh.vtx(mesh.rect(i, j), 1) > 0.7  || mesh.vtx(mesh.rect(i, j), 1)<-0.6) fl = 1;
-			if (mesh.vtx(mesh.rect(i, j), 1) > 0.1){
-				if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.55) fl = 1;
-			}
-			else if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.4) fl = 1;
-		}
-		if (fl) continue;*/
+		/*if (check(mesh,i)) continue;*/
 		glBegin(GL_QUADS);
 
 		for (int j = 0; j < 4; ++j) {
@@ -142,14 +134,32 @@ void check_2d_3d_corr(Mesh_my &mesh,Eigen :: VectorXi &cor) {
 		glEnd();
 	}
 }
+
+// do not forget to delete 22(right side around the eye)
+bool check_slt_line(Mesh_my &mesh, int i) {
+	bool fl = 0;
+	for (int j = 0; j < 4; j++) {
+		if (mesh.vtx(mesh.rect(i, j), 2) < -0.1) fl = 1;
+		if (mesh.vtx(mesh.rect(i, j), 1) > 0.7 || mesh.vtx(mesh.rect(i, j), 1) < -0.6) fl = 1;
+		if (mesh.vtx(mesh.rect(i, j), 1) > -0.1) {
+			if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.55) fl = 1;
+		}
+		else if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.4) fl = 1;
+	}
+	return fl;
+}
+
 std::vector<int> E[G_line_num];
 void check_2d_3d_out_corr(Mesh_my &mesh) {
-	double scale = 1.1;
+	double scale = 1.01;
+
+#ifdef slt_file
 	FILE *fp;
 	fopen_s(&fp, "sillht.txt", "r");
 	for (int i = 0; i < G_line_num; i++) {
 		int num;
 		fscanf_s(fp, "%d", &num);
+		E[i].clear();
 		for (int j = 0; j < num; j++) {
 			int x;
 			fscanf_s(fp, "%d", &x);
@@ -157,13 +167,17 @@ void check_2d_3d_out_corr(Mesh_my &mesh) {
 		}
 	}
 	fclose(fp);
-	/*glPointSize(5);
-	for (int i = 0; i < G_line_num; i++)
+	glPointSize(5);
+	for (int i = 0; i < G_line_num; i++) {
+
+		//if (E[i].size() > 15) continue;
 		for (int j = 0; j < E[i].size(); j++) {
 			glBegin(GL_POINTS);
 			glVertex3f(mesh.vtx(E[i][j], 0), mesh.vtx(E[i][j], 1), mesh.vtx(E[i][j], 2));
 			glEnd();
-		}*/
+		}
+	}
+	
 	//puts("asd");
 	glLineWidth(5);
 	for (int i = 0; i < G_line_num; i++)
@@ -174,47 +188,42 @@ void check_2d_3d_out_corr(Mesh_my &mesh) {
 			
 			glEnd();
 		} 
-	//glLineWidth(5);
-	//for (int i = 0; i < mesh.num_rect; ++i) {
-	//	//printf("%d\n",i);
-	//	bool fl = 0;
-	//	for (int j = 0; j < 4; j++) {
-	//		if (mesh.vtx(mesh.rect(i, j), 2) < -0.1) fl = 1;
-	//		if (mesh.vtx(mesh.rect(i, j), 1) > 0.7 || mesh.vtx(mesh.rect(i, j), 1)<-0.6) fl = 1;
-	//		if (mesh.vtx(mesh.rect(i, j), 1) > 0.1) {
-	//			if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.55) fl = 1;
-	//		}
-	//		else if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.4) fl = 1;
-	//	}
-	//	if (fl) continue;
-	//	float mi = 100;
-	//	int mi1, mi2;
-	//	for (int t = 0; t < 4; t++) {
-	//		int idx1= mesh.rect(i, t), idx2= mesh.rect(i, (t+1)%4);
-	//		if (fabs(mesh.vtx(idx1, 1) - mesh.vtx(idx2, 1)) < mi)
-	//			mi = fabs(mesh.vtx(idx1, 1) - mesh.vtx(idx2, 1)), mi1 = idx1, mi2 = idx2;
-	//		/*printf("%.5f %.5f\n", fabs(mesh.vtx(mesh.rect(i, 0), 1) - mesh.vtx(mesh.rect(i, 1), 1)),
-	//			fabs(mesh.vtx(mesh.rect(i, 0), 1) - mesh.vtx(mesh.rect(i, 2), 1)));*/
-	//	}
-	//	glBegin(GL_LINES);
-	//	glVertex3f(mesh.vtx(mi1, 0)*scale, mesh.vtx(mi1, 1)*scale, mesh.vtx(mi1, 2)*scale);
-	//	glVertex3f(mesh.vtx(mi2, 0)*scale, mesh.vtx(mi2, 1)*scale, mesh.vtx(mi2, 2)*scale);
-	//	glEnd();
-	//	mi = 10;
-	//	int mm = mi1;
-	//	for (int t = 0; t < 4; t++) {
-	//		int idx1 = mesh.rect(i, t), idx2 = mesh.rect(i, (t + 1) % 4);
-	//		if (idx1 == mm) continue;
-	//		if (fabs(mesh.vtx(idx1, 1) - mesh.vtx(idx2, 1)) < mi)
-	//			mi = fabs(mesh.vtx(idx1, 1) - mesh.vtx(idx2, 1)), mi1 = idx1, mi2 = idx2;
-	//		/*printf("%.5f %.5f\n", fabs(mesh.vtx(mesh.rect(i, 0), 1) - mesh.vtx(mesh.rect(i, 1), 1)),
-	//		fabs(mesh.vtx(mesh.rect(i, 0), 1) - mesh.vtx(mesh.rect(i, 2), 1)));*/
-	//	}
-	//	glBegin(GL_LINES);
-	//	glVertex3f(mesh.vtx(mi1, 0)*scale, mesh.vtx(mi1, 1)*scale, mesh.vtx(mi1, 2)*scale);
-	//	glVertex3f(mesh.vtx(mi2, 0)*scale, mesh.vtx(mi2, 1)*scale, mesh.vtx(mi2, 2)*scale);
-	//	glEnd();
-	//}
+#endif
+#ifdef test_slt_drct
+
+	glLineWidth(5);
+	for (int i = 0; i < mesh.num_rect; ++i) {
+		//printf("%d\n",i);		
+		if (check_slt_line(mesh,i)) continue;
+		float mi = 100;
+		int mi1, mi2;
+		for (int t = 0; t < 4; t++) {
+			int idx1= mesh.rect(i, t), idx2= mesh.rect(i, (t+1)%4);
+			if (fabs(mesh.vtx(idx1, 1) - mesh.vtx(idx2, 1)) < mi)
+				mi = fabs(mesh.vtx(idx1, 1) - mesh.vtx(idx2, 1)), mi1 = idx1, mi2 = idx2;
+			/*printf("%.5f %.5f\n", fabs(mesh.vtx(mesh.rect(i, 0), 1) - mesh.vtx(mesh.rect(i, 1), 1)),
+				fabs(mesh.vtx(mesh.rect(i, 0), 1) - mesh.vtx(mesh.rect(i, 2), 1)));*/
+		}
+		glBegin(GL_LINES);
+		glVertex3f(mesh.vtx(mi1, 0)*scale, mesh.vtx(mi1, 1)*scale, mesh.vtx(mi1, 2)*scale);
+		glVertex3f(mesh.vtx(mi2, 0)*scale, mesh.vtx(mi2, 1)*scale, mesh.vtx(mi2, 2)*scale);
+		glEnd();
+		mi = 10;
+		int mm = mi1;
+		for (int t = 0; t < 4; t++) {
+			int idx1 = mesh.rect(i, t), idx2 = mesh.rect(i, (t + 1) % 4);
+			if (idx1 == mm) continue;
+			if (fabs(mesh.vtx(idx1, 1) - mesh.vtx(idx2, 1)) < mi)
+				mi = fabs(mesh.vtx(idx1, 1) - mesh.vtx(idx2, 1)), mi1 = idx1, mi2 = idx2;
+			/*printf("%.5f %.5f\n", fabs(mesh.vtx(mesh.rect(i, 0), 1) - mesh.vtx(mesh.rect(i, 1), 1)),
+			fabs(mesh.vtx(mesh.rect(i, 0), 1) - mesh.vtx(mesh.rect(i, 2), 1)));*/
+		}
+		glBegin(GL_LINES);
+		glVertex3f(mesh.vtx(mi1, 0)*scale, mesh.vtx(mi1, 1)*scale, mesh.vtx(mi1, 2)*scale);
+		glVertex3f(mesh.vtx(mi2, 0)*scale, mesh.vtx(mi2, 1)*scale, mesh.vtx(mi2, 2)*scale);
+		glEnd();
+	}
+#endif // test_slt_drct
 }
 
 int f[20000] = { 0 };
@@ -229,16 +238,7 @@ int u_f(int x) {
 void get_silhouette_vertex(Mesh_my &mesh) {
 	for (int i = 0; i < mesh.num_rect; ++i) {
 		//printf("%d\n",i);
-		bool fl = 0;
-		for (int j = 0; j < 4; j++) {
-			if (mesh.vtx(mesh.rect(i, j), 2) < -0.1) fl = 1;
-			if (mesh.vtx(mesh.rect(i, j), 1) > 0.7 || mesh.vtx(mesh.rect(i, j), 1)<-0.6) fl = 1;
-			if (mesh.vtx(mesh.rect(i, j), 1) > 0.1) {
-				if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.55) fl = 1;
-			}
-			else if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.4) fl = 1;
-		}
-		if (fl) continue;
+		if (check_slt_line(mesh, i)) continue;
 		float mi = 10;
 		int mi1, mi2;
 		for (int t = 0; t < 4; t++) {
@@ -274,12 +274,12 @@ void get_silhouette_vertex(Mesh_my &mesh) {
 			p.clear();
 			for (int j = 0; j < 20000; j++)
 				if (u_f(j) == r) p.push_back(j);
-			//if (p.size
+			use[r] = 1;
+			if (p.size() > 15) continue;
 			fprintf(fp, "%d", p.size());
 			for (int j = 0; j < p.size(); j++)
-				fprintf(fp, " %d", p[j]), use[p[j]] = 1;
-			fprintf(fp, "\n");
-			use[r] = 1;
+				fprintf(fp, " %d", p[j]) , use[p[j]] = 1;
+			fprintf(fp, "\n");			
 		}
 	}
 	fclose(fp);
@@ -338,11 +338,11 @@ void test_slt() {
 
 void get_coef_land(Eigen::MatrixX3f &coef_land) {
 	FILE *fp;
-	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_land.txt", "r");
+	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_land_wt01_40.txt", "r");
 	int num;
 	fscanf_s(fp, "%d", &num);
-	coef_land.resize(num * G_line_num, 3);
-	for (int j = 0; j < num * G_line_num; j++)
+	coef_land.resize(num * G_land_num, 3);
+	for (int j = 0; j < num * G_land_num; j++)
 		fscanf_s(fp, "%f%f%f", &coef_land(j, 0), &coef_land(j, 1), &coef_land(j, 2));
 	fclose(fp);
 }
@@ -359,7 +359,7 @@ void test_coef_land(Eigen::MatrixX3f &coef_land,int idx) {
 
 void get_coef_mesh(Eigen::MatrixX3f &coef_mesh) {
 	FILE *fp;
-	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_mesh.txt", "r");
+	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_mesh_wt01_40.txt", "r");
 	int num;
 	fscanf_s(fp, "%d", &num);
 	coef_mesh.resize(num * G_nVerts, 3);

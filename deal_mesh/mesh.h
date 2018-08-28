@@ -4,8 +4,9 @@
 #include <igl/read_triangle_mesh.h>
 #include <cstring>
 const int G_inner_land_num = 62;
-const int G_line_num = 74;
+const int G_line_num = 70;
 const int G_nVerts = 11510;
+const int G_land_num = 74;
 
 struct Mesh_my
 {
@@ -21,6 +22,7 @@ void cal_norm(Mesh_my &mesh);
 void draw_mesh(Mesh_my &mesh);
 void draw_line(Mesh_my &mesh,double agl);
 void check_2d_3d_corr(Mesh_my &mesh, Eigen::VectorXi &cor);
+bool check_slt_line(Mesh_my &mesh, int i);
 void get_silhouette_vertex(Mesh_my &mesh);
 void check_2d_3d_out_corr(Mesh_my &mesh);
 void cal_nor_vec(Eigen::RowVector3d &nor, Eigen::RowVector3d a, Eigen::RowVector3d b, Eigen::RowVector3d o);

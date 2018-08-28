@@ -1,21 +1,36 @@
 #include "ofApp.h"
+#define test_coef
+//#define check_out_slt
+
 Mesh_my mesh;
 Eigen::VectorXi cor(G_inner_land_num);
 Eigen::MatrixX3f coef_land;
 Eigen::MatrixX3f coef_mesh;
+const int test_coef_num = 5;
 //--------------------------------------------------------------
 void ofApp::setup(){
-	init_mesh("D:\\sydney\\first\\data\\Tester_ (1)\\TrainingPose/pose_1.obj",mesh);
+	init_mesh("D:\\sydney\\first\\data\\Tester_ (1)\\TrainingPose/pose_0.obj",mesh);
 	FILE *fp;
 	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/inner_vertex_corr.txt", "r");
 	
 	for (int i = 0; i<G_inner_land_num; i++)
 		fscanf_s(fp, "%d", &cor(i));
 	fclose(fp);
-	get_silhouette_vertex(mesh);
+
+	
+	//get_silhouette_vertex(mesh);
+#ifdef test_coef
+	
 	get_coef_land(coef_land);
-	/*get_coef_mesh(coef_mesh);
-	test_coef_mesh(mesh, coef_mesh, 2);*/
+	get_coef_mesh(coef_mesh);
+	test_coef_mesh(mesh, coef_mesh, test_coef_num);
+#endif // test_coef
+	
+
+	
+
+
+	
 
 
 	lights.resize(2);
@@ -39,24 +54,30 @@ void ofApp::draw(){
 	ofEnableLighting();
 	for (int i = 0; i < lights.size(); ++i) { lights[i].enable(); }
 	cam.begin(); //?????????????
-
+	ofScale(ofGetWidth() / 5);
 	//ofPushMatrix();
 	//ofTranslate(500, 250);
 
-	/*ofSetColor(ofColor(255, 5, 0));
-	ofScale(ofGetWidth() / 5);*/
+	//ofSetColor(ofColor(255, 5, 0));
+	
 	//check_2d_3d_corr(mesh, cor);
-	//ofSetColor(ofColor(255, 255, 250));
-	//check_2d_3d_out_corr(mesh);
+#ifdef check_out_slt
+	
+	ofSetColor(ofColor(255, 255, 250));
+	check_2d_3d_out_corr(mesh);
+#endif // check_out_slt
+
+	
+	
 	//test_slt();
-	//test_coef_land(coef_land, 0);
-	/*ofSetColor(ofColor(5, 255, 0));
-	test_coef_land(coef_land,1);*/
-	/*ofSetColor(ofColor(5, 0, 255));
-	test_coef_land(coef_land, 2);*/
+
+#ifdef test_coef
+	ofSetColor(ofColor(255, 0, 5));
+	test_coef_land(coef_land, test_coef_num);
+#endif
 
 	ofSetColor(ofColor(133, 180, 250));
-	ofScale(ofGetWidth() / 5);
+	//ofScale(ofGetWidth() / 5);
 
 	draw_mesh(mesh);
 	//ofSetColor(ofColor(255, 255, 250));
