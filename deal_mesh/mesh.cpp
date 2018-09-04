@@ -124,10 +124,19 @@ void draw_line(Mesh_my &mesh,double agl){
 	}
 }
 
-void check_2d_3d_corr(Mesh_my &mesh,Eigen :: VectorXi &cor) {
-	
+void check_2d_3d_inner_jaw_corr(Mesh_my &mesh, Eigen::VectorXi &cor) {
+	FILE *fp;
+	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/inner_vertex_corr.txt", "r");
+	cor.resize(G_jaw_land_num + G_inner_land_num);
+	for (int i = 0; i < G_inner_land_num; i++)
+		fscanf_s(fp, "%d", &cor(i));
+	fclose(fp);
+	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/jaw_vertex.txt", "r");
+	for (int i = G_inner_land_num; i < G_inner_land_num + G_jaw_land_num; i++)
+		fscanf_s(fp, "%d", &cor(i));
+	fclose(fp);
 	glPointSize(15);
-	for (int i = 0; i < G_inner_land_num; i++) {
+	for (int i = 0; i < G_inner_land_num + G_jaw_land_num; i++) {
 		glBegin(GL_POINTS);
 		glVertex3f(mesh.vtx(cor(i), 0), mesh.vtx(cor(i), 1), mesh.vtx(cor(i), 2));
 		//printf("%d ", cor(i));
@@ -140,11 +149,19 @@ bool check_slt_line(Mesh_my &mesh, int i) {
 	bool fl = 0;
 	for (int j = 0; j < 4; j++) {
 		if (mesh.vtx(mesh.rect(i, j), 2) < -0.1) fl = 1;
-		if (mesh.vtx(mesh.rect(i, j), 1) > 0.7 || mesh.vtx(mesh.rect(i, j), 1) < -0.6) fl = 1;
-		if (mesh.vtx(mesh.rect(i, j), 1) > -0.1) {
-			if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.55) fl = 1;
+		if (mesh.vtx(mesh.rect(i, j), 1) > 0.42 || mesh.vtx(mesh.rect(i, j), 1) < -0.4) fl = 1;
+		if (mesh.vtx(mesh.rect(i, j), 0) < 0) {
+			if (mesh.vtx(mesh.rect(i, j), 1) > -0.1) {
+				if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.44) fl = 1;
+			}
+			else if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.3) fl = 1; 
 		}
-		else if (fabs(mesh.vtx(mesh.rect(i, j), 0)) < 0.4) fl = 1;
+		else {
+			if (mesh.vtx(mesh.rect(i, j), 1) > -0.1) {
+				if (mesh.vtx(mesh.rect(i, j), 0) < 0.54) fl = 1;
+			}
+			else if (mesh.vtx(mesh.rect(i, j), 0) < 0.4) fl = 1;
+		}
 	}
 	return fl;
 }
@@ -275,7 +292,7 @@ void get_silhouette_vertex(Mesh_my &mesh) {
 			for (int j = 0; j < 20000; j++)
 				if (u_f(j) == r) p.push_back(j);
 			use[r] = 1;
-			if (p.size() > 15) continue;
+			//if (p.size() > 15) continue;
 			fprintf(fp, "%d", p.size());
 			for (int j = 0; j < p.size(); j++)
 				fprintf(fp, " %d", p[j]) , use[p[j]] = 1;
@@ -336,9 +353,10 @@ void test_slt() {
 	fclose(fp);
 }
 
-void get_coef_land(Eigen::MatrixX3f &coef_land) {
+void get_coef_land(Eigen::MatrixX3f &coef_land,std::string name) {
+	puts("get_coef_land");
 	FILE *fp;
-	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_land_wt01_40.txt", "r");
+	fopen_s(&fp, name.c_str(), "r");
 	int num;
 	fscanf_s(fp, "%d", &num);
 	coef_land.resize(num * G_land_num, 3);
@@ -350,18 +368,23 @@ void get_coef_land(Eigen::MatrixX3f &coef_land) {
 void test_coef_land(Eigen::MatrixX3f &coef_land,int idx) {
 
 	glPointSize(5);
-	for (int i = idx* G_line_num; i < G_line_num*(idx+1); i++) {
+	for (int i = idx* G_land_num; i < G_land_num*(idx+1); i++) {
 		glBegin(GL_POINTS);
 		glVertex3f(coef_land(i,0), coef_land(i, 1), coef_land(i, 2));
 		glEnd();
 	}
 }
 
-void get_coef_mesh(Eigen::MatrixX3f &coef_mesh) {
+void get_coef_mesh(Eigen::MatrixX3f &coef_mesh,std::string name) {
+	puts("get_coef_mesh");
 	FILE *fp;
-	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_mesh_wt01_40.txt", "r");
-	int num;
+	int num = 0;
+	num=fopen_s(&fp, name.c_str(), "r");
+	std::cout << name << "\n";
+	
+	printf("%d\n", num);
 	fscanf_s(fp, "%d", &num);
+	printf("%d\n", num);
 	coef_mesh.resize(num * G_nVerts, 3);
 	for (int j = 0; j < num * G_nVerts; j++)
 		fscanf_s(fp, "%f%f%f", &coef_mesh(j, 0), &coef_mesh(j, 1), &coef_mesh(j, 2));
