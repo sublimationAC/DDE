@@ -1,6 +1,8 @@
 #include "2dland.h"
 
+//#define cal_land_num
 void load_img_land(std::string path, std::string sfx, iden *ide, int &id_idx, std::vector< std::vector<cv::Mat_<uchar> > > &imgs) {
+#ifdef win64
 	int hFile = 0;
 	struct _finddata_t fileinfo;
 	std::string p;
@@ -13,17 +15,39 @@ void load_img_land(std::string path, std::string sfx, iden *ide, int &id_idx, st
 			if ((fileinfo.attrib & _A_SUBDIR)) {
 				std::vector<cv::Mat_<uchar> > img_temp;
 				printf("Loading identity %d...\n", id_idx);
-				id_idx+=load_img_land_same_id(p.assign(path).append("/").append(fileinfo.name).c_str(), sfx, ide, id_idx,img_temp);
+				id_idx += load_img_land_same_id(p.assign(path).append("/").append(fileinfo.name).c_str(), sfx, ide, id_idx, img_temp);
 				imgs.push_back(img_temp);
 			}
-			//if (id_idx > 5) break;////////////////////////////////////////////////////////////////////////////////////////////////debug
+			if (id_idx > 5) break;////////////////////////////////////////////////////////////////////////////////////////////////debug
 		} while (_findnext(hFile, &fileinfo) == 0);
 		_findclose(hFile);
 	}
+#endif // win64
+
+#ifdef linux
+	DIR *dir;
+	struct dirent *dp;
+	if ((dir = opendir(path.c_str())) == NULL) {
+		perror("Cannot open .");
+		exit(1);
+	}
+	while ((dp = readdir(dir)) != NULL) {
+		std::cout << dp->d_name << ' ' << strlen(dp->d_name) << "\n";
+		if (dp->d_name[0] == '.') continue;
+		if (dp->d_type == DT_DIR) {
+			std::vector<cv::Mat_<uchar> > img_temp;
+			printf("Loading identity %d...\n", id_idx);
+			id_idx += load_img_land_same_id(path + "/" + dp->d_name, sfx, ide, id_idx, img_temp);
+			imgs.push_back(img_temp);
+		}
+	}
+	closedir(dir);
+#endif // linux	
 }
 
 int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_idx, std::vector<cv::Mat_<uchar> > &img_temp) {
-	int hFile = 0,flag=0;
+#ifdef win64
+	int hFile = 0, flag = 0;
 	struct _finddata_t fileinfo;
 	std::string p;
 	std::cout << path << '\n';
@@ -32,18 +56,18 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 			if (fileinfo.name[0] == '.') continue;
 			//std::cout << fileinfo.name << '\n';
 			if ((fileinfo.attrib & _A_SUBDIR)) {
-				flag|=load_img_land_same_id(p.assign(path).append("/").append(fileinfo.name).c_str(), sfx, ide, id_idx,img_temp);
+				flag |= load_img_land_same_id(p.assign(path).append("/").append(fileinfo.name).c_str(), sfx, ide, id_idx, img_temp);
 			}
 			else {
 				int len = strlen(fileinfo.name);
 				if (fileinfo.name[len - 1] == 'd' && fileinfo.name[len - 2] == 'n') {
 					////	
 					flag = 1;
-					load_land(p.assign(path).append("/").append(fileinfo.name),ide,id_idx);
+					load_land(p.assign(path).append("/").append(fileinfo.name), ide, id_idx);
 
 					p = path + "/" + fileinfo.name;
 					cv::Mat_<uchar> temp;
-					load_img(p.substr(0, p.find(".land"))+sfx, temp);
+					load_img(p.substr(0, p.find(".land")) + sfx, temp);
 					img_temp.push_back(temp);
 
 					ide[id_idx].num++;
@@ -53,6 +77,38 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 		_findclose(hFile);
 	}
 	return flag;
+#endif // win64
+
+#ifdef linux
+	int flag = 0;
+	DIR *dir;
+	struct dirent *dp;
+	if ((dir = opendir(path.c_str())) == NULL) {
+		perror("Cannot open .");
+		exit(1);
+	}
+	while ((dp = readdir(dir)) != NULL) {
+		//std::cout << dp->d_name << ' ' << dp->d_namlen << "\n";
+		if (dp->d_name[0] == '.') continue;
+		if (dp->d_type == DT_DIR)
+			flag |= load_img_land_same_id(path + "/" + dp->d_name, sfx, ide, id_idx, img_temp);
+		else {
+			int len =strlen( dp->d_name);
+			if (dp->d_name[len - 1] == 'd' && dp->d_name[len - 2] == 'n') {
+				////	
+				flag = 1;
+				load_land(path + "/" + dp->d_name, ide, id_idx);
+				std::string p = path + "/" + dp->d_name;
+				cv::Mat_<uchar> temp;
+				load_img(p.substr(0, p.find(".land")) + sfx, temp);
+				img_temp.push_back(temp);
+				ide[id_idx].num++;
+			}
+		}
+	}
+	closedir(dir);
+	return flag;
+#endif // linux
 }
 
 void load_land(std::string p, iden *ide, int id_idx) {
@@ -84,7 +140,8 @@ void test_data_2dland(
 			, Point2d(bounding_box[j].start_x + bounding_box[j].width, bounding_box[j].start_y + bounding_box[j].height)
 			, Scalar(255, 244, 244), 3, 4, 0);*/
 	}
-	//for (int i = mi; i < (img_idx + 1)*land_num; i++) {
+#ifdef cal_land_num
+	for (int i = mi; i < (img_idx + 1)*G_land_num; i++) {
 		CvFont font;
 		cvInitFont(&font, CV_FONT_HERSHEY_COMPLEX, 0.01, 0.5, 1, 0.5, 8);
 		IplImage *pImage = cvLoadImage("D:\\sydney\\first\\data\\Tester_ (28)\\TrainingPose/pose_17.png");
@@ -101,7 +158,10 @@ void test_data_2dland(
 		/*rectangle(images[j], Point2d(bounding_box[j].start_x, bounding_box[j].start_y)
 		, Point2d(bounding_box[j].start_x + bounding_box[j].width, bounding_box[j].start_y + bounding_box[j].height)
 		, Scalar(255, 244, 244), 3, 4, 0);*/
-	//}
+}
+#endif // cal_land_num
+
+	
 	cv::imshow("test_image", imgs[id_idx][img_idx]);
 	cv::waitKey(0);
 	/*for (int j = 0; j < landmark_num; j++)
@@ -111,16 +171,26 @@ void test_data_2dland(
 void load_inner_land_corr(Eigen::VectorXi &cor) {
 	puts("loading inner landmarks correspondence...");
 	FILE *fp;
-	fopen_s(&fp, "inner_vertex_corr.txt", "r");
-	for (int i = 0; i < 62; i++) fscanf_s(fp, "%d", &cor(i));
+	fopen_s(&fp, "./inner_jaw/inner_vertex_corr.txt", "r");
+	for (int i = 0; i < G_inner_land_num; i++) fscanf_s(fp, "%d", &cor(i));
+	//std::cout << cor <<"------------------------------\n"<< '\n';
+	fclose(fp);
+}
+void load_jaw_land_corr(Eigen::VectorXi &jaw_cor) {
+	puts("loading jaw landmarks correspondence...");
+	FILE *fp;
+	fopen_s(&fp, "./inner_jaw/jaw_vertex.txt", "r");
+	for (int i = 0; i < G_jaw_land_num; i++) fscanf_s(fp, "%d", &jaw_cor(i));
 	//std::cout << cor <<"------------------------------\n"<< '\n';
 	fclose(fp);
 }
 
-void load_slt(std:: vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect) {
+void load_slt(
+	std:: vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	std::string path_slt,std::string path_rect) {
 	puts("loading silhouette line&vertices...");
 	FILE *fp;
-	fopen_s(&fp, "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/sillht.txt", "r");
+	fopen_s(&fp, path_slt.c_str(), "r");
 	for (int i = 0; i < G_line_num; i++) {
 		int num;
 		fscanf_s(fp, "%d", &num);
@@ -129,8 +199,8 @@ void load_slt(std:: vector <int> *slt_line, std::vector<std::pair<int, int> > *s
 			fscanf_s(fp, "%d", &slt_line[i][j]);
 	}
 	fclose(fp);
-	fopen_s(&fp, "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_point_rect.txt", "r");
-	for (int i = 0; i < 605; i++) {
+	fopen_s(&fp, path_rect.c_str(), "r");
+	for (int i = 0; i < 496; i++) {
 		int idx, num;
 		fscanf_s(fp, "%d%d", &idx, &num);
 		slt_point_rect[idx].resize(num);

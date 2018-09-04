@@ -1,5 +1,6 @@
 #include "calculate_coeff.h"
-//#define test_coef
+#define test_coef
+#define test_coef_save_mesh
 
 void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 
@@ -22,7 +23,7 @@ void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 	}
 }
 
-void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name) {
+void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name,Eigen::VectorXf &ide_sg_vl,std::string sg_vl_path) {
 
 	puts("loading blendshapes...");
 	std::cout << name << std::endl;
@@ -33,69 +34,126 @@ void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name) {
 			fread(&bldshps(i, j), sizeof(float), 1, fp);
 	}
 	fclose(fp);
+	fopen_s(&fp, sg_vl_path.c_str(), "r");
+	for (int i = 0; i < G_iden_num; i++) {
+		fscanf_s(fp, "%f",&ide_sg_vl(i));
+	}
+	fclose(fp);
 }
 
+void print_bldshps(Eigen::MatrixXf &bldshps) {
+	puts("print blendshapes!");
+	FILE *fp;
+	fopen_s(&fp, "test_svd_bldshps.txt", "w");
+	fprintf(fp, "%d\n", G_nShape);
+	int ide = 2;
+	for (int i_exp = 0; i_exp< G_nShape; i_exp++) {
+		for (int i_v = 0; i_v < G_nVerts; i_v++)
+			fprintf(fp, "%.10f %.10f %.10f\n", 
+				bldshps(ide, i_exp*G_nVerts*3+ i_v*3), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+1), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+2));
+	}
+	fclose(fp);
+	puts("over");
+}
 void cal_f(
-	iden *ide, Eigen::MatrixXf &bldshps,Eigen::VectorXi &inner_land_corr,
-	std :: vector<int> *slt_line, std::vector<std::pair<int,int> > *slt_point_rect) {
+	iden *ide, Eigen::MatrixXf &bldshps,Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	std :: vector<int> *slt_line, std::vector<std::pair<int,int> > *slt_point_rect, 
+	Eigen::VectorXf &ide_sg_vl) {
 
 	puts("calclating focus for each image...");
+	FILE *fp;
+#ifdef test_coef
+	fopen_s(&fp, "test_coef_f_loss.txt", "w");
+#else
+	fopen_s(&fp, "test_coef_ide_focus.txt", "w");	
+#endif // !test_coef
+
+
+	
 	for (int i_id = 0; i_id < G_train_pic_id_num; i_id++) {
 		if (ide[i_id].num == 0)continue;
+#ifndef test_coef
 		float L = 100, R = 1000, er_L, er_R;
-		er_L = pre_cal_exp_ide_R_t(L, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
-		er_R = pre_cal_exp_ide_R_t(R, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
-		for (int rounds = 0; rounds < 50; rounds++) {
+		er_L = pre_cal_exp_ide_R_t(L, ide, bldshps, inner_land_corr, jaw_land_corr,
+			slt_line, slt_point_rect, i_id,ide_sg_vl);
+		er_R = pre_cal_exp_ide_R_t(R, ide, bldshps, inner_land_corr, jaw_land_corr,
+			slt_line, slt_point_rect, i_id, ide_sg_vl);
+		fprintf(fp, "-------------------------------------------------\n");
+		while (R-L>20) {
 			printf("cal f %.5f %.5f %.5f %.5f\n", L, er_L, R, er_R);
+			fprintf(fp, "cal f %.5f %.5f %.5f %.5f\n", L, er_L, R, er_R);
 			float mid_l, mid_r, er_mid_l, er_mid_r;
 			mid_l = L * 2 / 3 + R / 3;
 			mid_r = L / 3 + R * 2 / 3;
-			er_mid_l = pre_cal_exp_ide_R_t(mid_l, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
-			er_mid_r = pre_cal_exp_ide_R_t(mid_r, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
+			er_mid_l = pre_cal_exp_ide_R_t(mid_l, ide, bldshps, inner_land_corr, jaw_land_corr,
+				slt_line, slt_point_rect, i_id, ide_sg_vl);
+			er_mid_r = pre_cal_exp_ide_R_t(mid_r, ide, bldshps, inner_land_corr, jaw_land_corr, 
+				slt_line, slt_point_rect, i_id, ide_sg_vl);
 			if (er_mid_l < er_mid_r) R = mid_r, er_R = er_mid_r;
 			else L = mid_l, er_L = er_mid_l;
 		}
+		ide[i_id].fcs = (L+R)/2;
+#endif // !test_coef
+		
 		/*FILE *fp;
 		fopen_s(&fp, "test_f.txt", "w");*/
 		
 #ifdef test_coef
-		int st = 150, en = 160, step = 25;
+		int st = 300, en = 310, step = 25;
 		Eigen::VectorXf temp((en-st)/step+1);
-		for (int i = st; i < en; i += step) temp((i-st)/step) = pre_cal_exp_ide_R_t(i, ide, bldshps, inner_land_corr, slt_line, slt_point_rect, i_id);
-		for (int i = 0; i < (en - st) / step+1; i++)
-			printf("test cal f %d %.10f\n", st+i*step, temp(i));
+		for (int i = st; i < en; i += step) temp((i-st)/step) = 
+			pre_cal_exp_ide_R_t(i, ide, bldshps, inner_land_corr, jaw_land_corr,
+				slt_line, slt_point_rect, i_id, ide_sg_vl);
+		for (int i = 0; i < (en - st) / step + 1; i++) {
+			printf("test cal f %d %.10f\n", st + i * step, temp(i));
+			fprintf(fp, "%d %.10f\n", st + i * step, temp(i));
+		}
 #endif
-		ide[i_id].fcs = L;
+
 	}
-	FILE *fp;
+	fclose(fp);
+	//FILE *fp;
 	fopen_s(&fp, "test_ide_coeff.txt", "w");
 	for (int i = 0; i < G_iden_num; i++)
 		fprintf(fp, "%.10f\n", ide[0].user(i));
 	fclose(fp);
+	fopen_s(&fp, "test_exp_coeff.txt", "w");
+	for (int i_exp = 0; i_exp < ide[0].num; i_exp++) {
+		fprintf(fp, "------------------------------------------\n");
+		for (int i = 0; i < G_nShape; i++)
+			fprintf(fp, "%.10f\n", ide[0].exp(i_exp, i));
+	}
+	fclose(fp);
+
 }
 
+std::string cal_coef_land_name = "test_coef_land_olsgm_25.txt";
+std::string cal_coef_mesh_name = "test_coef_mesh_olsgm_25.txt";
+
 float pre_cal_exp_ide_R_t(
-	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
-	std::vector <int> *slt_line, std::vector<std::pair<int,int> > *slt_point_rect,int id_idx ) {
+	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor, Eigen::VectorXi &jaw_land_corr,
+	std::vector <int> *slt_line, std::vector<std::pair<int,int> > *slt_point_rect,int id_idx,
+	Eigen::VectorXf &ide_sg_vl) {
 
 	puts("preparing expression & other coeffients...");
 	init_exp_ide(ide, G_train_pic_id_num);
 	float error = 0;
 	
-	int tot_r = 3;
+	int tot_r = 4;
 	Eigen::VectorXf temp(tot_r);
 	//fprintf(fp, "%d\n",tot_r);
-#ifdef test_coef
 	FILE *fp;
-	fopen_s(&fp, "test_coef_land_wt01_40.txt", "w");
+#ifdef test_coef_save_mesh
+	
+	fopen_s(&fp, cal_coef_land_name.c_str(), "w");
 	fprintf(fp, "%d\n", tot_r+1);
 	fclose(fp);
 
-	fopen_s(&fp, "test_coef_mesh_wt01_40.txt", "w");
+	fopen_s(&fp, cal_coef_mesh_name.c_str(), "w");
 	fprintf(fp, "%d\n", tot_r+1);
 	fclose(fp);
 #endif
-	float error_last=0;
+	//float error_last=0;
 	for (int rounds = 0; rounds < tot_r; rounds++) {
 		///////////////////////////////////////////////paper's solution
 		
@@ -104,9 +162,7 @@ float pre_cal_exp_ide_R_t(
 			cal_rt_posit(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
 			//test_posit(f, ide, bldshps, inner_land_cor, id_idx, i_shape);
 			Eigen::VectorXi out_land_cor(15);
-			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
-			
-			out_land_cor(6) = inner_land_cor(59), out_land_cor(7) = inner_land_cor(60), out_land_cor(8) = inner_land_cor(61);
+			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor, jaw_land_corr);
 			/*std::cout << inner_land_cor << '\n';
 			std::cout <<"--------------\n"<< out_land_cor << '\n';*/
 			Eigen::VectorXi land_cor(G_land_num);
@@ -114,24 +170,24 @@ float pre_cal_exp_ide_R_t(
 			for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
 			ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
 			//test_slt(f,ide, bldshps, land_cor, id_idx, i_exp);
-#ifdef test_coef
+#ifdef test_coef_save_mesh
 			if (rounds == 0) {
 				test_coef_land(ide, bldshps, id_idx, 0);
 				test_coef_mesh(ide, bldshps, id_idx, 0);
 			}
 #endif
 			error=cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
-			error=cal_3dpaper_ide(f, ide, bldshps, id_idx, i_exp, land_cor);			
+			error=cal_3dpaper_ide(f, ide, bldshps, id_idx, i_exp, land_cor, ide_sg_vl);
 		}
-		error=cal_fixed_exp_same_ide(f, ide, bldshps, id_idx);
+		error=cal_fixed_exp_same_ide(f, ide, bldshps, id_idx, ide_sg_vl);
 		
 		printf("+++++++++++++%d %.10f\n", rounds, error);
-#ifdef test_coef
+#ifdef test_coef_save_mesh
 		test_coef_land(ide,bldshps,id_idx,0);
 		test_coef_mesh(ide, bldshps, id_idx, 0);
 #endif
 		//if (fabs(error_last - error) < 20) break;
-		error_last = error;
+		//error_last = error;
 		temp(rounds) = error;
 	}
 	for (int i = 0; i < tot_r; i++) printf("it %d err %.10f\n",i,temp(i));
@@ -142,8 +198,8 @@ void init_exp_ide(iden *ide, int train_id_num) {
 
 	puts("initializing coeffients(identitiy,expression) for cal f...");
 	for (int i = 0; i < train_id_num; i++) {
-		ide[i].exp.array() = 1.0 / G_nShape;
-		ide[i].user.array() = 1.0 / G_iden_num;
+		ide[i].exp= Eigen::MatrixXf::Constant(ide[i].num, G_nShape, 1.0 / G_nShape);
+		ide[i].user= Eigen::MatrixXf::Constant(G_iden_num, 1, 1.0 / G_iden_num);
 	}
 }
 
@@ -261,7 +317,8 @@ void test_posit(
 
 void update_slt(
 	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
-	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::VectorXi &out_land_cor) {
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::VectorXi &out_land_cor,
+	Eigen::VectorXi &jaw_land_corr) {
 	////////////////////////////////project
 
 	puts("updating silhouette...");
@@ -269,8 +326,8 @@ void update_slt(
 	Eigen::Vector3f T = ide[id_idx].tslt.row(exp_idx).transpose();
 
 	//puts("A");
-	Eigen::VectorXi slt_cddt(G_line_num);
-	Eigen::MatrixX3f slt_cddt_cdnt(G_line_num, 3);
+	Eigen::VectorXi slt_cddt(G_line_num+G_jaw_land_num);
+	Eigen::MatrixX3f slt_cddt_cdnt(G_line_num + G_jaw_land_num, 3);
 	//puts("B");
 	//FILE *fp;
 	//fopen_s(&fp, "test_slt.txt", "w");
@@ -327,12 +384,20 @@ void update_slt(
 	}
 	//fclose(fp);
 	//puts("C");
-	
+	for (int i_jaw = 0; i_jaw < G_jaw_land_num; i_jaw++) {
+		Eigen::Vector3f point;
+		for (int axis = 0; axis < 3; axis++)
+			point(axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, jaw_land_corr(i_jaw), axis);
+		point = R * point + T;
+		point(0) = point(0)*f / point(2);
+		point(1) = point(1)*f / point(2);
+		slt_cddt(i_jaw + G_line_num) = jaw_land_corr(i_jaw);
+		slt_cddt_cdnt.row(i_jaw + G_line_num) = point.transpose();
+	}
 	for (int i = 0; i < 15; i++) {
-		if (i == 6 || i == 7 || i == 8) continue;
 		float min_dis = 10000;
 		int min_idx;
-		for (int j = 0; j < G_line_num; j++) {
+		for (int j = 0; j < G_line_num+G_jaw_land_num; j++) {
 			float temp =
 				fabs(slt_cddt_cdnt(j, 0) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 0)) +
 				fabs(slt_cddt_cdnt(j, 1) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 1));
@@ -407,7 +472,8 @@ void cal_exp_point_matrix(
 
 float cal_3dpaper_ide(
 	float f, iden* ide, Eigen::MatrixXf &bldshps,
-	int id_idx, int exp_idx, Eigen::VectorXi &land_cor) {
+	int id_idx, int exp_idx, Eigen::VectorXi &land_cor,
+	Eigen::VectorXf &ide_sg_vl) {
 
 	puts("calculating identity coeffients by 3dpaper's way");
 	float error = 0;
@@ -415,7 +481,7 @@ float cal_3dpaper_ide(
 
 	cal_id_point_matrix(ide, bldshps, id_idx, exp_idx, land_cor, id_point);
 	Eigen::VectorXf user = ide[id_idx].user;
-	error = ceres_user_one(f, ide, id_idx, exp_idx, id_point, user);
+	error = ceres_user_one(f, ide, id_idx, exp_idx, id_point, user, ide_sg_vl);
 	ide[id_idx].user = user;
 	return error;
 }
@@ -440,7 +506,8 @@ void cal_id_point_matrix(
 }
 
 
-float cal_fixed_exp_same_ide(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx) {
+float cal_fixed_exp_same_ide(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx,
+	Eigen::VectorXf &ide_sg_vl) {
 
 	puts("calculating identity coeffients by 3dpaper's way while fixing the expression coeffients");
 	float error = 0;
@@ -455,7 +522,7 @@ float cal_fixed_exp_same_ide(float f, iden *ide, Eigen::MatrixXf &bldshps, int i
 		id_point_fix_exp.block(i_exp*G_iden_num, 0, G_iden_num, G_land_num * 3)= id_point;
 	}
 	Eigen::VectorXf user = ide[id_idx].user;
-	error = ceres_user_fixed_exp(f, ide, id_idx, id_point_fix_exp, user);
+	error = ceres_user_fixed_exp(f, ide, id_idx, id_point_fix_exp, user, ide_sg_vl);
 	ide[id_idx].user = user;
 	return error;
 }
@@ -468,7 +535,7 @@ void test_coef_land(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 			bs(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), axis);
 
 	FILE *fp;
-	fopen_s(&fp, "test_coef_land_wt01_40.txt", "a");
+	fopen_s(&fp, cal_coef_land_name.c_str(), "a");
 	for (int i = 0; i < G_land_num; i++)
 		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
 	fclose(fp);
@@ -482,11 +549,49 @@ void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 			bs(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, i, axis);
 
 	FILE *fp;
-	fopen_s(&fp, "test_coef_mesh_wt01_40.txt", "a");
+	fopen_s(&fp, cal_coef_mesh_name.c_str(), "a");
 	for (int i = 0; i < G_nVerts; i++)
 		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
 	fclose(fp);
 }
+
+void cal_mesh_land(Eigen::MatrixXf &bldshps) {
+	puts("calculating mesh from test_coeff_ide&exp");
+	FILE *fpr, *fpw;
+	fopen_s(&fpr, "./server/test_ide_coeff.txt", "r");
+	Eigen::VectorXf ide(G_iden_num), exp(G_nShape);
+	for (int i_id = 0; i_id < G_iden_num; i_id++) fscanf_s(fpr, "%f", &ide(i_id));
+	fclose(fpr);
+	fopen_s(&fpr, "./server/test_exp_coeff.txt", "r");
+	fopen_s(&fpw, "./test_exp_coeff_mesh.txt", "w");
+	int num = 4;
+	fprintf(fpw, "%d\n", num);
+	Eigen::MatrixXf mesh(G_nVerts, 3);
+	//char s[500];
+	for (int j_no = 0; j_no < num; j_no++) {
+		printf("%d \n", j_no);
+		fscanf_s(fpr, "------------------------------------------");
+		//puts(s);
+		for (int i_exp = 0; i_exp < G_nShape; i_exp++)
+			fscanf_s(fpr, "%f", &exp(i_exp));
+		for (int i = 0; i < G_nVerts; i++)
+			for (int axis = 0; axis < 3; axis++) {
+				mesh(i, axis) = 0;
+				for (int i_id = 0; i_id < G_iden_num; i_id++)
+					for (int i_exp=0; i_exp < G_nShape; i_exp++)
+						mesh(i, axis) += bldshps(i_id, i_exp*G_nVerts * 3 + i * 3 + axis)*ide(i_id)*exp(i_exp);
+			}
+		for (int i = 0; i < G_nVerts; i++)
+			fprintf(fpw, "%.6f %.6f %.6f \n", mesh(i, 0), mesh(i, 1), mesh(i, 2));
+	}
+	fclose(fpw);
+}
+
+
+
+
+
+
 
 /*
 test cal f 0 879.8588256836
@@ -563,4 +668,129 @@ test cal f 225 884.7678222656
 test cal f 250 879.8588256836
 test cal f 275 880.0136108398
 test cal f 300 -431602080.0000000000
+*/
+
+/*
+test cal f 100 1977.3437500000
+test cal f 125 1574.7167968750
+test cal f 150 1455.8612060547
+test cal f 175 1390.5677490234
+test cal f 200 1431.9500732422
+test cal f 225 1771.1562500000
+test cal f 250 1749.6376953125
+test cal f 275 1833.3856201172
+test cal f 300 1876.6953125000
+test cal f 325 1906.9680175781
+test cal f 350 1983.8415527344
+test cal f 375 1993.3524169922
+test cal f 400 1815.2987060547
+test cal f 425 1867.6469726563
+test cal f 450 1918.1181640625
+test cal f 475 1965.1877441406
+test cal f 500 1997.8572998047
+test cal f 525 2041.1361083984
+test cal f 550 2084.7612304688
+test cal f 575 2122.1452636719
+test cal f 600 2199.0795898438
+test cal f 625 2199.3693847656
+test cal f 650 2230.9003906250
+test cal f 675 2255.6203613281
+test cal f 700 2278.8603515625
+test cal f 725 2301.1096191406
+test cal f 750 2321.9831542969
+test cal f 775 2341.6987304688
+test cal f 800 2360.1850585938
+test cal f 825 2378.5395507813
+test cal f 850 2395.2028808594
+test cal f 875 2411.1774902344
+test cal f 900 2426.2807617188
+test cal f 925 2440.7792968750
+test cal f 950 2454.6340332031
+test cal f 975 2466.4677734375
+*/
+
+/*
+55 1500
+test cal f 100 2313.8242187500
+test cal f 125 1838.8928222656
+test cal f 150 1466.9392089844
+test cal f 175 1257.8214111328
+test cal f 200 998.8993530273
+test cal f 225 893.9645385742
+test cal f 250 832.9778442383
+test cal f 275 800.5964965820
+test cal f 300 761.2866821289
+test cal f 325 758.0947265625
+test cal f 350 737.5111694336
+test cal f 375 735.3290405273
+test cal f 400 734.4934692383
+test cal f 425 733.8238525391
+test cal f 450 738.4660644531
+test cal f 475 735.3060302734
+test cal f 500 759.8150024414
+test cal f 525 778.3350830078
+test cal f 550 797.4025878906
+test cal f 575 811.3441162109
+test cal f 600 798.0612792969
+test cal f 625 872.0380859375
+test cal f 650 884.2244262695
+test cal f 675 821.6886596680
+test cal f 700 907.8507690430
+test cal f 725 921.5566406250
+test cal f 750 932.9988403320
+test cal f 775 944.0285034180
+test cal f 800 954.7307128906
+test cal f 825 966.6048583984
+test cal f 850 975.3027343750
+test cal f 875 984.8454589844
+test cal f 900 994.2359619141
+test cal f 925 1002.8670043945
+test cal f 950 1011.5712280273
+test cal f 975 1014.2359008789
+
+*/
+
+/*
+55 2000
+test cal f 100 2309.4392089844
+test cal f 125 1889.3881835938
+test cal f 150 1566.9396972656
+test cal f 175 1334.3238525391
+test cal f 200 1034.2542724609
+test cal f 225 960.6875000000
+test cal f 250 861.1200561523
+test cal f 275 842.5196533203
+test cal f 300 796.2081298828
+test cal f 325 766.7290649414
+test cal f 350 755.9409790039
+test cal f 375 742.1948242188
+test cal f 400 733.4272460938
+test cal f 425 729.4384155273
+test cal f 450 729.5432739258
+test cal f 475 730.4609985352
+test cal f 500 724.5762329102
+test cal f 525 733.4087524414
+test cal f 550 736.9336547852
+test cal f 575 742.6765747070
+test cal f 600 750.3646240234
+test cal f 625 759.3997192383
+test cal f 650 767.2517089844
+test cal f 675 774.6967773438
+test cal f 700 782.2497558594
+test cal f 725 806.3529663086
+test cal f 750 818.5466918945
+test cal f 775 826.3574829102
+test cal f 800 833.2935180664
+test cal f 825 840.9088134766
+test cal f 850 847.7034912109
+test cal f 875 854.6730957031
+test cal f 900 860.7893676758
+test cal f 925 866.4020996094
+test cal f 950 871.8389282227
+test cal f 975 874.2234497070
+test cal f 1000 879.3839721680
+test cal f 1025 883.9304199219
+test cal f 1050 888.7633056641
+test cal f 1075 894.2439575195
+
 */

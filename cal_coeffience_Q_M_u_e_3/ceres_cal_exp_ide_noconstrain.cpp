@@ -31,31 +31,26 @@
 #include "ceres/ceres.h"
 #include "glog/logging.h"
 #include "calculate_coeff.h"
-//#define set_user_bound
-//#define max_min
-
 using ceres::AutoDiffCostFunction;
 using ceres::CostFunction;
 using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
-const float beta_exp = 1;
-const float beta_user = 55;
 
 struct ceres_cal_exp {
 	ceres_cal_exp(
 		const float f_, const iden* ide_, const int id_idx_, const int exp_idx_,
 		const Eigen::MatrixXf exp_point_) :
-			ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), exp_point(exp_point_) {}
+		ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), exp_point(exp_point_) {}
 
-	template <typename T> bool operator()(const T* const x_exp,T *residual) const {
+	template <typename T> bool operator()(const T* const x_exp, T *residual) const {
 		//puts("TT");
 		//Eigen::Matrix3f rot = ide[id_idx].rot.block(exp_idx * 3, 0, 3, 3);
 		//Eigen::Vector3d tslt;
 		T tslt[3];
 		for (int j = 0; j < 3; j++)
 			tslt[j] = (T)(ide[id_idx].tslt(exp_idx, j));
-		
+
 		/*std::cout << rot << '\n';
 		std::cout << tslt << '\n';*/
 		//T ans = (T)0;
@@ -69,28 +64,22 @@ struct ceres_cal_exp {
 
 			for (int axis = 0; axis < 3; axis++)
 				for (int i_shape = 0; i_shape < G_nShape; i_shape++)
-					V[axis] =V[axis] + ((double)(exp_point(i_shape, i_v * 3 + axis)))*x_exp[i_shape];
+					V[axis] = V[axis] + ((double)(exp_point(i_shape, i_v * 3 + axis)))*x_exp[i_shape];
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
-			for (int j=0;j<3;j++)
+			for (int j = 0; j<3; j++)
 				V[j] = V[j] + tslt[j];
 
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
-			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0]*(double)f / V[2];
-			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1]*(double)f / V[2];
+			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
+			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
 
 			//printf("+++++++++%.10f \n", f / V(2));
 			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
 			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
-				V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
+			V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
 		}
-		T temp = (T)0;
-		for (int i = 0; i < G_nShape; i++)
-			for (int j = i + 1; j < G_nShape; j++)
-				temp += x_exp[i] * x_exp[j];
-		residual[G_land_num * 2] = temp * ((T)beta_exp);
-		printf("**************** %.10f **\n", residual[2 * G_land_num]);
 		//residual[G_land_num * 2] = (T)0;
 		//printf("- - %.10f\n", ans);
 		//fprintf(fp, "%.10f\n", ans);
@@ -115,9 +104,9 @@ float ceres_exp_one(
 
 	Problem problem;
 	problem.AddResidualBlock(
-		new AutoDiffCostFunction<ceres_cal_exp, G_land_num*2+1, G_nShape>(
+		new AutoDiffCostFunction<ceres_cal_exp, G_land_num * 2, G_nShape>(
 			new ceres_cal_exp(focus, ide, id_idx, exp_idx, exp_point)),
-		NULL,x_exp);
+		NULL, x_exp);
 	for (int i = 0; i < G_nShape; i++) {
 		problem.SetParameterLowerBound(x_exp, i, 0.0);
 		problem.SetParameterUpperBound(x_exp, i, 1.0);
@@ -144,8 +133,8 @@ float ceres_exp_one(
 struct ceres_cal_user {
 	ceres_cal_user(
 		const float f_, const iden* ide_, const int id_idx_, const int exp_idx_,
-		const Eigen::MatrixXf id_point_,const Eigen::VectorXf ide_sg_vl_) :
-		ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), id_point(id_point_),ide_sg_vl(ide_sg_vl_) {}
+		const Eigen::MatrixXf id_point_, const Eigen::VectorXf ide_sg_vl_) :
+		ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), id_point(id_point_), ide_sg_vl(ide_sg_vl_) {}
 
 	template <typename T> bool operator()(const T* const x_user, T *residual) const {
 		//puts("TT");
@@ -178,23 +167,15 @@ struct ceres_cal_user {
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
 			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
 			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
-			
+
 			//printf("+++++++++%.10f \n", f / V(2));
 			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
-				ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
-				V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
+			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
+			V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
 		}
 		//printf("- - %.10f\n", ans);
 		//fprintf(fp, "%.10f\n", ans);
-#ifdef max_min
-		T mi = x_user[0], ma = x_user[0];
-		for (int i_id = 0; i_id < G_iden_num; i_id++) mi = std::min(mi, x_user[i_id]), ma = std::max(ma, x_user[i_id]);
-		residual[2 * G_land_num] = ((T)beta_user)*pow(10, ma - mi);
-#endif // max_min
-#ifndef max_min
-		for (int i_id = 0; i_id < G_iden_num; i_id++)
-			 residual[2*G_land_num+i_id]= ((T)beta_user)*(x_user[i_id] / (T)ide_sg_vl(i_id));
-#endif // !max_min
+
 		return true;
 	}
 
@@ -218,13 +199,13 @@ float ceres_user_one(
 	//puts("A");
 	Problem problem;
 	problem.AddResidualBlock(
-		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2+G_iden_num, G_iden_num>(
-			new ceres_cal_user(focus, ide, id_idx, exp_idx, id_point,ide_sg_vl)),
+		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2, G_iden_num>(
+			new ceres_cal_user(focus, ide, id_idx, exp_idx, id_point, ide_sg_vl)),
 		NULL, x_user);
 	//puts("B");
 
 	Solver::Options options;
-	
+
 #ifdef set_user_bound
 	for (int i = 0; i < G_iden_num; i++) {
 		problem.SetParameterLowerBound(x_user, i, 0.0);
@@ -233,7 +214,7 @@ float ceres_user_one(
 	options.max_num_iterations = 25;
 #endif // set_user_bound
 	//puts("C");
-	
+
 	options.linear_solver_type = ceres::DENSE_QR;
 	options.minimizer_progress_to_stdout = true;
 
@@ -263,15 +244,15 @@ float ceres_user_fixed_exp(
 	Problem problem;
 	for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
 		problem.AddResidualBlock(
-			new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2 + G_iden_num, G_iden_num>(
-				new ceres_cal_user(focus, ide, id_idx, i_exp, 
-					id_point_fix_exp.block(i_exp*G_iden_num,0,G_iden_num,G_land_num*3),ide_sg_vl)),
+			new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2, G_iden_num>(
+				new ceres_cal_user(focus, ide, id_idx, i_exp,
+					id_point_fix_exp.block(i_exp*G_iden_num, 0, G_iden_num, G_land_num * 3), ide_sg_vl)),
 			NULL, x_user);
 	}
 
 	//puts("C");
 	Solver::Options options;
-	
+
 #ifdef set_user_bound
 	for (int i = 0; i < G_iden_num; i++) {
 		problem.SetParameterLowerBound(x_user, i, 0.0);
@@ -280,7 +261,7 @@ float ceres_user_fixed_exp(
 	options.max_num_iterations = 25;
 #endif // set_user_bound
 
-	
+
 	options.linear_solver_type = ceres::DENSE_QR;
 	options.minimizer_progress_to_stdout = true;
 
