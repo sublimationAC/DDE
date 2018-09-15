@@ -87,4 +87,5 @@ float bfgs_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::Matri
 
 void test_coef_land(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
 void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
+void test_2dland(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
 void cal_mesh_land(Eigen::MatrixXf &bldshps);

@@ -1,6 +1,6 @@
 #include "calculate_coeff.h"
 //#define test_coef_ide_exp
-#define test_bldshps
+//#define test_bldshps
 iden ide[G_train_pic_id_num];
 
 Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
@@ -50,7 +50,10 @@ int main() {
 	//load_img_land(gtav_path, ".bmp", ide, id_idx,imgs);
 	load_img_land(test_path_one, ".jpg", ide, id_idx, imgs);
 	printf("id_idx %d\n", id_idx);
-	//test_data_2dland(imgs, ide, 0, 15);
+	//test_data_2dland(imgs, ide, 0, 0);
+	init_exp_ide_r_t_pq(ide, id_idx);
+	test_3d22dland(imgs[0][0], "./server/2dland.txt",ide,0,0);
+	
 
 	//14 13
 	//9 17
@@ -65,13 +68,13 @@ int main() {
 #endif
 
 
-//#ifdef test_coef_ide_exp
-//	cal_mesh_land(bldshps);
-//
-//#else
-//	init_exp_ide_r_t_pq(ide, id_idx);
-//	cal_f(ide, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect,ide_sg_vl);
-//#endif
+#ifdef test_coef_ide_exp
+	cal_mesh_land(bldshps);
+
+#else
+	init_exp_ide_r_t_pq(ide, id_idx);
+	cal_f(ide, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect,ide_sg_vl);
+#endif
 	system("pause");
 	return 0;
 }
@@ -83,4 +86,6 @@ int main() {
 3
 4 grep -rl 'fscanf_s' ./ | xargs sed -i 's/fscanf_s/fscanf/g'
 
+
+grep -rl 'fopen_s(&fpr,' ./ | xargs sed -i 's/fopen_s(&fpr,/fpr=fopen(/g'
 */

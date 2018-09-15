@@ -1,6 +1,7 @@
 #include "calculate_coeff.h"
 #define test_coef
 #define test_coef_save_mesh
+#define test_posit_by2dland
 
 void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 
@@ -9,17 +10,18 @@ void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 		ide[i].center.resize(ide[i].num,2);
 		ide[i].exp.resize(ide[i].num, G_nShape);
 		ide[i].land_cor.resize(ide[i].num, G_land_num);
+		ide[i].land_cor.setZero();
 		ide[i].user.resize(G_iden_num);
 		ide[i].rot.resize(3 * ide[i].num,3);
 		ide[i].tslt.resize(ide[i].num,3);
 		ide[i].center.setZero();
-		for (int j = 0; j < ide[i].num; j++) {
+		for (int j = 0; j < ide[i].num; j++) 
 			for (int k = 0; k < G_land_num; k++)
 				ide[i].center.row(j) += ide[i].land_2d.row(j*G_land_num + k);
-			ide[i].center.array() /= G_land_num;
+		ide[i].center.array() /= G_land_num;
+		for (int j = 0; j < ide[i].num; j++) 
 			for (int k = 0; k < G_land_num; k++)
-				ide[i].land_2d.row(j*G_land_num + k)-= ide[i].center.row(j);
-		}
+				ide[i].land_2d.row(j*G_land_num + k) -= ide[i].center.row(j);
 	}
 }
 
@@ -129,6 +131,7 @@ void cal_f(
 
 std::string cal_coef_land_name = "test_coef_land_olsgm_25.txt";
 std::string cal_coef_mesh_name = "test_coef_mesh_olsgm_25.txt";
+std::string cal_eoef_2dland_name = "2dland.txt";
 
 float pre_cal_exp_ide_R_t(
 	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor, Eigen::VectorXi &jaw_land_corr,
@@ -139,7 +142,7 @@ float pre_cal_exp_ide_R_t(
 	init_exp_ide(ide, G_train_pic_id_num);
 	float error = 0;
 	
-	int tot_r = 4;
+	int tot_r = 5;
 	Eigen::VectorXf temp(tot_r);
 	//fprintf(fp, "%d\n",tot_r);
 	FILE *fp;
@@ -153,13 +156,26 @@ float pre_cal_exp_ide_R_t(
 	fprintf(fp, "%d\n", tot_r+1);
 	fclose(fp);
 #endif
+
+#ifdef test_posit_by2dland
+	fopen_s(&fp, cal_eoef_2dland_name.c_str(), "w");
+	fprintf(fp, "%d\n", tot_r*3);
+	fclose(fp);
+#endif // test_posit_by2dland
+
 	//float error_last=0;
 	for (int rounds = 0; rounds < tot_r; rounds++) {
 		///////////////////////////////////////////////paper's solution
 		
 		for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
 			printf("calculate %d id %d exp:\n", id_idx, i_exp);
+#ifdef test_posit_by2dland
+			test_2dland(f, ide, bldshps, id_idx, i_exp);
+#endif // test_posit_by2dland
 			cal_rt_posit(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
+#ifdef test_posit_by2dland
+			test_2dland(f, ide, bldshps, id_idx, i_exp);
+#endif // test_posit_by2dland
 			//test_posit(f, ide, bldshps, inner_land_cor, id_idx, i_shape);
 			Eigen::VectorXi out_land_cor(15);
 			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor, jaw_land_corr);
@@ -169,6 +185,9 @@ float pre_cal_exp_ide_R_t(
 			for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
 			for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
 			ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
+#ifdef test_posit_by2dland
+			test_2dland(f, ide, bldshps, id_idx, i_exp);
+#endif // test_posit_by2dland
 			//test_slt(f,ide, bldshps, land_cor, id_idx, i_exp);
 #ifdef test_coef_save_mesh
 			if (rounds == 0) {
@@ -552,6 +571,29 @@ void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 	fopen_s(&fp, cal_coef_mesh_name.c_str(), "a");
 	for (int i = 0; i < G_nVerts; i++)
 		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
+	fclose(fp);
+}
+
+void test_2dland(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx) {
+	Eigen::MatrixX3f land3d(G_land_num, 3);
+	puts("A");
+	for (int i = 0; i < G_land_num; i++)
+		for (int axis = 0; axis < 3; axis++)
+			land3d(i, axis) =
+			cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(i), axis);
+	puts("B");
+	Eigen::Vector3f tslt = ide[id_idx].tslt.row(exp_idx).transpose();
+	Eigen::Matrix3f R = ide[id_idx].rot.block(exp_idx, 0, 3, 3);
+
+	puts("C");
+	FILE *fp;
+	fopen_s(&fp, cal_eoef_2dland_name.c_str(), "a");
+	for (int i = 0; i < G_land_num; i++) {
+		Eigen::Vector3f X = land3d.row(i).transpose();
+		X = R * X + tslt;
+		fprintf(fp, "%.6f %.6f\n", X(0)*f / X(2), X(1)*f / X(2));
+	}
+
 	fclose(fp);
 }
 

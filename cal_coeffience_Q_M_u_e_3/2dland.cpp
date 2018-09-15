@@ -1,6 +1,7 @@
 #include "2dland.h"
+#define flap_2dland
 
-//#define cal_land_num
+#define cal_land_num
 void load_img_land(std::string path, std::string sfx, iden *ide, int &id_idx, std::vector< std::vector<cv::Mat_<uchar> > > &imgs) {
 #ifdef win64
 	int hFile = 0;
@@ -70,6 +71,13 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 					load_img(p.substr(0, p.find(".land")) + sfx, temp);
 					img_temp.push_back(temp);
 
+#ifdef  flap_2dland
+					for (int i = G_land_num * (ide[id_idx].num); i < G_land_num*(ide[id_idx].num + 1); i++)
+						ide[id_idx].land_2d(i, 1)=temp.rows- ide[id_idx].land_2d(i, 1);					
+#endif //  flap_2dland
+
+
+
 					ide[id_idx].num++;
 				}
 			}
@@ -102,6 +110,10 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 				cv::Mat_<uchar> temp;
 				load_img(p.substr(0, p.find(".land")) + sfx, temp);
 				img_temp.push_back(temp);
+#ifdef  flap_2dland
+				for (int i = G_land_num * (ide[id_idx].num); i < G_land_num*(ide[id_idx].num + 1); i++)
+					ide[id_idx].land_2d(i, 1) = temp.rows - ide[id_idx].land_2d(i, 1);
+#endif //  flap_2dland
 				ide[id_idx].num++;
 			}
 		}
@@ -124,41 +136,49 @@ void load_land(std::string p, iden *ide, int id_idx) {
 }
 
 void load_img(std::string p, cv::Mat_<uchar> &temp) {
-	temp = cv::imread(p, 0);
+	temp = cv::imread(p , 0);
 }
 
 void test_data_2dland(
 	std::vector < std::vector <cv::Mat_<uchar> > >& imgs,
-	iden *ide, int id_idx, int img_idx) {
-	int mi = img_idx * G_land_num + 70;
+	iden *ide, int id_idx, int img_idx) {	
 	for (int i = img_idx* G_land_num; i < (img_idx+1)*G_land_num; i++) {
+#ifdef flap_2dland
 		cv::circle(
-			imgs[id_idx][img_idx], 
-			cv::Point2f(ide[id_idx].land_2d(i, 0), imgs[id_idx][img_idx].rows-ide[id_idx].land_2d(i, 1)),
+			imgs[id_idx][img_idx],
+			cv::Point2f(ide[id_idx].land_2d(i, 0), ide[id_idx].land_2d(i, 1)),
 			1, cv::Scalar(244, 244, 244), -1, 8, 0);
+#else
+		cv::circle(
+			imgs[id_idx][img_idx],
+			cv::Point2f(ide[id_idx].land_2d(i, 0), imgs[id_idx][img_idx].rows - ide[id_idx].land_2d(i, 1)),
+			1, cv::Scalar(244, 244, 244), -1, 8, 0);
+#endif // flap_2dland
+
+		
 		/*rectangle(images[j], Point2d(bounding_box[j].start_x, bounding_box[j].start_y)
 			, Point2d(bounding_box[j].start_x + bounding_box[j].width, bounding_box[j].start_y + bounding_box[j].height)
 			, Scalar(255, 244, 244), 3, 4, 0);*/
 	}
 #ifdef cal_land_num
-	for (int i = mi; i < (img_idx + 1)*G_land_num; i++) {
+	//int mi = img_idx * G_land_num + 70;
 		CvFont font;
 		cvInitFont(&font, CV_FONT_HERSHEY_COMPLEX, 0.01, 0.5, 1, 0.5, 8);
-		IplImage *pImage = cvLoadImage("D:\\sydney\\first\\data\\Tester_ (28)\\TrainingPose/pose_17.png");
+		IplImage *pImage = cvLoadImage("D:\\sydney\\first\\data_me\\test\\Tester_1\\TrainingPose/pose_0.jpg");
 		std::string si;
-		for (int i = img_idx * G_land_num; i < img_idx * G_land_num + 15; i++) {
-			si = std::to_string(i - img_idx * G_land_num), cvPutText(pImage, si.c_str(), cv::Point2f(ide[id_idx].land_2d(i, 0), imgs[id_idx][img_idx].rows - ide[id_idx].land_2d(i, 1))
+		for (int i = img_idx * G_land_num+25; i < img_idx * G_land_num + 35; i++) {
+			si = std::to_string(i - img_idx * G_land_num), cvPutText(pImage, si.c_str(), cv::Point2f(ide[id_idx].land_2d(i, 0),ide[id_idx].land_2d(i, 1))
 				, &font, cv::Scalar(255, 255, 255));
 			cv::circle(
 				imgs[id_idx][img_idx],
-				cv::Point2f(ide[id_idx].land_2d(i, 0), imgs[id_idx][img_idx].rows - ide[id_idx].land_2d(i, 1)),
+				cv::Point2f(ide[id_idx].land_2d(i, 0), ide[id_idx].land_2d(i, 1)),
 				3, cv::Scalar(244, 244, 244), -1, 8, 0);
 		}
 		cvShowImage("Original", pImage);
 		/*rectangle(images[j], Point2d(bounding_box[j].start_x, bounding_box[j].start_y)
 		, Point2d(bounding_box[j].start_x + bounding_box[j].width, bounding_box[j].start_y + bounding_box[j].height)
 		, Scalar(255, 244, 244), 3, 4, 0);*/
-}
+	
 #endif // cal_land_num
 
 	
@@ -205,6 +225,29 @@ void load_slt(
 		fscanf_s(fp, "%d%d", &idx, &num);
 		slt_point_rect[idx].resize(num);
 		for (int j = 0; j < num; j++) fscanf_s(fp, "%d%d", &slt_point_rect[idx][j].first, &slt_point_rect[idx][j].second);
+	}
+	fclose(fp);
+}
+
+void test_3d22dland(cv::Mat_<uchar> img, std::string path,iden *ide,int id_idx,int exp_idx) {
+	FILE *fp;
+	fopen_s(&fp, path.c_str(), "r");
+	int num = 0;
+	fscanf_s(fp, "%d", &num);
+	for (int i = 0; i < num; i++) {
+		cv::Mat_<uchar> temp;
+		img.copyTo(temp);
+		for (int j = 0; j < G_land_num; j++) {
+			float x, y;
+			fscanf_s(fp, "%f%f", &x, &y);
+			x += ide[id_idx].center(exp_idx, 0);
+			y += ide[id_idx].center(exp_idx, 1);
+			cv::circle(
+				temp, cv::Point2f(x, y),
+				1, cv::Scalar(244, 244, 244), -1, 8, 0);
+		}
+		cv::imshow("test_image", temp);
+		cv::waitKey(0);
 	}
 	fclose(fp);
 }

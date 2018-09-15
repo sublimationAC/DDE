@@ -40,13 +40,13 @@ using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
 const float beta_exp = 1;
-const float beta_user = 55;
+const float beta_user = 50;
 
 struct ceres_cal_exp {
 	ceres_cal_exp(
 		const float f_, const iden* ide_, const int id_idx_, const int exp_idx_,
 		const Eigen::MatrixXf exp_point_) :
-			ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), exp_point(exp_point_) {}
+			f(f_), ide(ide_), id_idx(id_idx_), exp_idx(exp_idx_), exp_point(exp_point_) {}
 
 	template <typename T> bool operator()(const T* const x_exp,T *residual) const {
 		//puts("TT");

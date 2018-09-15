@@ -65,3 +65,5 @@ void load_jaw_land_corr(Eigen::VectorXi &jaw_cor);
 void load_slt(
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	std::string path_slt, std::string path_rect);
+
+void test_3d22dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
