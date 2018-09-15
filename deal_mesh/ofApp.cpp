@@ -1,6 +1,7 @@
 #include "ofApp.h"
-//#define test_coef
-#define test_bldshps_coef
+#define test_coef
+#define server
+//#define test_bldshps_coef
 //#define check_out_slt
 //#define check_inner_jaw
 
@@ -8,7 +9,7 @@ Mesh_my mesh;
 Eigen::VectorXi cor(G_inner_land_num);
 Eigen::MatrixX3f coef_land;
 Eigen::MatrixX3f coef_mesh;
-const int test_coef_num = 2;
+const int test_coef_num = 1;
 //--------------------------------------------------------------
 void ofApp::setup(){
 	init_mesh("D:\\sydney\\first\\data\\Tester_ (1)\\TrainingPose/pose_0.obj",mesh);
@@ -17,12 +18,19 @@ void ofApp::setup(){
 	
 	//get_silhouette_vertex(mesh);
 #ifdef test_coef
-	
+#ifdef server
 	get_coef_land(coef_land,
 		"D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/server/test_coef_land_olsgm_25.txt");
 	get_coef_mesh(coef_mesh,
 		"D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/server/test_coef_mesh_olsgm_25.txt");
 	test_coef_mesh(mesh, coef_mesh, test_coef_num);
+#else
+	get_coef_land(coef_land,
+		"D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_land_olsgm_25.txt");
+	get_coef_mesh(coef_mesh,
+		"D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/test_coef_mesh_olsgm_25.txt");
+	test_coef_mesh(mesh, coef_mesh, test_coef_num);
+#endif
 #endif // test_coef
 #ifdef test_bldshps_coef	
 	get_coef_mesh(coef_mesh,
