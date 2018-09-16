@@ -3,6 +3,7 @@
 #define test_coef_save_mesh
 #define test_posit_by2dland
 
+
 void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 
 	puts("initializing coeffients(R,t,pq)...");
@@ -15,6 +16,10 @@ void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 		ide[i].rot.resize(3 * ide[i].num,3);
 		ide[i].tslt.resize(ide[i].num,3);
 		ide[i].center.setZero();
+#ifdef normalization
+		ide[i].s.resize(ide[i].num, 2);
+#endif // normalization
+
 		for (int j = 0; j < ide[i].num; j++) 
 			for (int k = 0; k < G_land_num; k++)
 				ide[i].center.row(j) += ide[i].land_2d.row(j*G_land_num + k);
@@ -57,6 +62,7 @@ void print_bldshps(Eigen::MatrixXf &bldshps) {
 	fclose(fp);
 	puts("over");
 }
+
 void cal_f(
 	iden *ide, Eigen::MatrixXf &bldshps,Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
 	std :: vector<int> *slt_line, std::vector<std::pair<int,int> > *slt_point_rect, 
@@ -129,6 +135,35 @@ void cal_f(
 
 }
 
+void solve(
+	iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXf &ide_sg_vl) {
+
+	puts("calclating coeffients begin...");
+	FILE *fp;
+	for (int i_id = 0; i_id < G_train_pic_id_num; i_id++) {
+		if (ide[i_id].num == 0)continue;
+		pre_cal_exp_ide_R_t(0, ide, bldshps, inner_land_corr, jaw_land_corr,
+			slt_line, slt_point_rect, i_id, ide_sg_vl);
+	}
+	fopen_s(&fp, "test_ide_coeff.txt", "w");
+	for (int i = 0; i < G_iden_num; i++)
+		fprintf(fp, "%.10f\n", ide[0].user(i));
+	fclose(fp);
+	fopen_s(&fp, "test_exp_coeff.txt", "w");
+	for (int i_exp = 0; i_exp < ide[0].num; i_exp++) {
+		fprintf(fp, "------------------------------------------\n");
+		for (int i = 0; i < G_nShape; i++)
+			fprintf(fp, "%.10f\n", ide[0].exp(i_exp, i));
+	}
+	fclose(fp);
+
+}
+
+
+
+
 std::string cal_coef_land_name = "test_coef_land_olsgm_25.txt";
 std::string cal_coef_mesh_name = "test_coef_mesh_olsgm_25.txt";
 std::string cal_eoef_2dland_name = "2dland.txt";
@@ -172,11 +207,21 @@ float pre_cal_exp_ide_R_t(
 #ifdef test_posit_by2dland
 			test_2dland(f, ide, bldshps, id_idx, i_exp);
 #endif // test_posit_by2dland
+#ifdef posit
 			cal_rt_posit(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
+			//test_posit(f, ide, bldshps, inner_land_cor, id_idx, i_shape);
+#endif // posit
+#ifdef normalization
+			cal_rt_normalization(ide, bldshps, inner_land_cor, id_idx, i_exp);
+			test_normalization(ide, bldshps, inner_land_cor, id_idx, i_exp);
+#endif // normalization
+
+			
+
 #ifdef test_posit_by2dland
 			test_2dland(f, ide, bldshps, id_idx, i_exp);
 #endif // test_posit_by2dland
-			//test_posit(f, ide, bldshps, inner_land_cor, id_idx, i_shape);
+			
 			Eigen::VectorXi out_land_cor(15);
 			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor, jaw_land_corr);
 			/*std::cout << inner_land_cor << '\n';
@@ -222,6 +267,8 @@ void init_exp_ide(iden *ide, int train_id_num) {
 	}
 }
 
+
+
 void cal_rt_posit(
 	float f, iden *ide, Eigen::MatrixXf &bldshps,
 	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx) {
@@ -234,7 +281,7 @@ void cal_rt_posit(
 	Eigen::RowVector2f m0 = ide[id_idx].land_2d.row(exp_idx*G_land_num + 15);
 	/*std::cout << m0 << '\n';
 	std::cout << land_in << '\n';*/
-	cal_inner_bldshps(ide,bldshps, bs_in,inner_land_cor, id_idx, exp_idx);
+	cal_inner_bldshps(ide, bldshps, bs_in, inner_land_cor, id_idx, exp_idx);
 	Eigen::RowVector3f M0 = bs_in.row(0);
 	bs_in = bs_in.rowwise() - M0;
 	//std::cout << bs_in << '\n';
@@ -245,21 +292,21 @@ void cal_rt_posit(
 	Eigen::VectorXf ep(land_in.rows()), ep_last(land_in.rows());
 	ep.setZero();
 	ep_last.setZero();
-	ep_last(1) = 1;
+	ep_last(1) = 1000;
 	Eigen::Vector3f I, J;
 	//puts("B");
 	//std::cout << B << '\n';
 	float s;
 	int cnt = 0;
-	while ((ep - ep_last).norm() > 0.1) {		
+	while ((ep - ep_last).norm() > 0.1) {
 		//puts("pp");
 		ep_last = ep;
-		Eigen::MatrixX2f xy(G_inner_land_num,2);
-		xy.col(0)= ((1 + ep.array()).array()*land_in.col(0).array()) - m0(0);
+		Eigen::MatrixX2f xy(G_inner_land_num, 2);
+		xy.col(0) = ((1 + ep.array()).array()*land_in.col(0).array()) - m0(0);
 		xy.col(1) = ((1 + ep.array()).array()*land_in.col(1).array()) - m0(1);
 		//std::cout << xy << '\n';
 		//puts("pp");
-		Eigen::MatrixX2f ans = B*xy;
+		Eigen::MatrixX2f ans = B * xy;
 		I = ans.col(0), J = ans.col(1);
 		//std::cout << I << '\n';
 		//std::cout << J << '\n';
@@ -272,43 +319,18 @@ void cal_rt_posit(
 		std::cout << J << '\n';*/
 		ep = s / f * ((bs_in*(I.cross(J))).array());
 		if (cnt++ > 10) break;
-		//std::cout << ep << '\n';
+		std::cout << ep << '\n';
 	}
-	ide[id_idx].tslt.row(exp_idx) = Eigen::RowVector3f(m0(0),m0(1),f);
+	ide[id_idx].tslt.row(exp_idx) = Eigen::RowVector3f(m0(0), m0(1), f);
 	ide[id_idx].tslt.row(exp_idx).array() /= s;
 	ide[id_idx].rot.row(3 * exp_idx) = I.transpose();
-	ide[id_idx].rot.row(3 * exp_idx+1) = J.transpose();
-	ide[id_idx].rot.row(3 * exp_idx+2) = (I.cross(J)).transpose();
+	ide[id_idx].rot.row(3 * exp_idx + 1) = J.transpose();
+	ide[id_idx].rot.row(3 * exp_idx + 2) = (I.cross(J)).transpose();
 	ide[id_idx].tslt.row(exp_idx) -= (ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3)*M0.transpose()).transpose();
 	//puts("-----------------------------------------");
 	//std::cout << I << '\n';
 	//std::cout << J << '\n';
 	//std::cout << ide[id_idx].rot << '\n';
-}
-void cal_inner_bldshps(
-	iden *ide, Eigen::MatrixXf &bldshps, Eigen::MatrixX3f &bs_in,
-	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx) {
-
-	puts("calculating inner blandshapes...");
-	for (int i = 0; i < G_inner_land_num; i++)
-		for (int j = 0; j < 3; j++)
-			bs_in(i, j) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, inner_land_cor(i), j);
-//	std::cout << bs << '\n';
-	//std::cout << inner_land_cor.transpose() << '\n';
-	//printf("-%d %d\n", bs_in.rows(), bs_in.cols());
-}
-
-float cal_3d_vtx(
-	iden *ide, Eigen::MatrixXf &bldshps,
-	int id_idx, int exp_idx, int vtx_idx, int axis) {
-
-	//puts("calculating one vertex coordinate...");
-	float ans = 0;
-	for (int i_id = 0; i_id < G_iden_num; i_id++)
-		for (int i_shape = 0; i_shape < G_nShape; i_shape++)
-			ans += ide[id_idx].exp(exp_idx, i_shape)*ide[id_idx].user(i_id)
-			*bldshps(i_id, 3 * G_nVerts*i_shape + vtx_idx * 3 + axis);
-	return ans;
 }
 
 void test_posit(
@@ -325,13 +347,98 @@ void test_posit(
 	puts("aacc");
 	std::cout << rot << '\n';
 	std::cout << tslt << '\n';
-	Eigen::MatrixXf temp = (rot * bs.transpose()).colwise()+ tslt;
+	Eigen::MatrixXf temp = (rot * bs.transpose()).colwise() + tslt;
 	temp.row(0).array() /= temp.row(2).array();
 	temp.row(1).array() /= temp.row(2).array();
 	temp = temp.array()*f;
 	std::cout << temp << '\n';
-	std::cout << ide[id_idx].land_2d.block(15,0, G_land_num - 15, 2) << '\n';
+	std::cout << ide[id_idx].land_2d.block(15, 0, G_land_num - 15, 2) << '\n';
 }
+
+
+void cal_rt_normalization(
+	iden *ide, Eigen::MatrixXf &bldshps,
+	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx) {
+
+	puts("normalization...");	
+	Eigen::MatrixX2f land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num + 15, 0, G_land_num - 15, 2);
+	std::cout << land_in.transpose() << '\n';
+	Eigen::MatrixX3f bs_in(G_inner_land_num, 3);
+	cal_inner_bldshps(ide, bldshps, bs_in, inner_land_cor, id_idx, exp_idx);
+	Eigen::RowVector3f center_3d = bs_in.colwise().mean();
+	bs_in = bs_in.rowwise() - center_3d;
+	//std::cout << bs_in << '\n';
+	puts("A");
+	Eigen::MatrixX3f A = land_in.transpose()*bs_in*(bs_in.transpose()*bs_in);
+	printf("%d %d\n", A.rows(), A.cols());
+	ide[id_idx].tslt.block(exp_idx,0,1,2) = (ide[id_idx].center.row(exp_idx) - (A*center_3d.transpose()).transpose());
+	puts("A");
+	Eigen::RowVector3f I=A.row(0), J = A.row(1);
+	Eigen::Matrix3f A_;
+	puts("A");
+	A_.row(0) = I, A_.row(1) = J, A_.row(2) = I.cross(J);
+	Eigen :: JacobiSVD<Eigen::MatrixXf> svd(A_, Eigen::ComputeFullV | Eigen:: ComputeFullU);
+	Eigen::Matrix3f R = svd.matrixU()*(svd.matrixV().transpose());
+	puts("A");
+	ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3) = R;
+	ide[id_idx].s(exp_idx, 0) = svd.singularValues()(0), ide[id_idx].s(exp_idx, 1) = svd.singularValues()(1);
+}
+void test_normalization(
+	iden *ide, Eigen::MatrixXf &bldshps,
+	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx) {
+
+	puts("testing normalization...");
+	Eigen::MatrixX3f bs(G_inner_land_num, 3);
+	cal_inner_bldshps(ide, bldshps, bs, inner_land_cor, id_idx, exp_idx);
+	puts("aa");
+	Eigen::Matrix3f rot = ide[id_idx].rot.block(exp_idx * 3, 0, 3, 3);
+	puts("aabb");
+	Eigen::Vector3f tslt = ide[id_idx].tslt.row(exp_idx);
+	puts("aacc");
+	std::cout << rot << '\n';
+	std::cout << tslt << '\n';
+	Eigen::MatrixXf temp = (rot * bs.transpose());
+	temp.row(0).array() *= ide[id_idx].s(exp_idx, 0);
+	temp.row(1).array() *= ide[id_idx].s(exp_idx, 1);
+	temp = temp.colwise() + tslt;
+	std::cout << temp.block(0,0,2,G_inner_land_num) << '\n';
+	std::cout << ide[id_idx].land_2d.block(15, 0, G_land_num - 15, 2).transpose() << '\n';
+	system("pause");
+}
+
+
+void cal_inner_bldshps(
+	iden *ide, Eigen::MatrixXf &bldshps, Eigen::MatrixX3f &bs_in,
+	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx) {
+
+	puts("calculating inner blandshapes...");
+	for (int i = 0; i < G_inner_land_num; i++)
+		for (int j = 0; j < 3; j++)
+			bs_in(i, j) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, inner_land_cor(i), j);
+//	std::cout << bs << '\n';
+	//std::cout << inner_land_cor.transpose() << '\n';
+	//printf("-%d %d\n", bs_in.rows(), bs_in.cols());
+}
+
+
+
+
+
+
+float cal_3d_vtx(
+	iden *ide, Eigen::MatrixXf &bldshps,
+	int id_idx, int exp_idx, int vtx_idx, int axis) {
+
+	//puts("calculating one vertex coordinate...");
+	float ans = 0;
+	for (int i_id = 0; i_id < G_iden_num; i_id++)
+		for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+			ans += ide[id_idx].exp(exp_idx, i_shape)*ide[id_idx].user(i_id)
+			*bldshps(i_id, 3 * G_nVerts*i_shape + vtx_idx * 3 + axis);
+	return ans;
+}
+
+
 
 
 void update_slt(
@@ -590,8 +697,16 @@ void test_2dland(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int e
 	fopen_s(&fp, cal_eoef_2dland_name.c_str(), "a");
 	for (int i = 0; i < G_land_num; i++) {
 		Eigen::Vector3f X = land3d.row(i).transpose();
+#if posit
 		X = R * X + tslt;
 		fprintf(fp, "%.6f %.6f\n", X(0)*f / X(2), X(1)*f / X(2));
+#endif // posit
+#ifdef normalization
+		X = R * X;
+		fprintf(fp, "%.6f %.6f\n",
+			X(0)*ide[id_idx].s(exp_idx, 0) + ide[id_idx].tslt(exp_idx, 0),
+			X(1)*ide[id_idx].s(exp_idx, 1) + ide[id_idx].tslt(exp_idx, 1));
+#endif // normalization
 	}
 
 	fclose(fp);

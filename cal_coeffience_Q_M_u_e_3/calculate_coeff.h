@@ -11,15 +11,30 @@ void cal_f(
 	iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXf &ide_sg_vl);
-void init_exp_ide(iden *ide, int train_id_num);
+void solve(
+	iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXf &ide_sg_vl);
+
 
 float pre_cal_exp_ide_R_t(
 	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor, Eigen::VectorXi &jaw_land_corr,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx,
 	Eigen::VectorXf &ide_sg_vl);
+void init_exp_ide(iden *ide, int train_id_num);
 
 void cal_rt_posit(
 	float f, iden *ide, Eigen::MatrixXf &bldshps,
+	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx);
+void test_posit(
+	float f, iden *ide, Eigen::MatrixXf &bldshps,
+	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx);
+
+void cal_rt_normalization(
+	iden *ide, Eigen::MatrixXf &bldshps,
+	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx);
+void test_normalization(
+	iden *ide, Eigen::MatrixXf &bldshps,
 	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx);
 
 void cal_inner_bldshps(
@@ -30,9 +45,6 @@ float cal_3d_vtx(
 	iden *ide, Eigen::MatrixXf &bldshps,
 	int id_idx, int exp_idx, int vtx_idx, int axis);
 
-void test_posit(
-	float f, iden *ide, Eigen::MatrixXf &bldshps,
-	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx);
 
 void update_slt(
 	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,

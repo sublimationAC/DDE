@@ -21,6 +21,8 @@
 	#include <dirent.h>
 #endif // linux
 
+//#define posit
+#define normalization
 
 
 #define EPSILON 1e-6
@@ -32,7 +34,7 @@ const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
-const int G_iden_num = 50;
+const int G_iden_num = 25;
 const int G_inner_land_num = 59;
 const int G_line_num = 50;
 const int G_jaw_land_num = 20;
@@ -47,6 +49,7 @@ struct iden
 	Eigen::MatrixX3f rot;
 	Eigen::MatrixX3f tslt;
 	Eigen::MatrixXi land_cor;
+	Eigen::MatrixX2f s;
 	float fcs;
 };
 

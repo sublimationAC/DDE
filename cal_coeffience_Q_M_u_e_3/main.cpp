@@ -52,7 +52,7 @@ int main() {
 	printf("id_idx %d\n", id_idx);
 	//test_data_2dland(imgs, ide, 0, 0);
 	init_exp_ide_r_t_pq(ide, id_idx);
-	test_3d22dland(imgs[0][0], "./server/2dland.txt",ide,0,0);
+	//test_3d22dland(imgs[0][0], "./server/2dland.txt",ide,0,0);
 	
 
 	//14 13
@@ -72,8 +72,15 @@ int main() {
 	cal_mesh_land(bldshps);
 
 #else
+
 	init_exp_ide_r_t_pq(ide, id_idx);
+#ifdef posit
 	cal_f(ide, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect,ide_sg_vl);
+#endif // posit
+#ifdef normalization
+	solve(ide, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl);
+#endif // normalization
+
 #endif
 	system("pause");
 	return 0;
