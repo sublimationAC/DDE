@@ -39,8 +39,8 @@ using ceres::CostFunction;
 using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
-const float beta_exp = 1;
-const float beta_user = 50;
+const float beta_exp = 10;
+const float beta_user = 10;
 
 struct ceres_cal_exp {
 	ceres_cal_exp(
@@ -53,9 +53,16 @@ struct ceres_cal_exp {
 		//Eigen::Matrix3f rot = ide[id_idx].rot.block(exp_idx * 3, 0, 3, 3);
 		//Eigen::Vector3d tslt;
 		T tslt[3];
-		for (int j = 0; j < 3; j++)
+		for (int j = 0; j < 3; j++) 
 			tslt[j] = (T)(ide[id_idx].tslt(exp_idx, j));
+//#ifdef normalization
+//		T S[2];
+//		for (int j=0;j<2;j++)
+//			S[j] = (T)(ide[id_idx].s(exp_idx, j));
+//#endif //normalization
+
 		
+
 		/*std::cout << rot << '\n';
 		std::cout << tslt << '\n';*/
 		//T ans = (T)0;
@@ -72,13 +79,24 @@ struct ceres_cal_exp {
 					V[axis] =V[axis] + ((double)(exp_point(i_shape, i_v * 3 + axis)))*x_exp[i_shape];
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
+
+//#ifdef normalization
+//			for (int j = 0; j < 2; j++)
+//				V[j] = S[j]*V[j];
+//#endif // normalization
 			for (int j=0;j<3;j++)
 				V[j] = V[j] + tslt[j];
 
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
+#ifdef posit
 			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0]*(double)f / V[2];
 			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1]*(double)f / V[2];
+#endif
+#ifdef normalization
+			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0)+ ide[id_idx].center(exp_idx,0) - V[0];
+			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) + ide[id_idx].center(exp_idx, 1) - V[1];
+#endif
 
 			//printf("+++++++++%.10f \n", f / V(2));
 			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
@@ -145,7 +163,7 @@ struct ceres_cal_user {
 	ceres_cal_user(
 		const float f_, const iden* ide_, const int id_idx_, const int exp_idx_,
 		const Eigen::MatrixXf id_point_,const Eigen::VectorXf ide_sg_vl_) :
-		ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), id_point(id_point_),ide_sg_vl(ide_sg_vl_) {}
+		f(f_), ide(ide_), id_idx(id_idx_), exp_idx(exp_idx_), id_point(id_point_),ide_sg_vl(ide_sg_vl_) {}
 
 	template <typename T> bool operator()(const T* const x_user, T *residual) const {
 		//puts("TT");
@@ -154,7 +172,11 @@ struct ceres_cal_user {
 		T tslt[3];
 		for (int j = 0; j < 3; j++)
 			tslt[j] = (T)(ide[id_idx].tslt(exp_idx, j));
-
+//#ifdef normalization
+//		T S[2];
+//		for (int j = 0; j < 2; j++)
+//			S[j] = (T)(ide[id_idx].s(exp_idx, j));
+//#endif //normalization
 		/*std::cout << rot << '\n';
 		std::cout << tslt << '\n';*/
 		//T ans = (T)0;		
@@ -171,13 +193,23 @@ struct ceres_cal_user {
 					V[axis] = V[axis] + ((double)(id_point(i_id, i_v * 3 + axis)))*x_user[i_id];
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
-			for (int j = 0; j<3; j++)
+//#ifdef normalization
+//			for (int j = 0; j < 2; j++)
+//				V[j] = S[j] * V[j];
+//#endif // normalization
+			for (int j = 0; j < 3; j++)
 				V[j] = V[j] + tslt[j];
 
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
+#ifdef posit
 			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
 			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
+#endif
+#ifdef normalization
+			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) + ide[id_idx].center(exp_idx, 0) - V[0];
+			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) + ide[id_idx].center(exp_idx, 1) - V[1];
+#endif
 			
 			//printf("+++++++++%.10f \n", f / V(2));
 			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,

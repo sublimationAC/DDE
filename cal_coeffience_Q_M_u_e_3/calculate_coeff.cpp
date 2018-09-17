@@ -17,7 +17,7 @@ void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 		ide[i].tslt.resize(ide[i].num,3);
 		ide[i].center.setZero();
 #ifdef normalization
-		ide[i].s.resize(ide[i].num, 2);
+		ide[i].s.resize(ide[i].num*2, 3);
 #endif // normalization
 
 		for (int j = 0; j < ide[i].num; j++) 
@@ -224,16 +224,18 @@ float pre_cal_exp_ide_R_t(
 			
 			Eigen::VectorXi out_land_cor(15);
 			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor, jaw_land_corr);
-			/*std::cout << inner_land_cor << '\n';
-			std::cout <<"--------------\n"<< out_land_cor << '\n';*/
+			std::cout << inner_land_cor << '\n';
+			std::cout <<"--------------\n"<< out_land_cor << '\n';
 			Eigen::VectorXi land_cor(G_land_num);
 			for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
 			for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
 			ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
+
+			test_slt(f, ide, bldshps, land_cor, id_idx, i_exp);
+
 #ifdef test_posit_by2dland
 			test_2dland(f, ide, bldshps, id_idx, i_exp);
-#endif // test_posit_by2dland
-			//test_slt(f,ide, bldshps, land_cor, id_idx, i_exp);
+#endif // test_posit_by2dland			
 #ifdef test_coef_save_mesh
 			if (rounds == 0) {
 				test_coef_land(ide, bldshps, id_idx, 0);
@@ -361,27 +363,32 @@ void cal_rt_normalization(
 	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx) {
 
 	puts("normalization...");	
-	Eigen::MatrixX2f land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num + 15, 0, G_land_num - 15, 2);
-	std::cout << land_in.transpose() << '\n';
+	Eigen::MatrixX2f land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num + 15, 0, G_inner_land_num, 2);
+	//std::cout << land_in.transpose() << '\n';
 	Eigen::MatrixX3f bs_in(G_inner_land_num, 3);
 	cal_inner_bldshps(ide, bldshps, bs_in, inner_land_cor, id_idx, exp_idx);
 	Eigen::RowVector3f center_3d = bs_in.colwise().mean();
+	//std::cout << "\n----ceneter_3d----\n" << center_3d << "-------------\n";
 	bs_in = bs_in.rowwise() - center_3d;
 	//std::cout << bs_in << '\n';
-	puts("A");
+	//puts("A");
 	Eigen::MatrixX3f A = land_in.transpose()*bs_in*(bs_in.transpose()*bs_in);
-	printf("%d %d\n", A.rows(), A.cols());
+	//std::cout << "\n----A----\n" << A << "-------------\n";
+	//printf("%d %d\n", A.rows(), A.cols());
+	//std::cout <<
+	//	ide[id_idx].center.row(exp_idx).transpose() << "qqqqqqqqqqq-\n";
 	ide[id_idx].tslt.block(exp_idx,0,1,2) = (ide[id_idx].center.row(exp_idx) - (A*center_3d.transpose()).transpose());
-	puts("A");
+	//puts("A");
 	Eigen::RowVector3f I=A.row(0), J = A.row(1);
 	Eigen::Matrix3f A_;
-	puts("A");
+	//puts("A");
 	A_.row(0) = I, A_.row(1) = J, A_.row(2) = I.cross(J);
 	Eigen :: JacobiSVD<Eigen::MatrixXf> svd(A_, Eigen::ComputeFullV | Eigen:: ComputeFullU);
 	Eigen::Matrix3f R = svd.matrixU()*(svd.matrixV().transpose());
-	puts("A");
+	//puts("A");
 	ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3) = R;
-	ide[id_idx].s(exp_idx, 0) = svd.singularValues()(0), ide[id_idx].s(exp_idx, 1) = svd.singularValues()(1);
+	ide[id_idx].s.block(2 * exp_idx, 0, 2, 3) = A * R.transpose();
+	//ide[id_idx].s(exp_idx, 0) = svd.singularValues()(1), ide[id_idx].s(exp_idx, 1) = svd.singularValues()(2);
 }
 void test_normalization(
 	iden *ide, Eigen::MatrixXf &bldshps,
@@ -395,14 +402,20 @@ void test_normalization(
 	puts("aabb");
 	Eigen::Vector3f tslt = ide[id_idx].tslt.row(exp_idx);
 	puts("aacc");
-	std::cout << rot << '\n';
-	std::cout << tslt << '\n';
+	std::cout << "\n----rotation----\n" << rot << "-------------\n";
+	std::cout << "\n----translation----\n" << tslt << "-------------\n";
+	std::cout << "\n----scale----\n" << ide[id_idx].s.block(2 * exp_idx, 0, 2, 3) << "-------------\n";
 	Eigen::MatrixXf temp = (rot * bs.transpose());
-	temp.row(0).array() *= ide[id_idx].s(exp_idx, 0);
-	temp.row(1).array() *= ide[id_idx].s(exp_idx, 1);
+	temp.block(0, 0, 2, G_inner_land_num) = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)*temp;
+	/*temp.row(0).array() *= ide[id_idx].s(exp_idx, 0);
+	temp.row(1).array() *= ide[id_idx].s(exp_idx, 1);*/
 	temp = temp.colwise() + tslt;
-	std::cout << temp.block(0,0,2,G_inner_land_num) << '\n';
-	std::cout << ide[id_idx].land_2d.block(15, 0, G_land_num - 15, 2).transpose() << '\n';
+	std::cout << temp.block(0,0,2,G_inner_land_num) << "+++++++\n";
+	std::cout << 
+		ide[id_idx].land_2d.block(15+G_land_num*exp_idx, 0, G_land_num - 15, 2).transpose().colwise()
+		+ ide[id_idx].center.row(exp_idx).transpose()<< "------\n";
+	std::cout <<
+		ide[id_idx].center.row(exp_idx).transpose() << "pppppppppppp-\n";
 	system("pause");
 }
 
@@ -462,6 +475,7 @@ void update_slt(
 		float min_v_n = 10000;
 		int min_idx=0;
 		Eigen::Vector3f cdnt;
+#ifdef posit
 		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
 			//printf("j %d\n", j);
 			int x = slt_line[i][j];
@@ -469,7 +483,7 @@ void update_slt(
 			Eigen::Vector3f nor;
 			nor.setZero();
 			Eigen::Vector3f V[2], point[3];
-			for (int axis = 0; axis < 3; axis++) 
+			for (int axis = 0; axis < 3; axis++)
 				point[0](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
 			point[0] = R * point[0] + T;
 			//test															//////////////////////////////////debug
@@ -477,6 +491,7 @@ void update_slt(
 			//fprintf(fp, "%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
 			//printf("%.10f %.10f %.10f \n", point[0](0), point[0](1), point[0](2));
 			//puts("B");
+
 
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -499,7 +514,11 @@ void update_slt(
 			//printf("== %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
 			//puts("F");
 			if (nor.norm() > EPSILON) nor.normalize();
+			std::cout << "nor++\n\n" << nor << "\n";
+			std::cout << "point--\n\n" << point[0].normalized() << "\n";
+			std::cout << "rltv--\n\n"<<x << ' ' << nor.dot(point[0].normalized()) << "\n";
 			if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+
 		}
 		//puts("H");
 		//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
@@ -507,6 +526,28 @@ void update_slt(
 		cdnt(0) = cdnt(0)*f / cdnt(2);
 		cdnt(1) = cdnt(1)*f / cdnt(2);
 		slt_cddt_cdnt.row(i) = cdnt.transpose();
+#endif // posit
+
+#ifdef normalization
+		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
+			//printf("j %d\n", j);
+			int x = slt_line[i][j];
+			//printf("x %d\n", x);
+			Eigen::Vector3f point,temp;
+			for (int axis = 0; axis < 3; axis++)
+				point(axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+			point = R * point;
+			temp = point;
+			point.normalize();
+			if (fabs(point(2)) < min_v_n) min_v_n = fabs(point(2)), min_idx = x, cdnt = temp;// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+		}
+		slt_cddt(i) = min_idx;
+		cdnt.block(0, 0, 2, 1) = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)*cdnt;
+		/*cdnt(0) = cdnt(0)*ide[id_idx].s(exp_idx, 0) + T(0);
+		cdnt(1) = cdnt(1)*ide[id_idx].s(exp_idx, 1) + T(1);*/
+		slt_cddt_cdnt.row(i) = cdnt.transpose();
+#endif
+		
 	}
 	//fclose(fp);
 	//puts("C");
@@ -514,9 +555,16 @@ void update_slt(
 		Eigen::Vector3f point;
 		for (int axis = 0; axis < 3; axis++)
 			point(axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, jaw_land_corr(i_jaw), axis);
+#ifdef posit
 		point = R * point + T;
 		point(0) = point(0)*f / point(2);
 		point(1) = point(1)*f / point(2);
+#endif // posit
+#ifdef normalization
+		point.block(0,0,2,1) = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)*R * point;
+		//point(0) *= ide[id_idx].s(exp_idx, 0), point(1) *= ide[id_idx].s(exp_idx, 1);
+		point = point + T;
+#endif // normalization		
 		slt_cddt(i_jaw + G_line_num) = jaw_land_corr(i_jaw);
 		slt_cddt_cdnt.row(i_jaw + G_line_num) = point.transpose();
 	}
@@ -525,8 +573,8 @@ void update_slt(
 		int min_idx;
 		for (int j = 0; j < G_line_num+G_jaw_land_num; j++) {
 			float temp =
-				fabs(slt_cddt_cdnt(j, 0) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 0)) +
-				fabs(slt_cddt_cdnt(j, 1) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 1));
+				fabs(slt_cddt_cdnt(j, 0) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 0) - ide[id_idx].center(exp_idx, 0)) +
+				fabs(slt_cddt_cdnt(j, 1) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 1) - ide[id_idx].center(exp_idx, 1));
 			if (temp < min_dis) min_dis = temp, min_idx = j;
 		}
 		
@@ -547,19 +595,31 @@ void test_slt(float f,iden *ide, Eigen::MatrixXf &bldshps,
 		fprintf(fp, "%.6f %.6f %.6f \n", bs(i, 0), bs(i, 1), bs(i, 2));
 	fclose(fp);*/
 
+
 	Eigen::Matrix3f rot = ide[id_idx].rot.block(exp_idx * 3, 0, 3, 3);
 	puts("aabb");
 	Eigen::Vector3f tslt = ide[id_idx].tslt.row(exp_idx);
 	puts("aacc");
 	std::cout << bs.transpose() << '\n';
 	//std::cout << tslt << '\n';
+#ifdef posit
 	Eigen::MatrixXf temp = (rot * bs.transpose()).colwise() + tslt;
 	temp.row(0).array() /= temp.row(2).array();
 	temp.row(1).array() /= temp.row(2).array();
 	temp = temp.array()*f;
-	std::cout << temp << '\n';
-	std::cout << ide[id_idx].land_2d.block(exp_idx*G_land_num, 0, G_land_num, 2) << '\n';
+#endif // posit
 
+#ifdef normalization
+	Eigen::MatrixXf temp = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)* rot * bs.transpose();
+	/*temp.row(0).array() *= ide[id_idx].s(exp_idx, 0);
+	temp.row(1).array() *= ide[id_idx].s(exp_idx, 1);*/
+	temp = temp.colwise() + tslt.block(0,0,2,1);
+#endif // normalization
+
+	
+	std::cout << temp.transpose() << '\n';
+	std::cout << ide[id_idx].land_2d.block(exp_idx*G_land_num, 0, G_land_num, 2) << '\n';
+	system("pause");
 }
 
 float cal_3dpaper_exp(
@@ -583,6 +643,10 @@ void cal_exp_point_matrix(
 	puts("prepare exp_point matrix for bfgs/ceres...");
 	result.resize(G_nShape, 3 * G_land_num);
 	Eigen::Matrix3f rot = ide[id_idx].rot.block(exp_idx * 3, 0, 3, 3);
+#ifdef normalization
+	Eigen::MatrixX3f S = ide[id_idx].s.block(exp_idx * 2, 0, 2, 3);
+#endif // normalization
+
 	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
 		for (int i_v = 0; i_v < G_land_num; i_v++) {
 			Eigen::Vector3f V;
@@ -591,6 +655,11 @@ void cal_exp_point_matrix(
 				for (int i_id = 0; i_id < G_iden_num; i_id++)
 					V(j) += ide[id_idx].user(i_id)*bldshps(i_id, i_shape*G_nVerts*3 + land_cor(i_v) * 3 + j);
 			V = rot * V;
+#ifdef normalization
+
+			V.block(0,0,2,1) = S * V;
+#endif // normalization
+
 			for (int j = 0; j < 3; j++)
 				result(i_shape, i_v * 3 + j) = V(j);
 		}
@@ -618,6 +687,9 @@ void cal_id_point_matrix(
 	puts("prepare user_point matrix for bfgs/ceres...");
 	result.resize(G_iden_num, 3 * G_land_num);
 	Eigen::Matrix3f rot = ide[id_idx].rot.block(exp_idx * 3, 0, 3, 3);
+#ifdef normalization
+	Eigen::MatrixX3f S = ide[id_idx].s.block(exp_idx * 2, 0, 2, 3);
+#endif // normalization
 	for (int i_id = 0; i_id < G_iden_num; i_id++)
 		for (int i_v = 0; i_v < G_land_num; i_v++) {
 			Eigen::Vector3f V;
@@ -626,6 +698,9 @@ void cal_id_point_matrix(
 				for (int i_shape = 0; i_shape < G_nShape; i_shape++)
 					V(j) += ide[id_idx].exp(id_idx,i_shape)*bldshps(i_id, i_shape*G_nVerts * 3 + land_cor(i_v) * 3 + j);
 			V = rot * V;
+#ifdef normalization
+			V.block(0, 0, 2, 1) = S * V;
+#endif // normalization
 			for (int j = 0; j < 3; j++)
 				result(i_id, i_v * 3 + j) = V(j);
 		}
@@ -697,12 +772,12 @@ void test_2dland(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int e
 	fopen_s(&fp, cal_eoef_2dland_name.c_str(), "a");
 	for (int i = 0; i < G_land_num; i++) {
 		Eigen::Vector3f X = land3d.row(i).transpose();
-#if posit
+#ifdef posit
 		X = R * X + tslt;
-		fprintf(fp, "%.6f %.6f\n", X(0)*f / X(2), X(1)*f / X(2));
+		fprintf(fp, "%.6f %.6f\n", X(0)*f / X(2)+ide[id_idx].center(exp_idx,0), X(1)*f / X(2) + ide[id_idx].center(exp_idx, 1));
 #endif // posit
 #ifdef normalization
-		X = R * X;
+		X.block(0,0,2,1) = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)*R * X;
 		fprintf(fp, "%.6f %.6f\n",
 			X(0)*ide[id_idx].s(exp_idx, 0) + ide[id_idx].tslt(exp_idx, 0),
 			X(1)*ide[id_idx].s(exp_idx, 1) + ide[id_idx].tslt(exp_idx, 1));

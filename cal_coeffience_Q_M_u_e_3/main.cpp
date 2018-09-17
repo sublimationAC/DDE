@@ -1,6 +1,7 @@
 #include "calculate_coeff.h"
 //#define test_coef_ide_exp
 //#define test_bldshps
+//#define test_3d2dland
 iden ide[G_train_pic_id_num];
 
 Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
@@ -24,7 +25,7 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 	std::string gtav_path = "./data_me/GTAV_image";
 	std::string test_path = "./data_me/test";
 	std::string test_path_one = "./data_me/test_only_one";
-	std::string bldshps_path = "./deal_data/blendshape_ide_svd_77.lv";
+	std::string bldshps_path = "./deal_data/blendshape_ide_svd_50.lv";
 	std::string sg_vl_path = "./deal_data/blendshape_ide_svd_value_sqrt_77.txt";
 	std::string slt_path = "./3d22d/sillht.txt";
 	std::string rect_path = "./3d22d/slt_point_rect.txt";
@@ -51,8 +52,12 @@ int main() {
 	load_img_land(test_path_one, ".jpg", ide, id_idx, imgs);
 	printf("id_idx %d\n", id_idx);
 	//test_data_2dland(imgs, ide, 0, 0);
-	init_exp_ide_r_t_pq(ide, id_idx);
-	//test_3d22dland(imgs[0][0], "./server/2dland.txt",ide,0,0);
+
+#ifdef test_3d2dland
+	test_3d22dland(imgs[0][0], "./2dland_1.txt",ide,0,0);
+#endif // test_3d2dland
+
+	
 	
 
 	//14 13

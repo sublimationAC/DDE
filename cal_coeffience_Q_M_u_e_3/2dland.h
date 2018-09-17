@@ -49,7 +49,7 @@ struct iden
 	Eigen::MatrixX3f rot;
 	Eigen::MatrixX3f tslt;
 	Eigen::MatrixXi land_cor;
-	Eigen::MatrixX2f s;
+	Eigen::MatrixX3f s;
 	float fcs;
 };
 

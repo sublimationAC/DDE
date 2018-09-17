@@ -240,8 +240,6 @@ void test_3d22dland(cv::Mat_<uchar> img, std::string path,iden *ide,int id_idx,i
 		for (int j = 0; j < G_land_num; j++) {
 			float x, y;
 			fscanf_s(fp, "%f%f", &x, &y);
-			x += ide[id_idx].center(exp_idx, 0);
-			y += ide[id_idx].center(exp_idx, 1);
 			cv::circle(
 				temp, cv::Point2f(x, y),
 				1, cv::Scalar(244, 244, 244), -1, 8, 0);
