@@ -51,15 +51,27 @@ void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name,Eigen::VectorXf &i
 void print_bldshps(Eigen::MatrixXf &bldshps) {
 	puts("print blendshapes!");
 	FILE *fp;
-	fopen_s(&fp, "test_svd_bldshps.txt", "w");
+	/*fopen_s(&fp, "test_svd_bldshps.txt", "w");
 	fprintf(fp, "%d\n", G_nShape);
-	int ide = 2;
+	int ide = 1;
 	for (int i_exp = 0; i_exp< G_nShape; i_exp++) {
 		for (int i_v = 0; i_v < G_nVerts; i_v++)
 			fprintf(fp, "%.10f %.10f %.10f\n", 
 				bldshps(ide, i_exp*G_nVerts*3+ i_v*3), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+1), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+2));
 	}
-	fclose(fp);
+	fclose(fp);*/
+	fopen_s(&fp, "test_svd_bldshps.txt", "w");
+	fprintf(fp, "%d\n", G_iden_num);
+	int exp = 0;
+	for (int i_ide = 0; i_ide < G_nShape; i_ide++) {
+		for (int i_v = 0; i_v < G_nVerts; i_v++)
+			fprintf(fp, "%.10f %.10f %.10f\n",
+				bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3), bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3 + 1), bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3 + 2));
+	}
+	fclose(fp); 
+
+
+
 	puts("over");
 }
 
@@ -363,21 +375,49 @@ void cal_rt_normalization(
 	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx) {
 
 	puts("normalization...");	
-	Eigen::MatrixX2f land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num + 15, 0, G_inner_land_num, 2);
-	//std::cout << land_in.transpose() << '\n';
-	Eigen::MatrixX3f bs_in(G_inner_land_num, 3);
-	cal_inner_bldshps(ide, bldshps, bs_in, inner_land_cor, id_idx, exp_idx);
+	Eigen::MatrixX2f land_in; Eigen::MatrixX3f bs_in;
+	if (ide[id_idx].land_cor(20)==inner_land_cor(20-15) && ide[id_idx].land_cor(30) == inner_land_cor(30 - 15)) {		
+		land_in.resize(G_land_num, 2);
+		land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num, 0, G_land_num, 2);
+		land_in = land_in.rowwise() + ide[id_idx].center.row(exp_idx);
+		//std::cout << land_in.transpose() << '\n';
+		bs_in.resize(G_land_num, 3);
+		for (int i = 0; i < G_land_num; i++)
+			for (int axis = 0; axis < 3; axis++)
+				bs_in(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), axis);
+
+		std::cout << bs_in << '\n';
+		std::cout << land_in << "\n";
+	}
+	else
+	{
+		land_in.resize(G_inner_land_num, 2);
+		land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num + 15, 0, G_inner_land_num, 2);
+		land_in = land_in.rowwise() + ide[id_idx].center.row(exp_idx);
+		//std::cout << land_in.transpose() << '\n';
+		bs_in.resize(G_inner_land_num, 3);
+
+		cal_inner_bldshps(ide, bldshps, bs_in, inner_land_cor, id_idx, exp_idx);
+		std::cout << bs_in << '\n';
+		std::cout << land_in << "\n";
+		
+	}
+
 	Eigen::RowVector3f center_3d = bs_in.colwise().mean();
-	//std::cout << "\n----ceneter_3d----\n" << center_3d << "-------------\n";
+	std::cout << "\n----ceneter_3d----\n" << center_3d << "-------------\n";
 	bs_in = bs_in.rowwise() - center_3d;
+	Eigen::RowVector2f center_2d = land_in.colwise().mean();
+	land_in = land_in.rowwise() - center_2d;
+	std::cout << "\n----ceneter_2d----\n" << center_2d << "-------------\n";
 	//std::cout << bs_in << '\n';
 	//puts("A");
-	Eigen::MatrixX3f A = land_in.transpose()*bs_in*(bs_in.transpose()*bs_in);
+	Eigen::MatrixX3f A = land_in.transpose()*bs_in*((bs_in.transpose()*bs_in).inverse());
+	std::cout << A * ((bs_in.rowwise() + center_3d).transpose()) << "+_+_+_+_+_+_+_+\n";
 	//std::cout << "\n----A----\n" << A << "-------------\n";
 	//printf("%d %d\n", A.rows(), A.cols());
 	//std::cout <<
 	//	ide[id_idx].center.row(exp_idx).transpose() << "qqqqqqqqqqq-\n";
-	ide[id_idx].tslt.block(exp_idx,0,1,2) = (ide[id_idx].center.row(exp_idx) - (A*center_3d.transpose()).transpose());
+	ide[id_idx].tslt.block(exp_idx,0,1,2) = (center_2d - (A*center_3d.transpose()).transpose());
 	//puts("A");
 	Eigen::RowVector3f I=A.row(0), J = A.row(1);
 	Eigen::Matrix3f A_;
@@ -387,7 +427,10 @@ void cal_rt_normalization(
 	Eigen::Matrix3f R = svd.matrixU()*(svd.matrixV().transpose());
 	//puts("A");
 	ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3) = R;
-	ide[id_idx].s.block(2 * exp_idx, 0, 2, 3) = A * R.transpose();
+	ide[id_idx].s.block(2 * exp_idx, 0, 2, 3) = A * R.inverse();
+	ide[id_idx].s(2 * exp_idx, 1) = ide[id_idx].s(2 * exp_idx, 2) =
+		ide[id_idx].s(2 * exp_idx + 1, 0) = ide[id_idx].s(2 * exp_idx + 1, 2) = 0;
+
 	//ide[id_idx].s(exp_idx, 0) = svd.singularValues()(1), ide[id_idx].s(exp_idx, 1) = svd.singularValues()(2);
 }
 void test_normalization(
@@ -412,7 +455,7 @@ void test_normalization(
 	temp = temp.colwise() + tslt;
 	std::cout << temp.block(0,0,2,G_inner_land_num) << "+++++++\n";
 	std::cout << 
-		ide[id_idx].land_2d.block(15+G_land_num*exp_idx, 0, G_land_num - 15, 2).transpose().colwise()
+		ide[id_idx].land_2d.block(15+G_land_num*exp_idx, 0, G_inner_land_num, 2).transpose().colwise()
 		+ ide[id_idx].center.row(exp_idx).transpose()<< "------\n";
 	std::cout <<
 		ide[id_idx].center.row(exp_idx).transpose() << "pppppppppppp-\n";
@@ -542,7 +585,7 @@ void update_slt(
 			if (fabs(point(2)) < min_v_n) min_v_n = fabs(point(2)), min_idx = x, cdnt = temp;// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
 		}
 		slt_cddt(i) = min_idx;
-		cdnt.block(0, 0, 2, 1) = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)*cdnt;
+		cdnt.block(0, 0, 2, 1) = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)*cdnt+ T.block(0,0,2,1);
 		/*cdnt(0) = cdnt(0)*ide[id_idx].s(exp_idx, 0) + T(0);
 		cdnt(1) = cdnt(1)*ide[id_idx].s(exp_idx, 1) + T(1);*/
 		slt_cddt_cdnt.row(i) = cdnt.transpose();
@@ -600,7 +643,7 @@ void test_slt(float f,iden *ide, Eigen::MatrixXf &bldshps,
 	puts("aabb");
 	Eigen::Vector3f tslt = ide[id_idx].tslt.row(exp_idx);
 	puts("aacc");
-	std::cout << bs.transpose() << '\n';
+	std::cout << bs << '\n';
 	//std::cout << tslt << '\n';
 #ifdef posit
 	Eigen::MatrixXf temp = (rot * bs.transpose()).colwise() + tslt;
@@ -777,10 +820,8 @@ void test_2dland(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int e
 		fprintf(fp, "%.6f %.6f\n", X(0)*f / X(2)+ide[id_idx].center(exp_idx,0), X(1)*f / X(2) + ide[id_idx].center(exp_idx, 1));
 #endif // posit
 #ifdef normalization
-		X.block(0,0,2,1) = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)*R * X;
-		fprintf(fp, "%.6f %.6f\n",
-			X(0)*ide[id_idx].s(exp_idx, 0) + ide[id_idx].tslt(exp_idx, 0),
-			X(1)*ide[id_idx].s(exp_idx, 1) + ide[id_idx].tslt(exp_idx, 1));
+		X.block(0,0,2,1) = ide[id_idx].s.block(2 * exp_idx, 0, 2, 3)*R * X+ tslt.block(0,0,2,1);
+		fprintf(fp, "%.6f %.6f\n",X(0),X(1));
 #endif // normalization
 	}
 
@@ -796,7 +837,7 @@ void cal_mesh_land(Eigen::MatrixXf &bldshps) {
 	fclose(fpr);
 	fopen_s(&fpr, "./server/test_exp_coeff.txt", "r");
 	fopen_s(&fpw, "./test_exp_coeff_mesh.txt", "w");
-	int num = 4;
+	int num = 20;
 	fprintf(fpw, "%d\n", num);
 	Eigen::MatrixXf mesh(G_nVerts, 3);
 	//char s[500];
@@ -819,7 +860,34 @@ void cal_mesh_land(Eigen::MatrixXf &bldshps) {
 	fclose(fpw);
 }
 
-
+void cal_mesh_land_exp_only(Eigen::MatrixXf &bldshps) {
+	puts("calculating mesh from test_coeff_exp");
+	FILE *fpr, *fpw;
+	Eigen::VectorXf exp(G_nShape);
+	fopen_s(&fpr, "./server/test_exp_coeff.txt", "r");
+	fopen_s(&fpw, "./test_exp_coeff_mesh.txt", "w");
+	int num = 1;
+	fprintf(fpw, "%d\n", num);
+	Eigen::MatrixXf mesh(G_nVerts, 3);
+	//char s[500];
+	for (int j_no = 0; j_no < num; j_no++) {
+		printf("%d \n", j_no);
+		fscanf_s(fpr, "------------------------------------------");
+		//puts(s);
+		for (int i_exp = 0; i_exp < G_nShape; i_exp++)
+			fscanf_s(fpr, "%f", &exp(i_exp));
+		for (int i = 0; i < G_nVerts; i++)
+			for (int axis = 0; axis < 3; axis++) {
+				mesh(i, axis) = 0;
+				int i_id = 0;
+				for (int i_exp = 0; i_exp < G_nShape; i_exp++)
+					mesh(i, axis) += bldshps(i_id, i_exp*G_nVerts * 3 + i * 3 + axis)*exp(i_exp);
+			}
+		for (int i = 0; i < G_nVerts; i++)
+			fprintf(fpw, "%.6f %.6f %.6f \n", mesh(i, 0), mesh(i, 1), mesh(i, 2));
+	}
+	fclose(fpw);
+}
 
 
 

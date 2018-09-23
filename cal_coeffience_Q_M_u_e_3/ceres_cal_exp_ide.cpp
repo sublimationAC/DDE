@@ -33,6 +33,7 @@
 #include "calculate_coeff.h"
 //#define set_user_bound
 //#define max_min
+#define strength_eye
 
 using ceres::AutoDiffCostFunction;
 using ceres::CostFunction;
@@ -41,6 +42,7 @@ using ceres::Solver;
 using ceres::Solve;
 const float beta_exp = 10;
 const float beta_user = 10;
+const float beta_eye = 20;
 
 struct ceres_cal_exp {
 	ceres_cal_exp(
@@ -103,6 +105,11 @@ struct ceres_cal_exp {
 			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
 				V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
 		}
+#ifdef strength_eye
+		for (int i = 27 * 2; i < 35 * 2; i++) residual[i] *= (T)beta_eye;
+		for (int i = 66 * 2; i < 74 * 2; i++) residual[i] *= (T)beta_eye;
+#endif // stength_eye
+
 		T temp = (T)0;
 		for (int i = 0; i < G_nShape; i++)
 			for (int j = i + 1; j < G_nShape; j++)
@@ -218,6 +225,11 @@ struct ceres_cal_user {
 		}
 		//printf("- - %.10f\n", ans);
 		//fprintf(fp, "%.10f\n", ans);
+#ifdef strength_eye
+		for (int i = 27 * 2; i < 35 * 2; i++) residual[i] *= (T)beta_eye;
+		for (int i = 66 * 2; i < 74 * 2; i++) residual[i] *= (T)beta_eye;
+#endif // stength_eye
+
 #ifdef max_min
 		T mi = x_user[0], ma = x_user[0];
 		for (int i_id = 0; i_id < G_iden_num; i_id++) mi = std::min(mi, x_user[i_id]), ma = std::max(ma, x_user[i_id]);

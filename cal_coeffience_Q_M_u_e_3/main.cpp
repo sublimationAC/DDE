@@ -1,6 +1,6 @@
 #include "calculate_coeff.h"
 //#define test_coef_ide_exp
-//#define test_bldshps
+#define test_bldshps
 //#define test_3d2dland
 iden ide[G_train_pic_id_num];
 
@@ -54,7 +54,7 @@ int main() {
 	//test_data_2dland(imgs, ide, 0, 0);
 
 #ifdef test_3d2dland
-	test_3d22dland(imgs[0][0], "./2dland_1.txt",ide,0,0);
+	test_3d22dland(imgs[0][0], "./server/2dland.txt",ide,0,0);
 #endif // test_3d2dland
 
 	
@@ -75,7 +75,7 @@ int main() {
 
 #ifdef test_coef_ide_exp
 	cal_mesh_land(bldshps);
-
+	//cal_mesh_land_exp_only(bldshps);
 #else
 
 	init_exp_ide_r_t_pq(ide, id_idx);

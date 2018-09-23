@@ -78,7 +78,6 @@ float cal_fixed_exp_same_ide(
 
 
 
-
 //ceres
 float ceres_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp);
 
@@ -101,3 +100,4 @@ void test_coef_land(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
 void test_2dland(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
 void cal_mesh_land(Eigen::MatrixXf &bldshps);
+void cal_mesh_land_exp_only(Eigen::MatrixXf &bldshps);
