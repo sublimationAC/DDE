@@ -1,7 +1,8 @@
 #include "calculate_coeff.h"
 //#define test_coef_ide_exp
-#define test_bldshps
+//#define test_bldshps
 //#define test_3d2dland
+//#define test_2dslt_def
 iden ide[G_train_pic_id_num];
 
 Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
@@ -51,13 +52,15 @@ int main() {
 	//load_img_land(gtav_path, ".bmp", ide, id_idx,imgs);
 	load_img_land(test_path_one, ".jpg", ide, id_idx, imgs);
 	printf("id_idx %d\n", id_idx);
-	//test_data_2dland(imgs, ide, 0, 0);
+	test_data_2dland(imgs, ide, 0, 0);
 
 #ifdef test_3d2dland
 	test_3d22dland(imgs[0][0], "./server/2dland.txt",ide,0,0);
 #endif // test_3d2dland
 
-	
+#ifdef test_2dslt_def
+	test_2dslt(imgs, ide, 0, 0);
+#endif
 	
 
 	//14 13

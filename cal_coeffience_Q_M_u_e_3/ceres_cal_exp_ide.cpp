@@ -40,9 +40,9 @@ using ceres::CostFunction;
 using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
-const float beta_exp = 10;
-const float beta_user = 10;
-const float beta_eye = 20;
+const float beta_exp = 0;
+const float beta_user = 0;
+const float beta_eye = 0;
 
 struct ceres_cal_exp {
 	ceres_cal_exp(

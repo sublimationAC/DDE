@@ -21,8 +21,8 @@
 	#include <dirent.h>
 #endif // linux
 
-//#define posit
-#define normalization
+#define posit
+//#define normalization
 
 
 #define EPSILON 1e-6
@@ -62,6 +62,10 @@ void load_img(std::string p, cv::Mat_<uchar> &temp);
 void test_data_2dland(
 	std::vector < std::vector <cv::Mat_<uchar> > >& imgs,
 	iden *ide, int id_idx, int img_idx);
+void test_2dslt(
+	std::vector < std::vector <cv::Mat_<uchar> > >& imgs,
+	iden *ide, int id_idx, int img_idx);
+
 
 void load_inner_land_corr(Eigen::VectorXi &cor);
 void load_jaw_land_corr(Eigen::VectorXi &jaw_cor);
