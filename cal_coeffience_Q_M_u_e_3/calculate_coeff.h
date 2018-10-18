@@ -21,7 +21,7 @@ float pre_cal_exp_ide_R_t(
 	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor, Eigen::VectorXi &jaw_land_corr,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx,
 	Eigen::VectorXf &ide_sg_vl);
-void init_exp_ide(iden *ide, int train_id_num);
+void init_exp_ide(iden *ide, int train_id_num ,int id_idx);
 
 void cal_rt_posit(
 	float f, iden *ide, Eigen::MatrixXf &bldshps,
@@ -79,7 +79,7 @@ float cal_fixed_exp_same_ide(
 
 
 //ceres
-float ceres_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp);
+float ceres_exp_one(float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::RowVectorXf &exp);
 
 float ceres_user_one(
 	float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &id_point, Eigen::VectorXf &user,

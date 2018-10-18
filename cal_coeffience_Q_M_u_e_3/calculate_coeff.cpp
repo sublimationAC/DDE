@@ -63,7 +63,7 @@ void print_bldshps(Eigen::MatrixXf &bldshps) {
 	fopen_s(&fp, "test_svd_bldshps.txt", "w");
 	fprintf(fp, "%d\n", G_iden_num);
 	int exp = 0;
-	for (int i_ide = 0; i_ide < G_nShape; i_ide++) {
+	for (int i_ide = 0; i_ide < G_iden_num; i_ide++) {
 		for (int i_v = 0; i_v < G_nVerts; i_v++)
 			fprintf(fp, "%.10f %.10f %.10f\n",
 				bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3), bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3 + 1), bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3 + 2));
@@ -139,7 +139,7 @@ void cal_f(
 	fclose(fp);
 	fopen_s(&fp, "test_exp_coeff.txt", "w");
 	for (int i_exp = 0; i_exp < ide[0].num; i_exp++) {
-		fprintf(fp, "------------------------------------------\n");
+		fprintf(fp, "\n");
 		for (int i = 0; i < G_nShape; i++)
 			fprintf(fp, "%.10f\n", ide[0].exp(i_exp, i));
 	}
@@ -186,7 +186,7 @@ float pre_cal_exp_ide_R_t(
 	Eigen::VectorXf &ide_sg_vl) {
 
 	puts("preparing expression & other coeffients...");
-	init_exp_ide(ide, G_train_pic_id_num);
+	init_exp_ide(ide, G_train_pic_id_num,id_idx);
 	float error = 0;
 	
 	int tot_r = 4;
@@ -194,13 +194,12 @@ float pre_cal_exp_ide_R_t(
 	//fprintf(fp, "%d\n",tot_r);
 	FILE *fp;
 #ifdef test_coef_save_mesh
-	
 	fopen_s(&fp, cal_coef_land_name.c_str(), "w");
-	fprintf(fp, "%d\n", tot_r+1);
+	fprintf(fp, "%d\n", (tot_r+1)*ide[id_idx].num);
 	fclose(fp);
 
 	fopen_s(&fp, cal_coef_mesh_name.c_str(), "w");
-	fprintf(fp, "%d\n", tot_r+1);
+	fprintf(fp, "%d\n", (tot_r + 1)*ide[id_idx].num);
 	fclose(fp);
 #endif
 
@@ -236,8 +235,8 @@ float pre_cal_exp_ide_R_t(
 			
 			Eigen::VectorXi out_land_cor(15);
 			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor, jaw_land_corr);
-			std::cout << inner_land_cor << '\n';
-			std::cout <<"--------------\n"<< out_land_cor << '\n';
+			//std::cout << inner_land_cor << '\n';
+			//std::cout <<"--------------\n"<< out_land_cor << '\n';
 			Eigen::VectorXi land_cor(G_land_num);
 			for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
 			for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
@@ -250,8 +249,8 @@ float pre_cal_exp_ide_R_t(
 #endif // test_posit_by2dland			
 #ifdef test_coef_save_mesh
 			if (rounds == 0) {
-				test_coef_land(ide, bldshps, id_idx, 0);
-				test_coef_mesh(ide, bldshps, id_idx, 0);
+				test_coef_land(ide, bldshps, id_idx, i_exp);
+				test_coef_mesh(ide, bldshps, id_idx, i_exp);
 			}
 #endif
 			error=cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
@@ -261,8 +260,10 @@ float pre_cal_exp_ide_R_t(
 		
 		printf("+++++++++++++%d %.10f\n", rounds, error);
 #ifdef test_coef_save_mesh
-		test_coef_land(ide,bldshps,id_idx,0);
-		test_coef_mesh(ide, bldshps, id_idx, 0);
+		for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
+			test_coef_land(ide, bldshps, id_idx, i_exp);
+			test_coef_mesh(ide, bldshps, id_idx, i_exp);
+		}
 #endif
 		//if (fabs(error_last - error) < 20) break;
 		//error_last = error;
@@ -272,13 +273,13 @@ float pre_cal_exp_ide_R_t(
 	return error;
 }
 
-void init_exp_ide(iden *ide, int train_id_num) {
+void init_exp_ide(iden *ide, int train_id_num,int id_idx) {
 
 	puts("initializing coeffients(identitiy,expression) for cal f...");
-	for (int i = 0; i < train_id_num; i++) {
-		ide[i].exp= Eigen::MatrixXf::Constant(ide[i].num, G_nShape, 1.0 / G_nShape);
-		ide[i].user= Eigen::MatrixXf::Constant(G_iden_num, 1, 1.0 / G_iden_num);
-	}
+	ide[id_idx].exp= Eigen::MatrixXf::Constant(ide[id_idx].num, G_nShape, 1.0 / G_nShape);
+	for (int j = 0; j < ide[id_idx].num; j++) ide[id_idx].exp(j, 0) = 1;
+	ide[id_idx].user= Eigen::MatrixXf::Constant(G_iden_num, 1, 1.0 / G_iden_num);
+	
 }
 
 
@@ -300,8 +301,8 @@ void cal_rt_posit(
 			for (int axis = 0; axis < 3; axis++)
 				bs_in(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), axis);
 
-		std::cout << bs_in << '\n';
-		std::cout << land_in << "\n";
+		//std::cout << bs_in << '\n';
+		//std::cout << land_in << "\n";
 		temp_num = G_land_num;
 	}
 	else
@@ -312,8 +313,8 @@ void cal_rt_posit(
 		bs_in.resize(G_inner_land_num, 3);
 
 		cal_inner_bldshps(ide, bldshps, bs_in, inner_land_cor, id_idx, exp_idx);
-		std::cout << bs_in << '\n';
-		std::cout << land_in << "\n";
+		//std::cout << bs_in << '\n';
+		//std::cout << land_in << "\n";
 		temp_num = G_inner_land_num;
 	}
 
@@ -512,10 +513,15 @@ float cal_3d_vtx(
 
 	//puts("calculating one vertex coordinate...");
 	float ans = 0;
+
 	for (int i_id = 0; i_id < G_iden_num; i_id++)
 		for (int i_shape = 0; i_shape < G_nShape; i_shape++)
-			ans += ide[id_idx].exp(exp_idx, i_shape)*ide[id_idx].user(i_id)
-			*bldshps(i_id, 3 * G_nVerts*i_shape + vtx_idx * 3 + axis);
+			if (i_shape==0)
+				ans += ide[id_idx].exp(exp_idx, i_shape)*ide[id_idx].user(i_id)
+				*bldshps(i_id, vtx_idx * 3 + axis);
+			else
+				ans += ide[id_idx].exp(exp_idx, i_shape)*ide[id_idx].user(i_id)
+				*(bldshps(i_id, 3 * G_nVerts*i_shape + vtx_idx * 3 + axis) - bldshps(i_id, vtx_idx * 3 + axis));
 	return ans;
 }
 
@@ -563,33 +569,33 @@ void update_slt(
 
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			//for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
-			//	//printf("k %d\n", k);
-			//	for (int axis = 0; axis < 3; axis++) {				
-			//		point[1](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].first, axis);
-			//		point[2](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].second, axis);
-			//	}
-			//	for (int i = 1; i < 3; i++) point[i] = R * point[i] + T;
-			//	V[0] = point[1] - point[0];
-			//	V[1] = point[2] - point[0];
-			//	//puts("C");
-			//	V[0] = V[0].cross(V[1]);
-			//	//puts("D");
-			//	V[0].normalize();
-			//	nor = nor + V[0];
-			//	//printf("__ %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
-			//}
-			////printf("== %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
-			////puts("F");
-			//if (nor.norm() > EPSILON) nor.normalize();
+			for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
+				//printf("k %d\n", k);
+				for (int axis = 0; axis < 3; axis++) {				
+					point[1](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].first, axis);
+					point[2](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].second, axis);
+				}
+				for (int i = 1; i < 3; i++) point[i] = R * point[i] + T;
+				V[0] = point[1] - point[0];
+				V[1] = point[2] - point[0];
+				//puts("C");
+				V[0] = V[0].cross(V[1]);
+				//puts("D");
+				V[0].normalize();
+				nor = nor + V[0];
+				//printf("__ %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			}
+			//printf("== %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			//puts("F");
+			if (nor.norm() > EPSILON) nor.normalize();
 			//std::cout << "nor++\n\n" << nor << "\n";
 			//std::cout << "point--\n\n" << point[0].normalized() << "\n";
 			//std::cout << "rltv--\n\n"<<x << ' ' << nor.dot(point[0].normalized()) << "\n";
-			//if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
 
 
-			point[0].normalize();
-			if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[0];
+			/*point[0].normalize();
+			if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[0];*/
 		}
 		//puts("H");
 		//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
@@ -716,7 +722,7 @@ float cal_3dpaper_exp(
 	Eigen::MatrixXf exp_point(G_nShape, 3 * G_land_num);
 	
 	cal_exp_point_matrix(ide, bldshps, id_idx, exp_idx,land_cor, exp_point);
-	Eigen::VectorXf exp = ide[id_idx].exp.row(exp_idx);
+	Eigen::RowVectorXf exp = ide[id_idx].exp.row(exp_idx);
 	error=ceres_exp_one(f,ide, id_idx, exp_idx, exp_point,exp);
 	ide[id_idx].exp.row(exp_idx) = exp;
 	return error;
@@ -738,7 +744,11 @@ void cal_exp_point_matrix(
 			V.setZero();
 			for (int j = 0; j < 3; j++)
 				for (int i_id = 0; i_id < G_iden_num; i_id++)
-					V(j) += ide[id_idx].user(i_id)*bldshps(i_id, i_shape*G_nVerts*3 + land_cor(i_v) * 3 + j);
+					if (i_shape==0)
+						V(j) += ide[id_idx].user(i_id)*bldshps(i_id, land_cor(i_v) * 3 + j);
+					else
+						V(j) += ide[id_idx].user(i_id)*
+						(bldshps(i_id, i_shape*G_nVerts * 3 + land_cor(i_v) * 3 + j)- bldshps(i_id, land_cor(i_v) * 3 + j));
 			V = rot * V;
 #ifdef normalization
 
@@ -781,7 +791,11 @@ void cal_id_point_matrix(
 			V.setZero();
 			for (int j = 0; j < 3; j++)
 				for (int i_shape = 0; i_shape < G_nShape; i_shape++)
-					V(j) += ide[id_idx].exp(id_idx,i_shape)*bldshps(i_id, i_shape*G_nVerts * 3 + land_cor(i_v) * 3 + j);
+					if (i_shape==0) 
+						V(j) += ide[id_idx].exp(id_idx,i_shape)*bldshps(i_id,land_cor(i_v) * 3 + j);
+					else
+						V(j) += ide[id_idx].exp(id_idx, i_shape)
+						*(bldshps(i_id, i_shape*G_nVerts * 3 + land_cor(i_v) * 3 + j)- bldshps(i_id,land_cor(i_v) * 3 + j));
 			V = rot * V;
 #ifdef normalization
 			V.block(0, 0, 2, 1) = S * V;
@@ -879,22 +893,28 @@ void cal_mesh_land(Eigen::MatrixXf &bldshps) {
 	fclose(fpr);
 	fopen_s(&fpr, "./server/test_exp_coeff.txt", "r");
 	fopen_s(&fpw, "./test_exp_coeff_mesh.txt", "w");
-	int num = 20;
+	int num = 3;
 	fprintf(fpw, "%d\n", num);
 	Eigen::MatrixXf mesh(G_nVerts, 3);
 	//char s[500];
 	for (int j_no = 0; j_no < num; j_no++) {
 		printf("%d \n", j_no);
-		fscanf_s(fpr, "------------------------------------------");
+		//fscanf_s(fpr, "------------------------------------------");
 		//puts(s);
 		for (int i_exp = 0; i_exp < G_nShape; i_exp++)
-			fscanf_s(fpr, "%f", &exp(i_exp));
+			fscanf_s(fpr, "%f", &exp(i_exp));// , printf("%d %.10f\n", i_exp, exp(i_exp));
+		std::cout << exp << "-----------------\n";
+		system("pause");
 		for (int i = 0; i < G_nVerts; i++)
 			for (int axis = 0; axis < 3; axis++) {
 				mesh(i, axis) = 0;
 				for (int i_id = 0; i_id < G_iden_num; i_id++)
 					for (int i_exp=0; i_exp < G_nShape; i_exp++)
-						mesh(i, axis) += bldshps(i_id, i_exp*G_nVerts * 3 + i * 3 + axis)*ide(i_id)*exp(i_exp);
+						if (i_exp==0)
+							mesh(i, axis) += bldshps(i_id, i * 3 + axis)*ide(i_id)*exp(i_exp);
+						else
+							mesh(i, axis) += (bldshps(i_id, i_exp*G_nVerts * 3 + i * 3 + axis)- bldshps(i_id, i * 3 + axis))
+								*ide(i_id)*exp(i_exp);
 			}
 		for (int i = 0; i < G_nVerts; i++)
 			fprintf(fpw, "%.6f %.6f %.6f \n", mesh(i, 0), mesh(i, 1), mesh(i, 2));
@@ -906,7 +926,7 @@ void cal_mesh_land_exp_only(Eigen::MatrixXf &bldshps) {
 	puts("calculating mesh from test_coeff_exp");
 	FILE *fpr, *fpw;
 	Eigen::VectorXf exp(G_nShape);
-	fopen_s(&fpr, "./server/test_exp_coeff.txt", "r");
+	fopen_s(&fpr, "./server/test_exp_coeff_t23.txt", "r");
 	fopen_s(&fpw, "./test_exp_coeff_mesh.txt", "w");
 	int num = 1;
 	fprintf(fpw, "%d\n", num);
@@ -914,7 +934,7 @@ void cal_mesh_land_exp_only(Eigen::MatrixXf &bldshps) {
 	//char s[500];
 	for (int j_no = 0; j_no < num; j_no++) {
 		printf("%d \n", j_no);
-		fscanf_s(fpr, "------------------------------------------");
+		//fscanf_s(fpr, "------------------------------------------");
 		//puts(s);
 		for (int i_exp = 0; i_exp < G_nShape; i_exp++)
 			fscanf_s(fpr, "%f", &exp(i_exp));
@@ -923,7 +943,11 @@ void cal_mesh_land_exp_only(Eigen::MatrixXf &bldshps) {
 				mesh(i, axis) = 0;
 				int i_id = 0;
 				for (int i_exp = 0; i_exp < G_nShape; i_exp++)
-					mesh(i, axis) += bldshps(i_id, i_exp*G_nVerts * 3 + i * 3 + axis)*exp(i_exp);
+					if (i_exp==0) 
+						mesh(i, axis) += bldshps(i_id, i * 3 + axis)*exp(i_exp);
+					else 
+						mesh(i, axis) += 
+						(bldshps(i_id, i_exp*G_nVerts * 3 + i * 3 + axis)- bldshps(i_id,i * 3 + axis))*exp(i_exp);
 			}
 		for (int i = 0; i < G_nVerts; i++)
 			fprintf(fpw, "%.6f %.6f %.6f \n", mesh(i, 0), mesh(i, 1), mesh(i, 2));
