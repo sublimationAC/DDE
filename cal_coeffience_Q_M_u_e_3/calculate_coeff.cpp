@@ -292,7 +292,7 @@ void cal_rt_posit(
 
 	Eigen::MatrixX2f land_in; Eigen::MatrixX3f bs_in;
 	int temp_num = 0;
-	if (ide[id_idx].land_cor(20) == inner_land_cor(20 - 15) && ide[id_idx].land_cor(30) == inner_land_cor(30 - 15)) {
+	if (ide[id_idx].land_cor(exp_idx,20) == inner_land_cor(20 - 15) && ide[id_idx].land_cor(exp_idx, 30) == inner_land_cor(30 - 15)) {
 		land_in.resize(G_land_num, 2);
 		land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num, 0, G_land_num, 2);
 		//std::cout << land_in.transpose() << '\n';
@@ -391,7 +391,7 @@ void test_posit(
 	temp.row(1).array() /= temp.row(2).array();
 	temp = temp.array()*f;
 	std::cout << temp << '\n';
-	std::cout << ide[id_idx].land_2d.block(15, 0, G_land_num - 15, 2) << '\n';
+	std::cout << ide[id_idx].land_2d.block(G_land_num*exp_idx+15, 0, G_land_num - 15, 2) << '\n';
 	system("pause");
 }
 
@@ -402,7 +402,7 @@ void cal_rt_normalization(
 
 	puts("normalization...");	
 	Eigen::MatrixX2f land_in; Eigen::MatrixX3f bs_in;
-	if (ide[id_idx].land_cor(20)==inner_land_cor(20-15) && ide[id_idx].land_cor(30) == inner_land_cor(30 - 15)) {		
+	if (ide[id_idx].land_cor(exp_idx,20)==inner_land_cor(20-15) && ide[id_idx].land_cor(exp_idx,30) == inner_land_cor(30 - 15)) {
 		land_in.resize(G_land_num, 2);
 		land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num, 0, G_land_num, 2);
 		land_in = land_in.rowwise() + ide[id_idx].center.row(exp_idx);
@@ -792,9 +792,9 @@ void cal_id_point_matrix(
 			for (int j = 0; j < 3; j++)
 				for (int i_shape = 0; i_shape < G_nShape; i_shape++)
 					if (i_shape==0) 
-						V(j) += ide[id_idx].exp(id_idx,i_shape)*bldshps(i_id,land_cor(i_v) * 3 + j);
+						V(j) += ide[id_idx].exp(exp_idx,i_shape)*bldshps(i_id,land_cor(i_v) * 3 + j);
 					else
-						V(j) += ide[id_idx].exp(id_idx, i_shape)
+						V(j) += ide[id_idx].exp(exp_idx, i_shape)
 						*(bldshps(i_id, i_shape*G_nVerts * 3 + land_cor(i_v) * 3 + j)- bldshps(i_id,land_cor(i_v) * 3 + j));
 			V = rot * V;
 #ifdef normalization
@@ -861,7 +861,7 @@ void test_2dland(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int e
 	for (int i = 0; i < G_land_num; i++)
 		for (int axis = 0; axis < 3; axis++)
 			land3d(i, axis) =
-			cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(i), axis);
+			cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx,i), axis);
 	puts("B");
 	Eigen::Vector3f tslt = ide[id_idx].tslt.row(exp_idx).transpose();
 	Eigen::Matrix3f R = ide[id_idx].rot.block(exp_idx, 0, 3, 3);
