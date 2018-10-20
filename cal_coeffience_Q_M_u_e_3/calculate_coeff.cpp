@@ -56,7 +56,7 @@ void print_bldshps(Eigen::MatrixXf &bldshps) {
 	int ide = 1;
 	for (int i_exp = 0; i_exp< G_nShape; i_exp++) {
 		for (int i_v = 0; i_v < G_nVerts; i_v++)
-			fprintf(fp, "%.10f %.10f %.10f\n", 
+			fprintf(fp, "%.6f %.6f %.6f\n", 
 				bldshps(ide, i_exp*G_nVerts*3+ i_v*3), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+1), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+2));
 	}
 	fclose(fp);*/
@@ -65,7 +65,7 @@ void print_bldshps(Eigen::MatrixXf &bldshps) {
 	int exp = 0;
 	for (int i_ide = 0; i_ide < G_iden_num; i_ide++) {
 		for (int i_v = 0; i_v < G_nVerts; i_v++)
-			fprintf(fp, "%.10f %.10f %.10f\n",
+			fprintf(fp, "%.6f %.6f %.6f\n",
 				bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3), bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3 + 1), bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3 + 2));
 	}
 	fclose(fp); 
@@ -125,8 +125,8 @@ void cal_f(
 			pre_cal_exp_ide_R_t(i, ide, bldshps, inner_land_corr, jaw_land_corr,
 				slt_line, slt_point_rect, i_id, ide_sg_vl);
 		for (int i = 0; i < (en - st) / step + 1; i++) {
-			printf("test cal f %d %.10f\n", st + i * step, temp(i));
-			fprintf(fp, "%d %.10f\n", st + i * step, temp(i));
+			printf("test cal f %d %.6f\n", st + i * step, temp(i));
+			fprintf(fp, "%d %.6f\n", st + i * step, temp(i));
 		}
 #endif
 
@@ -135,13 +135,13 @@ void cal_f(
 	//FILE *fp;
 	fopen_s(&fp, "test_ide_coeff.txt", "w");
 	for (int i = 0; i < G_iden_num; i++)
-		fprintf(fp, "%.10f\n", ide[0].user(i));
+		fprintf(fp, "%.6f\n", ide[0].user(i));
 	fclose(fp);
 	fopen_s(&fp, "test_exp_coeff.txt", "w");
 	for (int i_exp = 0; i_exp < ide[0].num; i_exp++) {
 		fprintf(fp, "\n");
 		for (int i = 0; i < G_nShape; i++)
-			fprintf(fp, "%.10f\n", ide[0].exp(i_exp, i));
+			fprintf(fp, "%.6f\n", ide[0].exp(i_exp, i));
 	}
 	fclose(fp);
 
@@ -161,13 +161,13 @@ void solve(
 	}
 	fopen_s(&fp, "test_ide_coeff.txt", "w");
 	for (int i = 0; i < G_iden_num; i++)
-		fprintf(fp, "%.10f\n", ide[0].user(i));
+		fprintf(fp, "%.6f\n", ide[0].user(i));
 	fclose(fp);
 	fopen_s(&fp, "test_exp_coeff.txt", "w");
 	for (int i_exp = 0; i_exp < ide[0].num; i_exp++) {
 		fprintf(fp, "------------------------------------------\n");
 		for (int i = 0; i < G_nShape; i++)
-			fprintf(fp, "%.10f\n", ide[0].exp(i_exp, i));
+			fprintf(fp, "%.6f\n", ide[0].exp(i_exp, i));
 	}
 	fclose(fp);
 
@@ -258,7 +258,7 @@ float pre_cal_exp_ide_R_t(
 		}
 		error=cal_fixed_exp_same_ide(f, ide, bldshps, id_idx, ide_sg_vl);
 		
-		printf("+++++++++++++%d %.10f\n", rounds, error);
+		printf("+++++++++++++%d %.6f\n", rounds, error);
 #ifdef test_coef_save_mesh
 		for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
 			test_coef_land(ide, bldshps, id_idx, i_exp);
@@ -269,7 +269,7 @@ float pre_cal_exp_ide_R_t(
 		//error_last = error;
 		temp(rounds) = error;
 	}
-	for (int i = 0; i < tot_r; i++) printf("it %d err %.10f\n",i,temp(i));
+	for (int i = 0; i < tot_r; i++) printf("it %d err %.6f\n",i,temp(i));
 	return error;
 }
 
@@ -563,7 +563,7 @@ void update_slt(
 			//test															//////////////////////////////////debug
 			//puts("A");
 			//fprintf(fp, "%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
-			//printf("%.10f %.10f %.10f \n", point[0](0), point[0](1), point[0](2));
+			//printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
 			//puts("B");
 
 
@@ -723,7 +723,7 @@ float cal_3dpaper_exp(
 	
 	cal_exp_point_matrix(ide, bldshps, id_idx, exp_idx,land_cor, exp_point);
 	Eigen::RowVectorXf exp = ide[id_idx].exp.row(exp_idx);
-	error=ceres_exp_one(f,ide, id_idx, exp_idx, exp_point,exp);
+	error=ceres_exp_one(f,ide, id_idx, exp_idx, exp_point, exp);
 	ide[id_idx].exp.row(exp_idx) = exp;
 	return error;
 }
@@ -902,7 +902,7 @@ void cal_mesh_land(Eigen::MatrixXf &bldshps) {
 		//fscanf_s(fpr, "------------------------------------------");
 		//puts(s);
 		for (int i_exp = 0; i_exp < G_nShape; i_exp++)
-			fscanf_s(fpr, "%f", &exp(i_exp));// , printf("%d %.10f\n", i_exp, exp(i_exp));
+			fscanf_s(fpr, " %f", &exp(i_exp)) , printf("%d %.6f\n", i_exp, exp(i_exp));
 		std::cout << exp << "-----------------\n";
 		system("pause");
 		for (int i = 0; i < G_nVerts; i++)
