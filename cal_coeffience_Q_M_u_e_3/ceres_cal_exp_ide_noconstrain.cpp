@@ -31,17 +31,20 @@
 #include "ceres/ceres.h"
 #include "glog/logging.h"
 #include "calculate_coeff.h"
+#define set_user_bound
 using ceres::AutoDiffCostFunction;
 using ceres::CostFunction;
 using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
 
+float beta_sum_user = 200;
+
 struct ceres_cal_exp {
 	ceres_cal_exp(
 		const float f_, const iden* ide_, const int id_idx_, const int exp_idx_,
 		const Eigen::MatrixXf exp_point_) :
-		ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), exp_point(exp_point_) {}
+		f(f_), ide(ide_), id_idx(id_idx_), exp_idx(exp_idx_), exp_point(exp_point_) {}
 
 	template <typename T> bool operator()(const T* const x_exp, T *residual) const {
 		//puts("TT");
@@ -72,17 +75,23 @@ struct ceres_cal_exp {
 
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
+#ifdef posit
 			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
 			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
+#endif
+#ifdef normalization
+			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) + ide[id_idx].center(exp_idx, 0) - V[0];
+			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) + ide[id_idx].center(exp_idx, 1) - V[1];
+#endif
 
-			//printf("+++++++++%.10f \n", f / V(2));
+			//printf("+++++++++%.6f \n", f / V(2));
 			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
 			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
 			V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
 		}
 		//residual[G_land_num * 2] = (T)0;
-		//printf("- - %.10f\n", ans);
-		//fprintf(fp, "%.10f\n", ans);
+		//printf("- - %.6f\n", ans);
+		//fprintf(fp, "%.6f\n", ans);
 		return true;
 	}
 
@@ -95,7 +104,7 @@ private:
 };
 
 float ceres_exp_one(
-	float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp) {
+	float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::RowVectorXf &exp) {
 
 	puts("optimizing expression coeffients only by ceres");
 	//google::InitGoogleLogging(argv[0]);
@@ -134,7 +143,7 @@ struct ceres_cal_user {
 	ceres_cal_user(
 		const float f_, const iden* ide_, const int id_idx_, const int exp_idx_,
 		const Eigen::MatrixXf id_point_, const Eigen::VectorXf ide_sg_vl_) :
-		ide(ide_), f(f_), id_idx(id_idx_), exp_idx(exp_idx_), id_point(id_point_), ide_sg_vl(ide_sg_vl_) {}
+		f(f_), ide(ide_), id_idx(id_idx_), exp_idx(exp_idx_), id_point(id_point_), ide_sg_vl(ide_sg_vl_) {}
 
 	template <typename T> bool operator()(const T* const x_user, T *residual) const {
 		//puts("TT");
@@ -146,7 +155,7 @@ struct ceres_cal_user {
 
 		/*std::cout << rot << '\n';
 		std::cout << tslt << '\n';*/
-		//T ans = (T)0;		
+			
 		for (int i_v = 0; i_v < G_land_num; i_v++) {
 			T V[3];
 			for (int j = 0; j < 3; j++) V[j] = (T)(0);
@@ -162,19 +171,27 @@ struct ceres_cal_user {
 			//puts("TAT");
 			for (int j = 0; j<3; j++)
 				V[j] = V[j] + tslt[j];
-
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
+#ifdef posit
 			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
 			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
-
-			//printf("+++++++++%.10f \n", f / V(2));
+#endif
+#ifdef normalization
+			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) + ide[id_idx].center(exp_idx, 0) - V[0];
+			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) + ide[id_idx].center(exp_idx, 1) - V[1];
+#endif
+			//printf("+++++++++%.6f \n", f / V(2));
 			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
 			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
 			V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
 		}
-		//printf("- - %.10f\n", ans);
-		//fprintf(fp, "%.10f\n", ans);
+		T ans = (T)0;
+		for (int i_id = 0; i_id < G_iden_num; i_id++)
+			ans += (T)x_user[i_id];
+		printf("- - %.6f\n", ans);
+		residual[G_land_num * 2] = (ans - (T)1)*(ans - (T)1)*(T)beta_sum_user;
+		//fprintf(fp, "%.6f\n", ans);
 
 		return true;
 	}
@@ -199,7 +216,7 @@ float ceres_user_one(
 	//puts("A");
 	Problem problem;
 	problem.AddResidualBlock(
-		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2, G_iden_num>(
+		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2+1, G_iden_num>(
 			new ceres_cal_user(focus, ide, id_idx, exp_idx, id_point, ide_sg_vl)),
 		NULL, x_user);
 	//puts("B");
@@ -244,7 +261,7 @@ float ceres_user_fixed_exp(
 	Problem problem;
 	for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
 		problem.AddResidualBlock(
-			new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2, G_iden_num>(
+			new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2 + 1, G_iden_num>(
 				new ceres_cal_user(focus, ide, id_idx, i_exp,
 					id_point_fix_exp.block(i_exp*G_iden_num, 0, G_iden_num, G_land_num * 3), ide_sg_vl)),
 			NULL, x_user);
