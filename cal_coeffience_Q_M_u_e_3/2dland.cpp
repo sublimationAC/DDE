@@ -282,13 +282,14 @@ void test_2dslt(
 	cvInitFont(&font, CV_FONT_HERSHEY_COMPLEX, 0.01, 0.5, 1, 0.5, 8);
 	IplImage *pImage = cvLoadImage("D:\\sydney\\first\\data_me\\FaceWarehouse\\Tester_6\\TrainingPose/pose_17.jpg");
 	std::string si;
-	for (int i = img_idx * G_land_num + 59; i < img_idx * G_land_num + 65; i++) {
+	for (int i = img_idx * G_land_num + 46; i < img_idx * G_land_num + 53; i++) {
 		//27-35 66-74
-		si = std::to_string(i - img_idx * G_land_num), cvPutText(pImage, si.c_str(), cv::Point2f(ide[id_idx].land_2d(i, 0), ide[id_idx].land_2d(i, 1))
+		si = std::to_string(i - img_idx * G_land_num), cvPutText(pImage, si.c_str()
+			, cv::Point2f(ide[id_idx].land_2d(i, 0), imgs[id_idx][img_idx].rows - ide[id_idx].land_2d(i, 1))
 			, &font, cv::Scalar(255, 255, 255));
 		cv::circle(
 			imgs[id_idx][img_idx],
-			cv::Point2f(ide[id_idx].land_2d(i, 0), ide[id_idx].land_2d(i, 1)),
+			cv::Point2f(ide[id_idx].land_2d(i, 0), imgs[id_idx][img_idx].rows - ide[id_idx].land_2d(i, 1)),
 			3, cv::Scalar(244, 244, 244), -1, 8, 0);
 	}
 	cvShowImage("Original", pImage);
@@ -461,4 +462,133 @@ void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot) {
 		}
 		ide[i_id].dis.array() = ide[i_id].land_2d.array() - land.array();
 	}
+}
+
+void save_result_one(iden *ide, int i_id, int exp_idx, std::string name) {
+	std::cout << "saving coefficients...file:" << name << "\n";
+	FILE *fp;
+	fopen_s(&fp, name.c_str(), "wb");
+	for (int j = 0; j < G_iden_num; j++)
+		fwrite(&ide[i_id].user(j), sizeof(float), 1, fp);
+
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		fwrite(&ide[i_id].land_2d(exp_idx*G_land_num + i_v, 0), sizeof(float), 1, fp);
+		fwrite(&ide[i_id].land_2d(exp_idx*G_land_num + i_v, 1), sizeof(float), 1, fp);
+	}
+
+	fwrite(&ide[i_id].center(exp_idx, 0), sizeof(float), 1, fp);
+	fwrite(&ide[i_id].center(exp_idx, 1), sizeof(float), 1, fp);
+
+	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+		fwrite(&ide[i_id].exp(exp_idx, i_shape), sizeof(float), 1, fp);
+
+	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
+		fwrite(&ide[i_id].rot(exp_idx * 3 + i, j), sizeof(float), 1, fp);
+
+	for (int i = 0; i < 3; i++) fwrite(&ide[i_id].tslt(exp_idx, i), sizeof(float), 1, fp);
+
+	for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&ide[i_id].land_cor(exp_idx, i_v), sizeof(int), 1, fp);
+
+	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
+		fwrite(&ide[i_id].s(exp_idx * 2 + i, j), sizeof(float), 1, fp);
+
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		fwrite(&ide[i_id].dis(exp_idx*G_land_num + i_v, 0), sizeof(float), 1, fp);
+		fwrite(&ide[i_id].dis(exp_idx*G_land_num + i_v, 1), sizeof(float), 1, fp);
+	}
+
+	fclose(fp);
+
+	puts("save successful!");
+}
+
+
+
+
+void save_fitting_coef_each(std::string path, iden *ide, int &id_idx) {
+
+	struct dirent **namelist;
+	int n;
+	n = scandir(path.c_str(), &namelist, 0, alphasort);
+	if (n < 0)
+	{
+		std::cout << "scandir return " << n << "\n";
+		perror("Cannot open .");
+		exit(1);
+	}
+	else
+	{
+		int index = 0;
+		struct dirent *dp;
+		while (index < n)
+		{
+			dp = namelist[index];
+			std::cout << dp->d_name << ' ' << strlen(dp->d_name) << "\n";
+			if (dp->d_name[0] == '.') {
+				free(namelist[index]);
+				index++;
+				continue;
+			}
+			if (dp->d_type == DT_DIR) {
+				printf("save_fitting_coef %d...\n", id_idx);
+				int exp_idx = 0;
+				id_idx += save_fitting_coef_same_id(path + "/" + dp->d_name, ide, id_idx,exp_idx);
+				if (exp_idx != ide[id_idx].num) {
+					std::cout << "error !!! \n";
+					perror("Not match .");
+					exit(1);
+				}
+			}
+			free(namelist[index]);
+			index++;
+		}
+		free(namelist);
+	}
+
+}
+
+int save_fitting_coef_same_id(std::string path, iden *ide, int id_idx,int &exp_idx) {
+
+	int flag = 0;
+	struct dirent **namelist;
+	int n;
+	n = scandir(path.c_str(), &namelist, 0, alphasort);
+	if (n < 0)
+	{
+		std::cout << "scandir return " << n << "\n";
+		perror("Cannot open .");
+		exit(1);
+
+	}
+	else
+	{
+		int index = 0;
+		struct dirent *dp;
+		while (index < n)
+		{
+			dp = namelist[index];
+			if (dp->d_name[0] == '.') {
+				free(namelist[index]);
+				index++;
+				continue;
+			}
+			if (dp->d_type == DT_DIR)
+				flag |= save_fitting_coef_same_id(path + "/" + dp->d_name, ide, id_idx, exp_idx);
+			else {
+				int len = strlen(dp->d_name);
+				if (dp->d_name[len - 1] == 'd' && dp->d_name[len - 2] == 'n') {
+					////	
+					flag = 1;
+					std::string p = path + "/" + dp->d_name;
+					save_result_one(ide, id_idx, exp_idx, p.substr(0, p.find(".land")) + ".lv");
+					exp_idx++;
+				}
+			}
+			free(namelist[index]);
+			index++;
+		}
+		free(namelist);
+	}
+
+	return flag;
 }

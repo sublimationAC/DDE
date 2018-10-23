@@ -12,8 +12,8 @@
 #include <iostream>
 #include <cstring>
 #include <cstdio>
-#define win64
-//#define linux
+//#define win64
+#define linux
 #ifdef win64
 	#include <io.h> 
 #endif // win64
@@ -21,9 +21,9 @@
 	#include <dirent.h>
 #endif // linux
 
-#define posit
-//#define normalization
-
+//#define posit
+#define normalization
+#define deal_64
 
 #define EPSILON 1e-6
 
@@ -34,7 +34,7 @@ const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
-const int G_iden_num = 50;
+const int G_iden_num = 77;
 const int G_inner_land_num = 59;
 const int G_line_num = 50;
 const int G_jaw_land_num = 20;
@@ -42,14 +42,16 @@ const int G_jaw_land_num = 20;
 struct iden
 {
 	int num = 0;
+	Eigen::VectorXf user;
+
 	Eigen::MatrixX2f land_2d;
 	Eigen::MatrixX2f center;
-	Eigen::MatrixXf exp;
-	Eigen::VectorXf user;
+	Eigen::MatrixXf exp;	
 	Eigen::MatrixX3f rot;
 	Eigen::MatrixX3f tslt;
 	Eigen::MatrixXi land_cor;
 	Eigen::MatrixX3f s;
+	Eigen::MatrixX2f dis;
 	float fcs;
 };
 
@@ -74,3 +76,14 @@ void load_slt(
 	std::string path_slt, std::string path_rect);
 
 void test_3d22dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
+
+void save_result(iden *ide, int tot_id, std::string name);
+
+float cal_3d_vtx_(
+	iden *ide, Eigen::MatrixXf &bldshps,
+	int id_idx, int exp_idx, int vtx_idx, int axis);
+void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot);
+
+void save_result_one(iden *ide, int i_id, int exp_idx, std::string name);
+void save_fitting_coef_each(std::string path, iden *ide, int &id_idx);
+int save_fitting_coef_same_id(std::string path, iden *ide, int id_idx, int &exp_idx);
