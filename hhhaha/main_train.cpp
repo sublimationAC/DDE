@@ -32,9 +32,10 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 #include "regressor_train.h"
 #include "utils_train.h"
 #include "load_data.hpp"
+#include "2dland.h"
 
-#define win64
-//#define linux
+//#define win64
+#define linux
 #define changed
 
 #ifdef win64
@@ -44,6 +45,7 @@ std::string lfw_path = "D:/sydney/first/data_me/lfw_image";
 std::string gtav_path = "D:/sydney/first/data_me/GTAV_image";
 std::string test_path = "D:/sydney/first/data_me/test";
 std::string test_path_one = "D:/sydney/first/data_me/test_only_one";
+std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
 
 
 #endif // win64
@@ -53,7 +55,7 @@ std::string lfw_path = "/home/weiliu/DDE/cal_coeff/data_me/lfw_image";
 std::string gtav_path = "/home/weiliu/DDE/cal_coeff/data_me/GTAV_image";
 std::string test_path = "./test";
 std::string test_path_one = "/home/weiliu/DDE/cal_coeff/data_me/test_only_one";
-
+std::string coef_path = "../fitting_coef/ide_fw_p1.lv";
 #endif // linux
 
 using namespace std;
@@ -143,8 +145,7 @@ vector<DataPoint> GetTrainingData(const TrainingParameters &tp)
 	/*load_img_land(fwhs_path,".jpg",result);
 	load_img_land(lfw_path, ".jpg", result);
 	load_img_land(gtav_path, ".bmp", result);*/
-	
-	load_img_land(test_path, ".jpg", result);
+	load_img_land_coef(fwhs_path, ".jpg", result);
 
 #else
 

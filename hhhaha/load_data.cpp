@@ -6,50 +6,69 @@
 
 
 int num = 0;
-void load_img_land(std::string path, std::string sfx, std::vector<DataPoint> &img) {
-	DIR *dir;
-	struct dirent *dp;
-	if ((dir = opendir(path.c_str())) == NULL) {
+void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &img) {
+	struct dirent **namelist;
+	int n;
+	n = scandir(path.c_str(), &namelist, 0, alphasort);
+	if (n < 0)
+	{
+		std::cout << "scandir return " << n << "\n";
 		perror("Cannot open .");
 		exit(1);
 	}
-	while ((dp = readdir(dir)) != NULL) {
-		
-		if (dp->d_name[0] == '.') continue;
-		if (dp->d_type == DT_DIR) {			
-			std::cout << dp->d_name << ' ' << strlen(dp->d_name) << "\n";
-			//printf("Loading identity %d...\n", num);
-			load_img_land(path + "/" + dp->d_name, sfx, img);
-		}
-		else {
-			int len = strlen(dp->d_name);
-			if (dp->d_name[len - 1] == 'd' && dp->d_name[len - 2] == 'n') {
-				////	
-				DataPoint temp;
-				std::string p = path + "/" + dp->d_name;
+	else
+	{
+		int index = 0;
+		struct dirent *dp;
+		while (index < n)
+		{
+			dp = namelist[index];
 
-
-				if (_access((p.substr(0, p.find(".land")) + sfx).c_str(), 0) == -1) continue;
-				load_land(path + "/" + dp->d_name, temp);
-				
-				load_img(p.substr(0, p.find(".land")) + sfx, temp);
-#ifdef  flap_2dland
-				for (int i = 0; i < temp.landmarks.size(); i++)
-					temp.landmarks[i].y = temp.image.rows - temp.landmarks[i].y;
-#endif //  flap_2dland
-				cal_rect(temp);
-				//system("pause");
-				img.push_back(temp);
-
-
-				num++;
-				test_data_2dland(temp);
+			if (dp->d_name[0] == '.') {
+				free(namelist[index]);
+				index++;
+				continue;
 			}
+			if (dp->d_type == DT_DIR) {
+				std::cout << dp->d_name << ' ' << strlen(dp->d_name) << "\n";
+				//printf("Loading identity %d...\n", num);
+				load_img_land_coef(path + "/" + dp->d_name, sfx, img);
+			}
+			else {
+				int len = strlen(dp->d_name);
+				if (dp->d_name[len - 1] == 'd' && dp->d_name[len - 2] == 'n') {
+					////	
+					DataPoint temp;
+					std::string p = path + "/" + dp->d_name;
+
+
+					if (_access((p.substr(0, p.find(".land")) + sfx).c_str(), 0) == -1) continue;
+					load_land(path + "/" + dp->d_name, temp);
+
+					load_img(p.substr(0, p.find(".land")) + sfx, temp);
+#ifdef  flap_2dland
+					for (int i = 0; i < temp.landmarks.size(); i++)
+						temp.landmarks[i].y = temp.image.rows - temp.landmarks[i].y;
+#endif //  flap_2dland
+					//cal_rect(temp);
+					//system("pause");
+					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
+
+
+					img.push_back(temp);
+
+					num++;
+		//			test_data_2dland(temp);
+				}
+			}
+			free(namelist[index]);
+			index++;
 		}
+		free(namelist);
 	}
-	closedir(dir);
 
 }
+
 void load_land(std::string p, DataPoint &temp) {
 	std::cout << p << '\n';
 	FILE *fp;
@@ -67,7 +86,6 @@ void load_land(std::string p, DataPoint &temp) {
 	fclose(fp);
 	//system("pause");
 }
-
 void load_img(std::string p, DataPoint &temp) {	
 	temp.image = cv::imread(p);// , CV_LOAD_IMAGE_GRAYSCALE);
 }
@@ -110,8 +128,6 @@ void cal_rect(DataPoint &temp) {
 	}
 	if (ma == 0) temp.face_rect = cv::Rect(left - 10, top - 10, right - left + 21, bottom - top + 21);
 }
-
-
 
 void test_data_2dland(DataPoint &temp) {
 	puts("testing image");
@@ -164,4 +180,49 @@ void test_data_2dland(DataPoint &temp) {
 	cv::imshow("result", temp.image);
 	cv::waitKey();
 	system("pause");
+}
+
+void load_fitting_coef_one(std::string name, DataPoint &temp) {
+	std::cout << "saving coefficients...file:" << name << "\n";
+	FILE *fp;
+	fopen_s(&fp, name.c_str(), "rb");
+	temp.user.resize(G_iden_num);
+	for (int j = 0; j < G_iden_num; j++)
+		fread(&temp.user(j), sizeof(float), 1, fp);
+
+	temp.land_2d.resize(G_land_num, 2);
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		fread(&temp.land_2d(i_v, 0), sizeof(float), 1, fp);
+		fread(&temp.land_2d(i_v, 1), sizeof(float), 1, fp);
+	}
+
+	
+	fread(&temp.center(0), sizeof(float), 1, fp);
+	fread(&temp.center(1), sizeof(float), 1, fp);
+
+	temp.exp.resize(G_nShape);
+	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+		fwrite(&temp.exp(i_shape), sizeof(float), 1, fp);
+
+	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
+		fwrite(&temp.rot(i, j), sizeof(float), 1, fp);
+
+	for (int i = 0; i < 3; i++) fwrite(&temp.tslt(i), sizeof(float), 1, fp);
+
+	temp.land_cor.resize(G_land_num);
+	for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&temp.land_cor(i_v), sizeof(int), 1, fp);
+
+	temp.s.resize(2, 3);
+	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
+		fwrite(&temp.s(i, j), sizeof(float), 1, fp);
+
+	temp.dis.resize(G_land_num, 2);
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		fwrite(&temp.dis(i_v, 0), sizeof(float), 1, fp);
+		fwrite(&temp.dis(i_v, 1), sizeof(float), 1, fp);
+	}
+
+	fclose(fp);
+
+	puts("save successful!");
 }
