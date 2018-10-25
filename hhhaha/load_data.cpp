@@ -1,4 +1,4 @@
-#include "utils_train.h"
+#include "load_data.hpp"
 #include <dirent.h>
 #include <io.h>
 #define flap_2dland
@@ -200,29 +200,43 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	fread(&temp.center(0), sizeof(float), 1, fp);
 	fread(&temp.center(1), sizeof(float), 1, fp);
 
-	temp.exp.resize(G_nShape);
+	temp.shape.exp.resize(G_nShape);
 	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
-		fwrite(&temp.exp(i_shape), sizeof(float), 1, fp);
+		fread(&temp.shape.exp(i_shape), sizeof(float), 1, fp);
 
 	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
-		fwrite(&temp.rot(i, j), sizeof(float), 1, fp);
+		fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
 
-	for (int i = 0; i < 3; i++) fwrite(&temp.tslt(i), sizeof(float), 1, fp);
+	for (int i = 0; i < 3; i++) fread(&temp.shape.tslt(i), sizeof(float), 1, fp);
 
 	temp.land_cor.resize(G_land_num);
-	for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&temp.land_cor(i_v), sizeof(int), 1, fp);
+	for (int i_v = 0; i_v < G_land_num; i_v++) fread(&temp.land_cor(i_v), sizeof(int), 1, fp);
 
 	temp.s.resize(2, 3);
 	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
-		fwrite(&temp.s(i, j), sizeof(float), 1, fp);
+		fread(&temp.s(i, j), sizeof(float), 1, fp);
 
-	temp.dis.resize(G_land_num, 2);
+	temp.shape.dis.resize(G_land_num, 2);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
-		fwrite(&temp.dis(i_v, 0), sizeof(float), 1, fp);
-		fwrite(&temp.dis(i_v, 1), sizeof(float), 1, fp);
+		fread(&temp.shape.dis(i_v, 0), sizeof(float), 1, fp);
+		fread(&temp.shape.dis(i_v, 1), sizeof(float), 1, fp);
 	}
 
 	fclose(fp);
 
-	puts("save successful!");
+	temp.land_2d.rowwise() += temp.center;
+	puts("load successful!");
+}
+
+void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name) {
+
+	puts("loading blendshapes...");
+	std::cout << name << std::endl;
+	FILE *fp;
+	fopen_s(&fp, name.c_str(), "rb");
+	for (int i = 0; i < G_iden_num; i++) {
+		for (int j = 0; j < G_nShape*G_nVerts * 3; j++)
+			fread(&bldshps(i, j), sizeof(float), 1, fp);
+	}
+	fclose(fp);
 }

@@ -30,9 +30,7 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 #include <opencv2/opencv.hpp>
 
 #include "regressor_train.h"
-#include "utils_train.h"
 #include "load_data.hpp"
-#include "2dland.h"
 
 //#define win64
 #define linux
@@ -192,7 +190,7 @@ vector<DataPoint> GetTrainingData(const TrainingParameters &tp)
 	return result;
 }
 
-vector<vector<cv::Point2d>> CreateTestInitShapes(
+vector<DataPoint> CreateTestInitShapes(
 	const vector<DataPoint> &training_data, const TrainingParameters &tp)
 {
 	if (tp.TestInitShapeCount > training_data.size())
@@ -201,7 +199,7 @@ vector<vector<cv::Point2d>> CreateTestInitShapes(
 			", which is not allowed.");
 	}
 #ifdef changed
-	vector<vector<cv::Point2d>> result;
+	vector<DataPoint> result;
 	set<int> shape_indices;
 	while (shape_indices.size() < tp.TestInitShapeCount){
 		int rand_index = cv::theRNG().uniform(0, training_data.size());
@@ -210,9 +208,9 @@ vector<vector<cv::Point2d>> CreateTestInitShapes(
 
 	for (auto it = shape_indices.cbegin(); it!=shape_indices.cend();  ++it)
 	{
-		vector<cv::Point2d> landmarks = MapShape(training_data[*it].face_rect,
-			training_data[*it].landmarks, cv::Rect(0, 0, 1, 1));
-		result.push_back(landmarks);
+		//vector<cv::Point2d> landmarks = MapShape(training_data[*it].face_rect,
+		//	training_data[*it].landmarks, cv::Rect(0, 0, 1, 1));
+		result.push_back(training_data[*it]);
 	}
 
 #else
@@ -249,7 +247,7 @@ vector<vector<cv::Point2d>> CreateTestInitShapes(
 	return result;
 }
 
-vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, int factor)
+vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, int factor , Eigen::MatrixXf &bldshps)
 {
 	if (training_data.size() < 2 * factor)
 	{
@@ -263,11 +261,12 @@ vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, int facto
 		aug_rand_rot(training_data,result,idx,i);
 		aug_rand_tslt(training_data, result, idx, i);
 		aug_rand_exp(training_data, result, idx, i);
-		aug_rand_user(training_data, result, idx, i);
-		aug_rand_f(training_data, result, idx, i);
+		aug_rand_user(training_data, result, idx, i, bldshps);
+		aug_rand_f(training_data, result, idx, i, bldshps);
 	}
 	return result;
 }
+
 set<int> rand_df_idx(int which,int border, int num) {
 	set<int> result;
 	result.clear();
@@ -279,18 +278,32 @@ set<int> rand_df_idx(int which,int border, int num) {
 	}
 	return result;
 }
+
 void aug_rand_rot(const vector<DataPoint> &traindata, vector<DataPoint> &data,int &idx,int train_idx) {
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_rot);
 	auto it = temp.cbegin();
 	for (int i = 0; i < G_rnd_rot; i++, it++) {
 		data[idx] = traindata[train_idx];
-		data[idx].init_dis = traindata[*it].dis;
-		data[idx].init_exp = traindata[train_idx].exp;
-		data[idx].init_f = traindata[train_idx].f;
-		data[idx].init_tslt = traindata[train_idx].tslt;
-		data[idx].init_user = traindata[train_idx].user;
-		data[idx].init_R = ;
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+		
+		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
+		Eigen::RowVector3f V[2];
+		do {
+			do {
+				V[0] = traindata[train_idx].shape.rot.row(0);
+				for (int j = 0; j < 3; j++)
+					V[0](j) += cv::theRNG().uniform(-G_rand_rot_border, G_rand_rot_border);
+			} while (V[0].norm <= EPSILON);
+			V[0].normalize();
+			V[1] = traindata[train_idx].shape.rot.row(1);
+			V[1] = V[1] - (V[1].dot(V[0]))*V[0];
+		} while (V[1].norm <= EPSILON);
+		V[1].normalize();
+		data[idx].init_shape.rot.row(0) = V[0];
+		data[idx].init_shape.rot.row(1) = V[1];
+		data[idx].init_shape.rot.row(2) = V[0].cross(V[1]);
 		idx++;
 	}
 }
@@ -300,12 +313,11 @@ void aug_rand_tslt(const vector<DataPoint> &traindata, vector<DataPoint> &data, 
 	auto it = temp.cbegin();
 	for (int i = 0; i < G_rnd_tslt; i++, it++) {
 		data[idx] = traindata[train_idx];
-		data[idx].init_dis = traindata[*it].dis;
-		data[idx].init_exp = traindata[train_idx].exp;
-		data[idx].init_f = traindata[train_idx].f;		
-		data[idx].init_user = traindata[train_idx].user;
-		data[idx].init_R = traindata[train_idx].R;
-		data[idx].init_tslt =;
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		for (int j=0;j<3;j++)
+			data[idx].init_shape.tslt(j) =traindata[train_idx].shape.tslt(j) + cv::theRNG().uniform(-G_rand_tslt_border, G_rand_tslt_border);
 		idx++;
 	}
 }
@@ -317,17 +329,16 @@ void aug_rand_exp(const vector<DataPoint> &traindata, vector<DataPoint> &data, i
 	auto it_e = temp_e.cbegin();
 	for (int i = 0; i < G_rnd_exp; i++, it++,it_e++) {
 		data[idx] = traindata[train_idx];
-		data[idx].init_dis = traindata[*it].dis;		
-		data[idx].init_f = traindata[train_idx].f;
-		data[idx].init_tslt = traindata[train_idx].tslt;
-		data[idx].init_user = traindata[train_idx].user;
-		data[idx].init_R = traindata[train_idx].R;
-		data[idx].init_exp = traindata[*it_e].exp;
-		update_slt();
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
+		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].init_shape.exp = traindata[*it_e].shape.exp;
+//		update_slt();
 		idx++;
 	}
 }
-void aug_rand_user(const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx) {
+void aug_rand_user(const vector<DataPoint> &traindata, vector<DataPoint> &data, 
+	int &idx, int train_idx, Eigen::MatrixXf &bldshps) {
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
 	auto it = temp.cbegin();
@@ -335,30 +346,35 @@ void aug_rand_user(const vector<DataPoint> &traindata, vector<DataPoint> &data, 
 	auto it_u = temp_u.cbegin();
 	for (int i = 0; i < G_rnd_user; i++, it++, it_u++) {
 		data[idx] = traindata[train_idx];
-		data[idx].init_dis = traindata[*it].dis;
-		data[idx].init_f = traindata[train_idx].f;
-		data[idx].init_tslt = traindata[train_idx].tslt;
-		data[idx].init_exp = traindata[train_idx].exp;
-		data[idx].init_R = traindata[train_idx].R;
-		data[idx].init_user = traindata[*it_u].user;
-		recal_dis();
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
+		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].user = traindata[*it_u].user;
+		recal_dis(data[idx],bldshps);
 		idx++;
 	}
 }
 
-void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx) {
+void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data, 
+	int &idx, int train_idx, Eigen::MatrixXf &bldshps) {
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
 	auto it = temp.cbegin();
 	for (int i = 0; i < G_rnd_user; i++, it++) {
 		data[idx] = traindata[train_idx];
-		data[idx].init_dis = traindata[*it].dis;
-		data[idx].init_tslt = traindata[train_idx].tslt;
-		data[idx].init_user = traindata[train_idx].user;
-		data[idx].init_R = traindata[train_idx].R;
-		data[idx].init_exp = traindata[train_idx].exp;
-		data[idx].init_f = traindata[train_idx].f + cv::theRNG().uniform((float)0, G_rand_f_bdr);
-		recal_dis();
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
+		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+#ifdef posit
+		data[idx].init_f = traindata[train_idx].f + cv::theRNG().uniform(-G_rand_f_border, G_rand_f_border);
+#endif // posit
+#ifdef normalization
+		data[idx].s(0,0)+= cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
+		data[idx].s(1,1)+= cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
+#endif
+		recal_dis(data[idx], bldshps);
 		idx++;
 	}
 }
@@ -366,16 +382,13 @@ void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data, int
 
 
 
-vector<vector<cv::Point2d>> ComputeNormalizedTargets(
-	const vector<cv::Point2d> mean_shape, const vector<DataPoint> &data)
+vector<Target_type> ComputeTargets(const vector<DataPoint> &data)
 {
-	vector<vector<cv::Point2d>> result;
+	vector<Target_type> result;
 
 	for (const DataPoint& dp : data)
 	{
-		vector<cv::Point2d> error = ShapeDifference(dp.landmarks, dp.init_shape);
-		Transform t = Procrustes(mean_shape, dp.init_shape);
-		t.Apply(&error, false);
+		Target_type error= shape_difference(dp.shape,dp.init_shape);
 		result.push_back(error);
 	}
 
@@ -383,31 +396,36 @@ vector<vector<cv::Point2d>> ComputeNormalizedTargets(
 }
 
 
-void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters &tp)
+void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters &tp, Eigen::MatrixXf &bldshps)
 {
 	cout << "Training data count: " << training_data.size() << endl;
 
 	vector<vector<cv::Point2d>> shapes;
 	for (const DataPoint &dp : training_data)
 		shapes.push_back(dp.landmarks);
-	vector<cv::Point2d> mean_shape = MeanShape(shapes, tp);
-	vector<vector<cv::Point2d>> test_init_shapes = 
+	vector<cv::Point2d> ref_shape = MeanShape(shapes, tp);
+
+
+	vector<DataPoint> test_init_shapes =
 		CreateTestInitShapes(training_data, tp);
+
 	vector<DataPoint> argumented_training_data = 
-		ArgumentData(training_data, tp.ArgumentDataFactor);
+		ArgumentData(training_data, tp.ArgumentDataFactor, bldshps);
 	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));
 	for (int i = 0; i < tp.T; ++i)
 	{
 		long long s = cv::getTickCount();
 
-		vector<vector<cv::Point2d>> normalized_targets = 
-			ComputeNormalizedTargets(mean_shape, argumented_training_data);
-		stage_regressors[i].Regress(mean_shape, &normalized_targets, 
-			argumented_training_data);
+		vector<Target_type> targets = 
+			ComputeTargets(argumented_training_data);
+
+
+		stage_regressors[i].Regress(ref_shape, &targets,
+			argumented_training_data, bldshps);
 		for (DataPoint &dp : argumented_training_data)
 		{
-			vector<cv::Point2d> offset = 
-				stage_regressors[i].Apply(mean_shape, dp);
+			Target_type offset = 
+				stage_regressors[i].Apply(dp,bldshps);
 			Transform t = Procrustes(dp.init_shape, mean_shape);
 			t.Apply(&offset, false);
 			dp.init_shape = ShapeAdjustment(dp.init_shape, offset);
@@ -436,7 +454,8 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	model_file << "]";
 	model_file.release();
 }
-
+Eigen::MatrixXf bldshps(G_iden_num, G_nShape * 3 * G_nVerts);
+std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
@@ -451,9 +470,10 @@ int main(int argc, char *argv[])
 		//cout << tp.Base << ' ' << tp.F << "\n";
 		//system("pause");
 		cout << "Training begin." << endl;
+		load_bldshps(bldshps, bldshps_path);
 		vector<DataPoint> training_data = GetTrainingData(tp);
 		//system("pause");
-		TrainModel(training_data, tp);
+		TrainModel(training_data, tp, bldshps);
 	}
 	catch (const exception &e)
 	{

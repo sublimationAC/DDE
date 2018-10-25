@@ -18,6 +18,22 @@ You should have received a copy of the GNU General Public License
 along with this program.If not, see <http://www.gnu.org/licenses/>.
 */
 
+const int G_land_num = 74;
+const int G_train_pic_id_num = 3300;
+const int G_nShape = 47;
+const int G_nVerts = 11510;
+const int G_nFaces = 11540;
+const int G_test_num = 77;
+const int G_iden_num = 77;
+const int G_inner_land_num = 59;
+const int G_line_num = 50;
+const int G_jaw_land_num = 20;
+
+const float G_rand_rot_border = 0.1;
+const float G_rand_tslt_border = 10;
+const float G_rand_s_border = 10;
+const float G_rand_f_border = 100;
+
 const int G_rnd_rot = 5;
 const int G_rnd_tslt = 5;
 const int G_rnd_exp = 15;
@@ -25,6 +41,9 @@ const int G_rnd_user = 5;
 const int G_rnd_camr = 5;
 const int G_trn_factor = 35;
 const float G_rand_f_bdr = 50;
+
+#define normalization
+#define EPSILON 1e-6
 
 
 #ifndef FACE_X_UTILS_TRAIN_H_
@@ -67,14 +86,27 @@ struct DataPoint
 	cv::Mat image;
 	cv::Rect face_rect;
 	std::vector<cv::Point2d> landmarks;
-	std::vector<cv::Point2d> init_shape;
-
-	Eigen:: VectorXf exp, user, init_exp, init_user;
-	Eigen::Vector3f tslt, init_tslt;
-	Eigen::Matrix3f R, init_R;
-	Eigen::MatrixX2f dis, init_dis;
-	float f, init_f;
+	//std::vector<cv::Point2d> init_shape;
+	Target_type shape, init_shape;
+	Eigen:: VectorXf user;
+	Eigen::Vector2f center;
+	Eigen::MatrixX2f land_2d;
+#ifdef posit
+		float f;
+#endif // posit
+#ifdef normalization
+	Eigen::MatrixX3f s;
+#endif
+	
 	Eigen::VectorXi land_cor;
+};
+
+struct Target_type {
+	Eigen::VectorXf exp;
+	Eigen::Vector3f tslt;
+	Eigen::Matrix3f rot;
+	Eigen::MatrixX2f dis;
+	static int size = G_nShape + 3 + 3 * 3 + 2 * G_land_num;
 };
 
 struct Transform
@@ -96,9 +128,6 @@ Transform Procrustes(const std::vector<cv::Point2d> &x,
 
 std::vector<cv::Point2d> MeanShape(std::vector<std::vector<cv::Point2d>> shapes, 
 	const TrainingParameters &tp);
-
-std::vector<cv::Point2d> ShapeDifference(const std::vector<cv::Point2d> &s1,
-	const std::vector<cv::Point2d> &s2);
 
 std::vector<cv::Point2d> ShapeAdjustment(const std::vector<cv::Point2d> &shape,
 	const std::vector<cv::Point2d> &offset);
