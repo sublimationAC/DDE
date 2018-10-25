@@ -140,16 +140,6 @@ vector<cv::Point2d> MeanShape(vector<vector<cv::Point2d>> shapes,
 }
 
 
-vector<cv::Point2d> ShapeAdjustment(const vector<cv::Point2d> &shape,
-	const vector<cv::Point2d> &offset)
-{
-	assert(shape.size() == offset.size());
-	vector<cv::Point2d> result(shape.size());
-	for (int i = 0; i < shape.size(); ++i)
-		result[i] = shape[i] + offset[i];
-	return result;
-}
-
 double Covariance(double *x, double * y, const int size)
 {
 	double a = 0, b = 0, c = 0;

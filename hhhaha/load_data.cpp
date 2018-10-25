@@ -84,14 +84,14 @@ void load_land(std::string p, DataPoint &temp) {
 		printf("%d %.10f %.10f \n", temp.landmarks.size(),temp.landmarks[i].x, temp.landmarks[i].y);*/
 	}
 	fclose(fp);
-	//system("pause");
+	system("pause");
 }
 void load_img(std::string p, DataPoint &temp) {	
 	temp.image = cv::imread(p);// , CV_LOAD_IMAGE_GRAYSCALE);
 }
 const std::string kAlt2 = "haarcascade_frontalface_alt2.xml";
 void cal_rect(DataPoint &temp) {
-	//puts("testing image");
+	puts("testing image");
 	cv::Mat gray_image;
 	cv::cvtColor(temp.image, gray_image, CV_BGR2GRAY);
 	cv::CascadeClassifier cc(kAlt2);
@@ -173,9 +173,9 @@ void test_data_2dland(DataPoint &temp) {
 	}
 	printf("%.5f %.5f %.5f %.5f\n", left, right, top, bottom);
 	
-	if (ma == 0) temp.face_rect = cv::Rect(left - 10, top - 10, right - left + 21, bottom - top + 21);
+	if (ma == 0) temp.face_rect = cv::Rect(left - (float)10.0, top - (float)10, right - left + (float)21, bottom - top + (float)21);
 
-	cv::rectangle(temp.image, cv::Rect(left - 10, top - 10, right - left + 21, bottom - top + 21), cv::Scalar(255, 0, 255), 2);
+	cv::rectangle(temp.image, cv::Rect(left - (float)10, top - (float)10, right - left + (float)21, bottom - top + (float)21), cv::Scalar(255, 0, 255), 2);
 	cv::rectangle(temp.image, temp.face_rect, cv::Scalar(100, 200, 255), 2);
 	cv::imshow("result", temp.image);
 	cv::waitKey();

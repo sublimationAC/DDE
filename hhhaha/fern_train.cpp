@@ -36,7 +36,7 @@ void FernTrain::Regress(vector<Target_type> *targets,
 {
 
 
-	cv::Mat Y(targets->size(), (*targets)[0].size, CV_64FC1);
+	cv::Mat Y(targets->size(), G_target_type_size, CV_64FC1);
 	for (int i = 0; i < Y.rows; ++i)
 	{
 		/*for (int j = 0; j < Y.cols; j += 2)

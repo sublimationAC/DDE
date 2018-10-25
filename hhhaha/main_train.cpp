@@ -30,7 +30,7 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 #include <opencv2/opencv.hpp>
 
 #include "regressor_train.h"
-#include "load_data.hpp"
+//#include "load_data.hpp"
 
 //#define win64
 #define linux
@@ -247,6 +247,118 @@ vector<DataPoint> CreateTestInitShapes(
 	return result;
 }
 
+set<int> rand_df_idx(int which, int border, int num) {
+	set<int> result;
+	result.clear();
+	while (result.size() < num)
+	{
+		int rand_index = cv::theRNG().uniform(0, border);
+		if (rand_index != which)
+			result.insert(rand_index);
+	}
+	return result;
+}
+
+void aug_rand_rot(const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx) {
+
+	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_rot);
+	auto it = temp.cbegin();
+	for (int i = 0; i < G_rnd_rot; i++, it++) {
+		data[idx] = traindata[train_idx];
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+
+		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
+		Eigen::RowVector3f V[2];
+		do {
+			do {
+				V[0] = traindata[train_idx].shape.rot.row(0);
+				for (int j = 0; j < 3; j++)
+					V[0](j) += cv::theRNG().uniform(-G_rand_rot_border, G_rand_rot_border);
+			} while (V[0].norm() <= EPSILON);
+			V[0].normalize();
+			V[1] = traindata[train_idx].shape.rot.row(1);
+			V[1] = V[1] - (V[1].dot(V[0]))*V[0];
+		} while (V[1].norm() <= EPSILON);
+		V[1].normalize();
+		data[idx].init_shape.rot.row(0) = V[0];
+		data[idx].init_shape.rot.row(1) = V[1];
+		data[idx].init_shape.rot.row(2) = V[0].cross(V[1]);
+		idx++;
+	}
+}
+void aug_rand_tslt(const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx) {
+
+	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_tslt);
+	auto it = temp.cbegin();
+	for (int i = 0; i < G_rnd_tslt; i++, it++) {
+		data[idx] = traindata[train_idx];
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		for (int j = 0; j < 3; j++)
+			data[idx].init_shape.tslt(j) = traindata[train_idx].shape.tslt(j) + cv::theRNG().uniform(-G_rand_tslt_border, G_rand_tslt_border);
+		idx++;
+	}
+}
+void aug_rand_exp(const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx) {
+
+	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_exp);
+	auto it = temp.cbegin();
+	set<int> temp_e = rand_df_idx(train_idx, traindata.size(), G_rnd_exp);
+	auto it_e = temp_e.cbegin();
+	for (int i = 0; i < G_rnd_exp; i++, it++, it_e++) {
+		data[idx] = traindata[train_idx];
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
+		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].init_shape.exp = traindata[*it_e].shape.exp;
+		//		update_slt();
+		idx++;
+	}
+}
+void aug_rand_user(const vector<DataPoint> &traindata, vector<DataPoint> &data,
+	int &idx, int train_idx, Eigen::MatrixXf &bldshps) {
+
+	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
+	auto it = temp.cbegin();
+	set<int> temp_u = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
+	auto it_u = temp_u.cbegin();
+	for (int i = 0; i < G_rnd_user; i++, it++, it_u++) {
+		data[idx] = traindata[train_idx];
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
+		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].user = traindata[*it_u].user;
+		recal_dis(data[idx], bldshps);
+		idx++;
+	}
+}
+
+void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data,
+	int &idx, int train_idx, Eigen::MatrixXf &bldshps) {
+
+	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
+	auto it = temp.cbegin();
+	for (int i = 0; i < G_rnd_user; i++, it++) {
+		data[idx] = traindata[train_idx];
+		data[idx].init_shape.dis = traindata[*it].shape.dis;
+		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
+		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+#ifdef posit
+		data[idx].init_f = traindata[train_idx].f + cv::theRNG().uniform(-G_rand_f_border, G_rand_f_border);
+#endif // posit
+#ifdef normalization
+		data[idx].s(0, 0) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
+		data[idx].s(1, 1) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
+#endif
+		recal_dis(data[idx], bldshps);
+		idx++;
+	}
+}
+
 vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, int factor , Eigen::MatrixXf &bldshps)
 {
 	if (training_data.size() < 2 * factor)
@@ -267,117 +379,7 @@ vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, int facto
 	return result;
 }
 
-set<int> rand_df_idx(int which,int border, int num) {
-	set<int> result;
-	result.clear();
-	while (result.size() < num)
-	{
-		int rand_index = cv::theRNG().uniform(0, border);
-		if (rand_index != which)
-			result.insert(rand_index);
-	}
-	return result;
-}
 
-void aug_rand_rot(const vector<DataPoint> &traindata, vector<DataPoint> &data,int &idx,int train_idx) {
-
-	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_rot);
-	auto it = temp.cbegin();
-	for (int i = 0; i < G_rnd_rot; i++, it++) {
-		data[idx] = traindata[train_idx];
-		data[idx].init_shape.dis = traindata[*it].shape.dis;
-		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
-		
-		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
-		Eigen::RowVector3f V[2];
-		do {
-			do {
-				V[0] = traindata[train_idx].shape.rot.row(0);
-				for (int j = 0; j < 3; j++)
-					V[0](j) += cv::theRNG().uniform(-G_rand_rot_border, G_rand_rot_border);
-			} while (V[0].norm <= EPSILON);
-			V[0].normalize();
-			V[1] = traindata[train_idx].shape.rot.row(1);
-			V[1] = V[1] - (V[1].dot(V[0]))*V[0];
-		} while (V[1].norm <= EPSILON);
-		V[1].normalize();
-		data[idx].init_shape.rot.row(0) = V[0];
-		data[idx].init_shape.rot.row(1) = V[1];
-		data[idx].init_shape.rot.row(2) = V[0].cross(V[1]);
-		idx++;
-	}
-}
-void aug_rand_tslt(const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx) {
-
-	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_tslt);
-	auto it = temp.cbegin();
-	for (int i = 0; i < G_rnd_tslt; i++, it++) {
-		data[idx] = traindata[train_idx];
-		data[idx].init_shape.dis = traindata[*it].shape.dis;
-		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
-		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
-		for (int j=0;j<3;j++)
-			data[idx].init_shape.tslt(j) =traindata[train_idx].shape.tslt(j) + cv::theRNG().uniform(-G_rand_tslt_border, G_rand_tslt_border);
-		idx++;
-	}
-}
-void aug_rand_exp(const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx) {
-
-	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_exp);
-	auto it = temp.cbegin();
-	set<int> temp_e = rand_df_idx(train_idx, traindata.size(), G_rnd_exp);
-	auto it_e = temp_e.cbegin();
-	for (int i = 0; i < G_rnd_exp; i++, it++,it_e++) {
-		data[idx] = traindata[train_idx];
-		data[idx].init_shape.dis = traindata[*it].shape.dis;
-		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
-		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
-		data[idx].init_shape.exp = traindata[*it_e].shape.exp;
-//		update_slt();
-		idx++;
-	}
-}
-void aug_rand_user(const vector<DataPoint> &traindata, vector<DataPoint> &data, 
-	int &idx, int train_idx, Eigen::MatrixXf &bldshps) {
-
-	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
-	auto it = temp.cbegin();
-	set<int> temp_u = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
-	auto it_u = temp_u.cbegin();
-	for (int i = 0; i < G_rnd_user; i++, it++, it_u++) {
-		data[idx] = traindata[train_idx];
-		data[idx].init_shape.dis = traindata[*it].shape.dis;
-		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
-		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
-		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
-		data[idx].user = traindata[*it_u].user;
-		recal_dis(data[idx],bldshps);
-		idx++;
-	}
-}
-
-void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data, 
-	int &idx, int train_idx, Eigen::MatrixXf &bldshps) {
-
-	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
-	auto it = temp.cbegin();
-	for (int i = 0; i < G_rnd_user; i++, it++) {
-		data[idx] = traindata[train_idx];
-		data[idx].init_shape.dis = traindata[*it].shape.dis;
-		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
-		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
-		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
-#ifdef posit
-		data[idx].init_f = traindata[train_idx].f + cv::theRNG().uniform(-G_rand_f_border, G_rand_f_border);
-#endif // posit
-#ifdef normalization
-		data[idx].s(0,0)+= cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
-		data[idx].s(1,1)+= cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
-#endif
-		recal_dis(data[idx], bldshps);
-		idx++;
-	}
-}
 
 
 
@@ -426,9 +428,9 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		{
 			Target_type offset = 
 				stage_regressors[i].Apply(dp,bldshps);
-			Transform t = Procrustes(dp.init_shape, mean_shape);
-			t.Apply(&offset, false);
-			dp.init_shape = ShapeAdjustment(dp.init_shape, offset);
+			/*Transform t = Procrustes(dp.init_shape, mean_shape);
+			t.Apply(&offset, false);*/
+			dp.init_shape = shape_adjustment(dp.init_shape, offset);
 		}
 
 		cout << "(^_^) Finish training " << i + 1 << " regressor. Using " 
@@ -441,12 +443,12 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	system("pause");
 	cv::FileStorage model_file;
 	model_file.open(tp.output_model_pathname, cv::FileStorage::WRITE);
-	model_file << "mean_shape" << mean_shape;
+	model_file << "mean_shape" << ref_shape;
 	model_file << "test_init_shapes" << "[";
-	for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
-	{
-		model_file << *it;
-	}
+	//for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
+	//{
+	//	model_file << *it;
+	//}
 	model_file << "]";
 	model_file << "stage_regressors" << "[";
 	for (auto it = stage_regressors.begin(); it != stage_regressors.end(); ++it)

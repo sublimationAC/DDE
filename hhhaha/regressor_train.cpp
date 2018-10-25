@@ -165,7 +165,7 @@ void RegressorTrain::Regress(const vector<cv::Point2d> &ref_shape,
 
 void RegressorTrain::CompressFerns()
 {
-	base_.create(ferns_[0].outputs[0].size, training_parameters_.Base, CV_64FC1);
+	base_.create(G_target_type_size, training_parameters_.Base, CV_64FC1);
 	vector<int> rand_index;
 	for (int i = 0; i < training_parameters_.K * (1 << training_parameters_.F); ++i)
 		rand_index.push_back(i);
@@ -253,7 +253,7 @@ Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape,
 	for (int i = 0; i < training_parameters_.K; ++i)
 		ferns_[i].ApplyMini(pixels_val, coeffs);
 
-	cv::Mat result_mat = cv::Mat::zeros(data.shape.size, 1, CV_64FC1);
+	cv::Mat result_mat = cv::Mat::zeros(G_target_type_size, 1, CV_64FC1);
 	for (int i = 0; i < training_parameters_.Base; ++i)
 		result_mat += coeffs[i] * base_.col(i);
 		
@@ -267,6 +267,18 @@ Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape,
 	Target_type result;
 	result.dis.resize(G_land_num, 2);
 	result.exp.resize(G_nShape);
+
+	for (int j = 0; j < G_nShape; j++)
+		result.exp(j) = result_mat.at<double>(j);
+		
+	for (int j = 0; j < 3; j++)
+		result.tslt(j) = result_mat.at<double>(j+G_nShape);
+
+	for (int j = 0; j < 3; j++) for (int k = 0; k < 3; k++)
+		result.rot(j,k) = result_mat.at<double>(G_nShape + 3 + j * 3 + k);
+		
+	for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
+		result.dis(j, k) = result_mat.at<double>(G_nShape + 3 + 3 * 3 + j * 2 + k);
 
 	return result;
 }

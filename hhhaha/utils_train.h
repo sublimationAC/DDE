@@ -40,7 +40,8 @@ const int G_rnd_exp = 15;
 const int G_rnd_user = 5;
 const int G_rnd_camr = 5;
 const int G_trn_factor = 35;
-const float G_rand_f_bdr = 50;
+
+const int G_target_type_size= G_nShape + 3 + 3 * 3 + 2 * G_land_num;
 
 #define normalization
 #define EPSILON 1e-6
@@ -81,6 +82,14 @@ struct TrainingParameters
 	int Q = -1;
 };
 
+struct Target_type {
+	Eigen::VectorXf exp;
+	Eigen::Vector3f tslt;
+	Eigen::Matrix3f rot;
+	Eigen::MatrixX2f dis;
+	
+};
+
 struct DataPoint
 {
 	cv::Mat image;
@@ -89,7 +98,7 @@ struct DataPoint
 	//std::vector<cv::Point2d> init_shape;
 	Target_type shape, init_shape;
 	Eigen:: VectorXf user;
-	Eigen::Vector2f center;
+	Eigen::RowVector2f center;
 	Eigen::MatrixX2f land_2d;
 #ifdef posit
 		float f;
@@ -101,13 +110,7 @@ struct DataPoint
 	Eigen::VectorXi land_cor;
 };
 
-struct Target_type {
-	Eigen::VectorXf exp;
-	Eigen::Vector3f tslt;
-	Eigen::Matrix3f rot;
-	Eigen::MatrixX2f dis;
-	static int size = G_nShape + 3 + 3 * 3 + 2 * G_land_num;
-};
+
 
 struct Transform
 {

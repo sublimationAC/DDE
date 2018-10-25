@@ -283,7 +283,7 @@ float dis_cv_pt(CvPoint pointO, CvPoint pointA)
 	distance = powf((pointO.x - pointA.x), 2) + powf((pointO.y - pointA.y), 2);
 	distance = sqrtf(distance);
 
-	float distance;
+	return distance;
 }
 
 float cal_cv_area(CvPoint point0, CvPoint point1, CvPoint point2) {
@@ -327,13 +327,13 @@ Target_type shape_adjustment(Target_type &shape, Target_type &offset)
 	Target_type result;
 
 	result.dis.resize(G_land_num, 2);
-	result.dis.array() = shape.dis.array() - offset.dis.array();
+	result.dis.array() = shape.dis.array() + offset.dis.array();
 
 	result.exp.resize(G_nShape);
-	result.exp.array() = shape.exp.array() - offset.exp.array();
+	result.exp.array() = shape.exp.array() + offset.exp.array();
 
-	result.rot.array() = shape.rot.array() - offset.rot.array();
-	result.tslt.array() = shape.tslt.array() - offset.tslt.array();
+	result.rot.array() = shape.rot.array() + offset.rot.array();
+	result.tslt.array() = shape.tslt.array() + offset.tslt.array();
 
 	return result;
 }
