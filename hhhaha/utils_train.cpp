@@ -87,8 +87,12 @@ static void Normalize(vector<cv::Point2d> * shape, const TrainingParameters &tp)
 	for (cv::Point2d &p : *shape)
 		p -= center;
 
-	cv::Point2d left_eye = (*shape).at(tp.left_eye_index);
-	cv::Point2d right_eye = (*shape).at(tp.right_eye_index);
+	cv::Point2d left_eye = ((*shape).at(tp.left_eye_index_x)) + ((*shape).at(tp.left_eye_index_y));
+	left_eye.x /= 2; left_eye.y /= 2;
+
+	cv::Point2d right_eye = ((*shape).at(tp.right_eye_index_x)) + ((*shape).at(tp.right_eye_index_y));
+	right_eye.x /= 2; right_eye.y /= 2;
+
 	double eyes_distance = cv::norm(left_eye - right_eye);
 	double scale = 1 / eyes_distance;
 

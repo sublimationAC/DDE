@@ -58,8 +58,15 @@ void FernTrain::Regress(vector<Target_type> *targets,
 			Y.at<double>(i, G_nShape + 3 + 3 * 3 + j*2+k) = (*targets)[i].dis(j, k);
 
 	}
+
+
 	features_index.assign(training_parameters.F, pair<int, int>());
 	thresholds.assign(training_parameters.F, 0);
+	for (int i = 0; i <= 20; i++) {
+		printf("line %d :", i);
+		for (int j = 0; j < 100; j++)
+			std::cout << Y.at<double>(i, j);
+	}
 
 	for (int i = 0; i < training_parameters.F; ++i)
 	{
@@ -70,6 +77,7 @@ void FernTrain::Regress(vector<Target_type> *targets,
 		static_cast<cv::Mat>(Y * projection).copyTo(Y_proj);
 		double Y_proj_cov = Covariance(Y_proj.ptr<double>(0), 
 			Y_proj.ptr<double>(0), Y_proj.total());	// Use AVXCovariance if you want.
+
 		vector<double> Y_pixels_cov(pixels_val.rows);
 		for (int j = 0; j < pixels_val.rows; ++j)
 		{
@@ -113,6 +121,7 @@ void FernTrain::Regress(vector<Target_type> *targets,
 	tar_zero.dis.resize(G_land_num, 2);
 	tar_zero.dis.setZero();
 	tar_zero.exp.resize(G_nShape);
+	tar_zero.exp.setZero();
 	tar_zero.rot.setZero();
 	tar_zero.tslt.setZero();
 	outputs.assign(outputs_count, tar_zero);

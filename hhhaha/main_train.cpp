@@ -48,12 +48,20 @@ std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
 
 #endif // win64
 #ifdef linux
-std::string fwhs_path = "/home/weiliu/DDE/cal_coeff/data_me/FaceWarehouse";
+std::string fwhs_path = "/home/weiliu/fitting_dde/fitting_coef/data_me/fw";
 std::string lfw_path = "/home/weiliu/DDE/cal_coeff/data_me/lfw_image";
-std::string gtav_path = "/home/weiliu/DDE/cal_coeff/data_me/GTAV_image";
+std::string gtav_path = "/home/weiliu/fitting_dde/fitting_coef/data_me/GTAV_image";
 std::string test_path = "./test";
 std::string test_path_one = "/home/weiliu/DDE/cal_coeff/data_me/test_only_one";
-std::string coef_path = "../fitting_coef/ide_fw_p1.lv";
+
+//std::string fwhs_path_p1 = "/home/weiliu/fitting_dde/1cal/data_me/fw_p1";
+std::string fwhs_path_p1 = "D:/sydney/first/data_me/test_lv";
+std::string fwhs_path_p2 = "/home/weiliu/fitting_dde/2cal/data_me/fw_p2";
+std::string fwhs_path_p3 = "/home/weiliu/fitting_dde/3cal/data_me/fw_p3";
+std::string fwhs_path_p4 = "/home/weiliu/fitting_dde/4cal/data_me/fw_p4";
+std::string fwhs_path_p5 = "/home/weiliu/fitting_dde/5cal/data_me/fw_p5";
+//std::string bldshps_path = "/home/weiliu/fitting_dde/cal/deal_data/blendshape_ide_svd_77.lv";
+std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
 #endif // linux
 
 using namespace std;
@@ -91,12 +99,20 @@ TrainingParameters ReadParameters(const string &filename)
 		result.landmark_count = stoi(items.at("landmark_count"));
 		if (result.landmark_count <= 0)
 			throw invalid_argument("landmark_count must be positive.");
-		result.left_eye_index = stoi(items.at("left_eye_index"));
-		if (result.left_eye_index < 0 || result.left_eye_index >= result.landmark_count)
-			throw out_of_range("left_eye_index not in range.");
-		result.right_eye_index = stoi(items.at("right_eye_index"));
-		if (result.right_eye_index < 0 || result.right_eye_index >= result.landmark_count)
-			throw out_of_range("right_eye_index not in range.");
+
+		result.left_eye_index_x = stoi(items.at("left_eye_index_x"));
+		result.left_eye_index_y = stoi(items.at("left_eye_index_y"));
+		if (result.left_eye_index_x < 0 || result.left_eye_index_x >= result.landmark_count)
+			throw out_of_range("left_eye_index_x not in range.");
+		if (result.left_eye_index_y < 0 || result.left_eye_index_y >= result.landmark_count)
+			throw out_of_range("left_eye_index_y not in range.");
+		result.right_eye_index_x = stoi(items.at("right_eye_index_x"));
+		result.right_eye_index_y = stoi(items.at("right_eye_index_y"));
+		if (result.right_eye_index_x < 0 || result.right_eye_index_x >= result.landmark_count)
+			throw out_of_range("right_eye_index_x not in range.");
+		if (result.right_eye_index_y < 0 || result.right_eye_index_y >= result.landmark_count)
+			throw out_of_range("right_eye_index_y not in range.");
+
 		result.output_model_pathname = items.at("output_model_pathname");
 		result.T = stoi(items.at("T"));
 		if (result.T <= 0)
@@ -139,113 +155,14 @@ vector<DataPoint> GetTrainingData(const TrainingParameters &tp)
 {
 
 	vector<DataPoint> result;
-#ifdef changed
 	/*load_img_land(fwhs_path,".jpg",result);
 	load_img_land(lfw_path, ".jpg", result);
 	load_img_land(gtav_path, ".bmp", result);*/
-	load_img_land_coef(fwhs_path, ".jpg", result);
-
-#else
-
-	const string label_pathname = tp.training_data_root + "/labels.txt";
-	ifstream fin(label_pathname);
-	/*cout << label_pathname << "\n";
-	system("pause");*/
-	if (!fin)
-		throw runtime_error("Cannot open label file " + label_pathname + " (Pay attention to path separator!)");
-
-
-	string current_image_pathname;
-	int count = 0;
-	while (fin >> current_image_pathname)
-	{
-		cout << current_image_pathname << "\n";
-
-		DataPoint current_data_point;
-		current_data_point.image = cv::imread(tp.training_data_root + "/" +
-			current_image_pathname);
-		//cv::imshow("result", current_data_point.image);
-		//cv::waitKey();
-		//system("pause");
-		if (current_data_point.image.data == nullptr)
-			throw runtime_error("Cannot open image file " + current_image_pathname + " (Pay attention to path separator!)");
-		int left, right, top, bottom;
-		fin >> left >> right >> top >> bottom;
-		current_data_point.face_rect =
-			cv::Rect(left, top, right - left + 1, bottom - top + 1);
-
-		for (int i = 0; i < tp.landmark_count; ++i)
-		{
-			cv::Point2d p;
-			fin >> p.x >> p.y;
-			current_data_point.landmarks.push_back(p);
-		}
-		std::cout << left << ' ' << right << "\n";
-		result.push_back(current_data_point);
-		test_data_2dland(current_data_point);
-		++count;
-	}
-#endif // changed
+	load_img_land_coef(fwhs_path_p1, ".jpg", result);
 
 	return result;
 }
 
-vector<DataPoint> CreateTestInitShapes(
-	const vector<DataPoint> &training_data, const TrainingParameters &tp)
-{
-	if (tp.TestInitShapeCount > training_data.size())
-	{
-		throw invalid_argument("TestInitShapeCount is larger than training image count"
-			", which is not allowed.");
-	}
-#ifdef changed
-	vector<DataPoint> result;
-	set<int> shape_indices;
-	while (shape_indices.size() < tp.TestInitShapeCount){
-		int rand_index = cv::theRNG().uniform(0, training_data.size());
-		shape_indices.insert(rand_index);
-	}
-
-	for (auto it = shape_indices.cbegin(); it!=shape_indices.cend();  ++it)
-	{
-		//vector<cv::Point2d> landmarks = MapShape(training_data[*it].face_rect,
-		//	training_data[*it].landmarks, cv::Rect(0, 0, 1, 1));
-		result.push_back(training_data[*it]);
-	}
-
-#else
-
-	const int kLandmarksSize = training_data[0].landmarks.size();
-	cv::Mat all_landmarks(training_data.size(), kLandmarksSize * 2, CV_32FC1);
-	for (int i = 0; i < training_data.size(); ++i)
-	{
-		vector<cv::Point2d> landmarks = MapShape(training_data[i].face_rect,
-			training_data[i].landmarks, cv::Rect(0, 0, 1, 1));
-		for (int j = 0; j < kLandmarksSize; ++j)
-		{
-			all_landmarks.at<float>(i, j * 2) = static_cast<float>(landmarks[j].x);
-			all_landmarks.at<float>(i, j * 2 + 1) = static_cast<float>(landmarks[j].y);
-		}
-	}
-	cv::Mat labels, centers;
-	cv::kmeans(all_landmarks, tp.TestInitShapeCount, labels, 
-		cv::TermCriteria(cv::TermCriteria::COUNT, 50, 0), 
-		10, cv::KMEANS_RANDOM_CENTERS | cv::KMEANS_PP_CENTERS, centers);
-
-	vector<vector<cv::Point2d>> result;
-	for (int i = 0; i < tp.TestInitShapeCount; ++i)
-	{
-		vector<cv::Point2d> landmarks;
-		for (int j = 0; j < kLandmarksSize; ++j)
-		{
-			landmarks.push_back(cv::Point2d(
-				centers.at<float>(i, j * 2), centers.at<float>(i, j * 2 + 1)));
-		}
-		result.push_back(landmarks);
-	}
-#endif
-	return result;
-}
 
 set<int> rand_df_idx(int which, int border, int num) {
 	set<int> result;
@@ -359,13 +276,9 @@ void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data,
 	}
 }
 
-vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, int factor , Eigen::MatrixXf &bldshps)
+vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, Eigen::MatrixXf &bldshps)
 {
-	if (training_data.size() < 2 * factor)
-	{
-		throw invalid_argument("You should provide training data with at least "
-			"2*ArgumentDataFactor images.");
-	}
+
 	vector<DataPoint> result(training_data.size() * G_trn_factor);
 	int idx = 0;
 	for (int i = 0; i < training_data.size(); ++i)
@@ -403,17 +316,26 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	cout << "Training data count: " << training_data.size() << endl;
 
 	vector<vector<cv::Point2d>> shapes;
+	//puts("A");
 	for (const DataPoint &dp : training_data)
 		shapes.push_back(dp.landmarks);
-	vector<cv::Point2d> ref_shape = MeanShape(shapes, tp);
-
-
-	vector<DataPoint> test_init_shapes =
-		CreateTestInitShapes(training_data, tp);
+	//puts("D");
+	vector<cv::Point2d> ref_shape = mean_shape(shapes, tp);
+	//puts("A");
 
 	vector<DataPoint> argumented_training_data = 
-		ArgumentData(training_data, tp.ArgumentDataFactor, bldshps);
+		ArgumentData(training_data, bldshps);	
+	//for (int i = 0; i < 100; i++)
+	//	print_datapoint(argumented_training_data[i]);
+	puts("B");
 	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));
+	puts("C");
+	Eigen::MatrixX3i tri_idx;
+	std::vector<cv::Vec6f> triangleList;
+	cv::Rect rect;
+	puts("D");
+	cal_del_tri(ref_shape, rect, triangleList, tri_idx);
+	puts("E");
 	for (int i = 0; i < tp.T; ++i)
 	{
 		long long s = cv::getTickCount();
@@ -422,12 +344,14 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 			ComputeTargets(argumented_training_data);
 
 
-		stage_regressors[i].Regress(ref_shape, &targets,
+		stage_regressors[i].Regress(
+			triangleList,rect,tri_idx,ref_shape, &targets,
 			argumented_training_data, bldshps);
+
 		for (DataPoint &dp : argumented_training_data)
 		{
 			Target_type offset = 
-				stage_regressors[i].Apply(dp,bldshps);
+				stage_regressors[i].Apply(dp,bldshps,tri_idx);
 			/*Transform t = Procrustes(dp.init_shape, mean_shape);
 			t.Apply(&offset, false);*/
 			dp.init_shape = shape_adjustment(dp.init_shape, offset);
@@ -443,13 +367,13 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	system("pause");
 	cv::FileStorage model_file;
 	model_file.open(tp.output_model_pathname, cv::FileStorage::WRITE);
-	model_file << "mean_shape" << ref_shape;
-	model_file << "test_init_shapes" << "[";
+	model_file << "ref_shape" << ref_shape;
+	//model_file << "test_init_shapes" << "[";
 	//for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
 	//{
 	//	model_file << *it;
 	//}
-	model_file << "]";
+	//model_file << "]";
 	model_file << "stage_regressors" << "[";
 	for (auto it = stage_regressors.begin(); it != stage_regressors.end(); ++it)
 		model_file << *it;
@@ -457,7 +381,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	model_file.release();
 }
 Eigen::MatrixXf bldshps(G_iden_num, G_nShape * 3 * G_nVerts);
-std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
+
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
@@ -483,3 +407,15 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 }
+
+/*
+1 grep -rl 'fopen_s(&fp,' ./ | xargs sed -i 's/fopen_s(&fp,/fp=fopen(/g'
+2
+3
+4 grep -rl 'fscanf_s' ./ | xargs sed -i 's/fscanf_s/fscanf/g'
+
+
+grep -rl 'fopen_s(&fpr,' ./ | xargs sed -i 's/fopen_s(&fpr,/fpr=fopen(/g'
+grep -rl 'fopen_s(&fpw,' ./ | xargs sed -i 's/fopen_s(&fpw,/fpw=fopen(/g'
+*/
+

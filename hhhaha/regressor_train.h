@@ -34,17 +34,18 @@ class RegressorTrain
 {
 public:
 	RegressorTrain(const TrainingParameters &tp);
-	void Regress(const std::vector<cv::Point2d> &mean_shape, 
-		std::vector<Target_type> *targets,
-		const std::vector<DataPoint> & training_data, Eigen::MatrixXf &bldshps);
+	void Regress(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect,
+		Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
+		const std::vector<DataPoint> &training_data, Eigen::MatrixXf &bldshps) ;
+
 	Target_type Apply(//const std::vector<cv::Point2d> &mean_shape,
-		const DataPoint &data, Eigen::MatrixXf &bldshps) const;
+		const DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3i &tri_idx) const;
 
 	void write(cv::FileStorage &fs)const;
 
 private:
 	std::vector<std::pair<int, cv::Point2d>> pixels_;
-	Eigen::MatrixX3i tri_idx;
+	
 	std::vector<FernTrain> ferns_;
 	cv::Mat base_;
 	const TrainingParameters &training_parameters_;

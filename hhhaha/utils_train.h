@@ -65,8 +65,10 @@ struct TrainingParameters
 	/* General parameters */
 	std::string training_data_root = "";
 	int landmark_count = -1;
-	int left_eye_index = -1;
-	int right_eye_index = -1;
+	int left_eye_index_x = -1;
+	int left_eye_index_y = -1;
+	int right_eye_index_x = -1;
+	int right_eye_index_y = -1;
 	std::string output_model_pathname = "";
 
 	/* Model parameters */
@@ -84,7 +86,7 @@ struct TrainingParameters
 
 struct Target_type {
 	Eigen::VectorXf exp;
-	Eigen::Vector3f tslt;
+	Eigen::RowVector3f tslt;
 	Eigen::Matrix3f rot;
 	Eigen::MatrixX2f dis;
 	

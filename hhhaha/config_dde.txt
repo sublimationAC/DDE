@@ -13,12 +13,13 @@ landmark_count: 74
 
 # The index of left eye center in landmarks. If there is no landmark for eye center 
 # in the landmark configuration, choose one near eye center (e.g. eye corner)
-left_eye_index_x: 27
-left_eye_index_y: 29
+left_eye_index_x: 29
+left_eye_index_y: 27
 
 # Same as above, for right eye center
-right_eye_index_x: 31
-right_eye_index_y: 33
+right_eye_index_x: 33
+right_eye_index_y: 31
+
 
 # The output model file path and name (must end with ".xml.gz")
 output_model_pathname: model.xml.gz
@@ -29,10 +30,10 @@ output_model_pathname: model.xml.gz
 # can use the default value as below.
 
 # The number of top-level stages
-T: 15
+T: 10
 
 # The number of bottom-level stages for each top-level stage
-K: 300
+K: 500
 
 # The number of random features generated for each top-level stage
 P: 400

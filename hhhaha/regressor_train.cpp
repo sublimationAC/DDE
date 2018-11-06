@@ -36,29 +36,30 @@ RegressorTrain::RegressorTrain(const TrainingParameters &tp)
 	pixels_ = std::vector<std::pair<int, cv::Point2d>>(training_parameters_.P);
 }
 
+cv::Point2f div_3(std::vector<cv::Point2f> &pt) {
+	return cv::Point2f((pt[0].x + pt[1].x + pt[2].x) / 3.0, (pt[0].y + pt[1].y + pt[2].y) / 3.0);
+}
+
+
 void get_rti_center(
-	std::vector<cv::Vec6f> &triangleList, std::vector<cv::Point2f> &tri_center, Eigen::MatrixX3i &tri_idx,
-	const vector<cv::Point2d> &ref_shape, cv::Rect rect) {
-	std::vector<cv::Point> pt(3);
+	std::vector<cv::Vec6f> &triangleList, std::vector<cv::Point2f> &tri_center, cv::Rect &rect) {
+	tri_center.resize(triangleList.size());
+	std::vector<cv::Point2f> pt(3);
 	for (size_t i = 0; i < triangleList.size(); i++)
 	{
 		cv::Vec6f t = triangleList[i];
-		pt[0] = cv::Point(t[0], t[1]);
-		pt[1] = cv::Point(t[2],t[3]);
-		pt[2] = cv::Point(t[4],t[5]);
+		pt[0] = cv::Point2f(t[0], t[1]);
+		pt[1] = cv::Point2f(t[2], t[3]);
+		pt[2] = cv::Point2f(t[4], t[5]);
 
 		if (rect.contains(pt[0]) && rect.contains(pt[1]) && rect.contains(pt[2]))
-		{
-			tri_center[i] = (pt[0] + pt[1] + pt[2]) / 3;			
-			for (int k = 0; k < ref_shape.size(); k++)
-				for (int j = 0; j < 3; j++)
-					if (dis_cv_pt(ref_shape[k], pt[j]) < EPSILON) tri_idx(i, j) = k;
-		}
+			tri_center[i] = div_3(pt);
 	}
 }
 
-int find_neat_center(cv::Point2f x, std::vector<cv::Point2f> &tri_center) {
-	float mi = 1000000;
+
+int find_nearest_center(cv::Point2f x, std::vector<cv::Point2f> &tri_center) {
+	double mi = 1000000;
 	int ans = 0;
 	for (int i = 0; i < tri_center.size(); i++)
 		if (dis_cv_pt(x, tri_center[i]) < mi) mi = dis_cv_pt(x, tri_center[i]), ans = i;
@@ -67,36 +68,33 @@ int find_neat_center(cv::Point2f x, std::vector<cv::Point2f> &tri_center) {
 
 
 
-
-
-void RegressorTrain::Regress(const vector<cv::Point2d> &ref_shape,
-	vector<Target_type> *targets,
-	const vector<DataPoint> & training_data, Eigen::MatrixXf &bldshps)
+void RegressorTrain::Regress(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect, 
+	Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
+	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps)
 {
-	double left = 10000, right = -10000, top = 10000, bottom = -10000;
-	for (cv::Point2d landmark : ref_shape) {
-		left = std::min(left, landmark.x);
-		right = std::max(right, landmark.x);
-		top = std::min(top, landmark.y);
-		bottom = std::max(bottom, landmark.y);
+	puts("regressing");
+	std::vector<cv::Point2f> tri_center;
+	get_rti_center(triangleList, tri_center, rect);
+	for (int i = 0; i < triangleList.size(); i++) {
+		printf("%d %.2f %.2f %.2f %.2f %.2f %.2f\n", i, triangleList[i][0], triangleList[i][1], triangleList[i][2], triangleList[i][3], triangleList[i][4], triangleList[i][5]);
+		printf("%d %.2f %.2f\n", i, tri_center[i].x, tri_center[i].y);
+		printf("%d %d %d %d\n", i, tri_idx(i, 0), tri_idx(i, 1), tri_idx(i, 2));
+		
 	}
-	std::vector<cv::Vec6f> triangleList;
-	cal_del_tri(ref_shape, cv::Rect(left - 10, top - 10, right - left + 21, bottom - top + 21), triangleList);
 
-	std::vector<cv::Point2f> tri_center(triangleList.size());
-	tri_idx.resize(triangleList.size(), 3);
-	get_rti_center(triangleList,tri_center, tri_idx, ref_shape,
-		cv::Rect(left - 10, top - 10, right - left + 21, bottom - top + 21));
-
+	
 	for (int i = 0; i < training_parameters_.P; ++i)
 	{
-		float s[4];
+		printf("+ +%d\n", i);
+
+		double s[4];
 		int idx;
 		do {
 			cv::Point2f temp;
-			temp.x = cv::theRNG().uniform(left, right);
-			temp.y = cv::theRNG().uniform(top, bottom);
-			idx = find_neat_center(temp, tri_center);			
+			temp.x = cv::theRNG().uniform(rect.x, rect.x+rect.width);
+			temp.y = cv::theRNG().uniform(rect.y, rect.y+rect.height);
+			idx = find_nearest_center(temp, tri_center);
+			printf("i %d idx %d\n %d %d %d\n",i, idx, tri_idx(idx, 0), tri_idx(idx, 1), tri_idx(idx, 2));
 			s[0] = cal_cv_area(temp, ref_shape[tri_idx(idx, 2)], ref_shape[tri_idx(idx, 1)]);
 			s[1] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 2)]);
 			s[2] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
@@ -118,6 +116,7 @@ void RegressorTrain::Regress(const vector<cv::Point2d> &ref_shape,
 
 	cv::Mat pixels_val(training_parameters_.P, training_data.size(), CV_64FC1,
 	cv::alignPtr(pixels_val_data.get(), 32));
+	std::vector<cv::Point2d> temp(G_land_num);
 	for (int i = 0; i < pixels_val.cols; ++i)
 	{
 		/*Transform t = Procrustes(training_data[i].init_shape, mean_shape);
@@ -125,7 +124,7 @@ void RegressorTrain::Regress(const vector<cv::Point2d> &ref_shape,
 		for (int j = 0; j < training_parameters_.P; ++j)
 			offsets[j] = pixels_[j].second;
 		t.Apply(&offsets, false);*/
-		vector<cv::Point2d> temp(G_land_num);
+		
 		cal_init_2d_land_i(temp, training_data[i], bldshps);
 
 		for (int j = 0; j < training_parameters_.P; ++j)
@@ -152,12 +151,16 @@ void RegressorTrain::Regress(const vector<cv::Point2d> &ref_shape,
 
 	for (int i = 0; i < training_parameters_.K; ++i)
 	{
+		printf("inner regressing no:%d\n",i);
 		ferns_[i].Regress(targets, pixels_val, pixels_cov);
 		for (int j = 0; j < targets->size(); ++j)
 		{
 			(*targets)[j] = shape_difference((*targets)[j], ferns_[i].Apply(
 				pixels_val(cv::Range::all(), cv::Range(j, j + 1))));
 		}
+		int idx= cv::theRNG().uniform(0, targets->size());
+		cout << "-----------\nidx:" << idx << "\n";
+		print_target((*targets)[idx]);
 	}
 
 	CompressFerns();
@@ -223,7 +226,7 @@ void RegressorTrain::CompressFerns()
 }
 
 Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape, 
-	const DataPoint &data, Eigen::MatrixXf &bldshps) const
+	const DataPoint &data, Eigen::MatrixXf &bldshps,Eigen::MatrixX3i &tri_idx) const
 {
 	cv::Mat pixels_val(1, training_parameters_.P, CV_64FC1);
 	//Transform t = Procrustes(data.init_shape, mean_shape);
@@ -233,11 +236,12 @@ Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape,
 	//t.Apply(&offsets, false);
 
 	double *p = pixels_val.ptr<double>(0);
+	vector<cv::Point2d> temp(G_land_num);
+	cal_init_2d_land_i(temp, data, bldshps);
 	for (int j = 0; j < training_parameters_.P; ++j)
 	{
 		//cv::Point pixel_pos = data.init_shape[pixels_[j].first] + offsets[j];
-		vector<cv::Point2d> temp(G_land_num);
-		cal_init_2d_land_i(temp, data, bldshps);
+		
 		cv::Point pixel_pos =
 			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
 			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +

@@ -6,7 +6,7 @@
 
 
 int num = 0;
-void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &img) {
+void load_img_land_coef(std::string &path, std::string sfx, std::vector<DataPoint> &img) {
 	struct dirent **namelist;
 	int n;
 	n = scandir(path.c_str(), &namelist, 0, alphasort);
@@ -22,6 +22,7 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 		struct dirent *dp;
 		while (index < n)
 		{
+			printf("load_img_land_coef idx:%d n:%d\n", index, n);
 			dp = namelist[index];
 
 			if (dp->d_name[0] == '.') {
@@ -42,7 +43,11 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 					std::string p = path + "/" + dp->d_name;
 
 
-					if (_access((p.substr(0, p.find(".land")) + sfx).c_str(), 0) == -1) continue;
+					if (_access((p.substr(0, p.find(".land")) + sfx).c_str(), 0) == -1) {
+						free(namelist[index]);
+						index++;
+						continue;
+					}
 					load_land(path + "/" + dp->d_name, temp);
 
 					load_img(p.substr(0, p.find(".land")) + sfx, temp);
@@ -69,7 +74,7 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 
 }
 
-void load_land(std::string p, DataPoint &temp) {
+void load_land(std::string &p, DataPoint &temp) {
 	std::cout << p << '\n';
 	FILE *fp;
 	fopen_s(&fp, p.c_str(), "r");
@@ -84,12 +89,13 @@ void load_land(std::string p, DataPoint &temp) {
 		printf("%d %.10f %.10f \n", temp.landmarks.size(),temp.landmarks[i].x, temp.landmarks[i].y);*/
 	}
 	fclose(fp);
-	system("pause");
+	//system("pause");
 }
-void load_img(std::string p, DataPoint &temp) {	
+void load_img(std::string &p, DataPoint &temp) {	
 	temp.image = cv::imread(p);// , CV_LOAD_IMAGE_GRAYSCALE);
 }
 const std::string kAlt2 = "haarcascade_frontalface_alt2.xml";
+#include<algorithm>
 void cal_rect(DataPoint &temp) {
 	puts("testing image");
 	cv::Mat gray_image;
@@ -182,8 +188,8 @@ void test_data_2dland(DataPoint &temp) {
 	system("pause");
 }
 
-void load_fitting_coef_one(std::string name, DataPoint &temp) {
-	std::cout << "saving coefficients...file:" << name << "\n";
+void load_fitting_coef_one(std::string &name, DataPoint &temp) {
+	std::cout << "loading coefficients...file:" << name << "\n";
 	FILE *fp;
 	fopen_s(&fp, name.c_str(), "rb");
 	temp.user.resize(G_iden_num);
@@ -208,6 +214,9 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 		fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
 
 	for (int i = 0; i < 3; i++) fread(&temp.shape.tslt(i), sizeof(float), 1, fp);
+#ifdef normalization
+	temp.shape.tslt(2) = 0;
+#endif // normalization
 
 	temp.land_cor.resize(G_land_num);
 	for (int i_v = 0; i_v < G_land_num; i_v++) fread(&temp.land_cor(i_v), sizeof(int), 1, fp);
