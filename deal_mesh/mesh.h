@@ -32,3 +32,7 @@ void get_coef_land(Eigen::MatrixX3f &coef_land, std::string name);
 void test_coef_land(Eigen::MatrixX3f &coef_land, int idx);
 void get_coef_mesh(Eigen::MatrixX3f &coef_mesh,std::string name);
 void test_coef_mesh(Mesh_my &mesh, Eigen::MatrixX3f &coef_mesh, int idx);
+void smooth_mesh(Mesh_my &mesh, int iteration);
+bool check_mouse_vtx(Mesh_my &mesh, int i);
+void get_mouse_data(Mesh_my &mesh);
+void test_mouse(Mesh_my &mesh);
