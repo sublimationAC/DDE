@@ -214,9 +214,9 @@ void load_fitting_coef_one(std::string &name, DataPoint &temp) {
 		fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
 
 	for (int i = 0; i < 3; i++) fread(&temp.shape.tslt(i), sizeof(float), 1, fp);
-#ifdef normalization
-	temp.shape.tslt(2) = 0;
-#endif // normalization
+//#ifdef normalization
+//	temp.shape.tslt(2) = 0;
+//#endif // normalization
 
 	temp.land_cor.resize(G_land_num);
 	for (int i_v = 0; i_v < G_land_num; i_v++) fread(&temp.land_cor(i_v), sizeof(int), 1, fp);

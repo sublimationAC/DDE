@@ -303,7 +303,7 @@ void cal_del_tri(
 						+ (points[k].y - pt[j].y)*(points[k].y - pt[j].y));
 
 				}
-			printf("--++-- %d %d %d %d\n", i, tri_idx(i, 0), tri_idx(i, 1), tri_idx(i, 2));
+			//printf("--++-- %d %d %d %d\n", i, tri_idx(i, 0), tri_idx(i, 1), tri_idx(i, 2));
 		}
 	}
 }
