@@ -12,10 +12,11 @@
 #include <iostream>
 #include <cstring>
 #include <cstdio>
-//#define win64
-#define linux
+#define win64
+//#define linux
 #ifdef win64
 	#include <io.h> 
+	#include <dirent.h>
 #endif // win64
 #ifdef linux
 	#include <dirent.h>
@@ -34,7 +35,7 @@ const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
-const int G_iden_num = 77;
+const int G_iden_num = 10;
 const int G_inner_land_num = 59;
 const int G_line_num = 50;
 const int G_jaw_land_num = 20;

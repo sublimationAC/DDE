@@ -1,8 +1,8 @@
 #include "calculate_coeff.h"
 //#define test_coef_ide_exp
-//#define test_bldshps
+#define test_bldshps
 //#define test_3d2dland
-#define test_2dslt_def
+//#define test_2dslt_def
 iden ide[G_train_pic_id_num];
 
 Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
@@ -13,7 +13,7 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 	std::string gtav_path = "D:/sydney/first/data_me/GTAV_image";
 	std::string test_path = "D:/sydney/first/data_me/test";
 	std::string test_path_one = "D:/sydney/first/data_me/test_only_one";
-	std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
+	std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77_ite25_bound.lv";
 	std::string sg_vl_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_value_sqrt_77.txt";
 	std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/sillht.txt";
 	std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_point_rect.txt";
@@ -22,13 +22,14 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 #endif // win64
 #ifdef linux
 	std::string fwhs_path = "./data_me/FaceWarehouse";
+	std::string fwhs_path_p = "./data_me/fw_p1";
 	std::string lfw_path = "./data_me/lfw_image";
 	std::string gtav_path = "./data_me/GTAV_image";
 	std::string test_path = "./data_me/test";
 	std::string test_path_one = "./data_me/test_only_one";
 	std::string test_path_two = "./data_me/test_only_two";
 	std::string test_path_three = "./data_me/test_only_three";	
-	std::string bldshps_path = "./deal_data/blendshape_ide_svd_77.lv";
+	std::string bldshps_path = "./deal_data/blendshape_ide_svd_50_ite25_0bound.lv";
 	std::string sg_vl_path = "./deal_data/blendshape_ide_svd_value_sqrt_77.txt";
 	std::string slt_path = "./3d22d/sillht.txt";
 	std::string rect_path = "./3d22d/slt_point_rect.txt";
@@ -54,6 +55,7 @@ int main() {
 	printf("id_idx %d\n", id_idx);
 	//load_img_land(gtav_path, ".bmp", ide, id_idx,imgs);
 	load_img_land(test_path_one, ".jpg", ide, id_idx, imgs);
+
 	printf("id_idx %d\n", id_idx);      
 	//test_data_2dland(imgs, ide, 0, 0);
 	
@@ -76,7 +78,7 @@ int main() {
 	load_bldshps(bldshps,bldshps_path,ide_sg_vl, sg_vl_path);
 #ifdef test_bldshps
 	print_bldshps(bldshps);
-#endif
+#else
 
 
 #ifdef test_coef_ide_exp
@@ -92,7 +94,9 @@ int main() {
 	solve(ide, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl);
 #endif // normalization
 	cal_dis(ide, bldshps, id_idx);
-	save_result(ide,id_idx,save_coef_path);
+	int id = 0;
+	save_fitting_coef_each(fwhs_path_p, ide, id);
+#endif
 #endif
 	system("pause");
 	return 0;

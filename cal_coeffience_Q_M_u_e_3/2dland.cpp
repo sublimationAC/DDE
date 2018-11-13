@@ -457,10 +457,15 @@ void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot) {
 				Eigen::Vector3f v;
 				for (int axis = 0; axis < 3; axis++)
 					v(axis) = cal_3d_vtx_(ide, bldshps, i_id, exp_idx, ide[i_id].land_cor(exp_idx, i_v), axis);
-				land.row(exp_idx*G_land_num + i_v) = (s*R*v).transpose() + T;
+				land.row(exp_idx*G_land_num + i_v) = (s*R*v).transpose() + T - ide[i_id].center.row(exp_idx);
+#ifdef normalization
+				land.row(exp_idx*G_land_num + i_v) -= ide[i_id].center.row(exp_idx);
+#endif // normalization
 			}
 		}
 		ide[i_id].dis.array() = ide[i_id].land_2d.array() - land.array();
+
+
 	}
 }
 
@@ -485,6 +490,9 @@ void save_result_one(iden *ide, int i_id, int exp_idx, std::string name) {
 	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
 		fwrite(&ide[i_id].rot(exp_idx * 3 + i, j), sizeof(float), 1, fp);
 
+#ifdef normalization
+	ide[i_id].tslt(exp_idx, 2)=0;
+#endif
 	for (int i = 0; i < 3; i++) fwrite(&ide[i_id].tslt(exp_idx, i), sizeof(float), 1, fp);
 
 	for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&ide[i_id].land_cor(exp_idx, i_v), sizeof(int), 1, fp);

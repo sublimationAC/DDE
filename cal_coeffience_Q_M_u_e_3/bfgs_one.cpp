@@ -54,13 +54,13 @@ namespace cppoptlib {
 				ans += (ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V(0)*f / V(2))*(ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V(0)*f / V(2));
 				ans += (ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V(1)*f / V(2))*(ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V(1)*f / V(2));
 
-				printf("+++++++++%.10f \n", f / V(2));
+				printf("+++++++++%.6f\n", f / V(2));
 				/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
 					ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
 					V(0)*f / V(2), V(1)*f / V(2));*/
 			}
-			//printf("- - %.10f\n", ans);
-			//fprintf(fp, "%.10f\n", ans);
+			//printf("- - %.6f\n", ans);
+			//fprintf(fp, "%.6f\n", ans);
 			return ans;
 		}
 
@@ -85,7 +85,7 @@ namespace cppoptlib {
 	//					2 * f*(f*point(axis, i_v) / point(2, i_v) - ide[id_idx].land_2d(G_land_num*exp_idx + i_v, axis))*
 	//					(exp_point(i_grad, i_v * 3 + axis)*point(2, i_v) -
 	//					 exp_point(i_grad, i_v * 3 + 2)*point(axis, i_v)) / point(2, i_v) / point(2, i_v);
-	//			//printf("+%d %.10f\n", i_grad, temp);
+	//			//printf("+%d %.6f\n", i_grad, temp);
 	//			grad(i_grad) = temp;
 	//		}
 	//	}
@@ -106,7 +106,7 @@ float bfgs_exp_one(float focus,iden *ide,int id_idx,int exp_idx,Eigen::MatrixXf 
 	// perform non-negative least squares
 	//puts("A");
 	TNNLS f(focus, ide, id_idx, exp_idx, exp_point);
-	//printf("5===%.10f\n", f(exp));
+	//printf("5===%.6f\n", f(exp));
 
 
 	/*bool probably_correct = f.checkGradient(exp);
@@ -118,7 +118,7 @@ float bfgs_exp_one(float focus,iden *ide,int id_idx,int exp_idx,Eigen::MatrixXf 
 		temp -= 0.0000001;
 		texp = exp;
 		texp(0) += temp;
-		printf("%d %.10f %.10f\n", i, g(0), (f(texp) - f(exp)) / temp);
+		printf("%d %.6f %.6f\n", i, g(0), (f(texp) - f(exp)) / temp);
 	}*/
 
 	//puts("B");

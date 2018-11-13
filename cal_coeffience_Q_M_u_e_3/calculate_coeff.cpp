@@ -52,19 +52,19 @@ void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name,Eigen::VectorXf &i
 void print_bldshps(Eigen::MatrixXf &bldshps) {
 	puts("print blendshapes!");
 	FILE *fp;
-	/*fopen_s(&fp, "test_svd_bldshps.txt", "w");
-	fprintf(fp, "%d\n", G_nShape);
-	int ide = 1;
-	for (int i_exp = 0; i_exp< G_nShape; i_exp++) {
-		for (int i_v = 0; i_v < G_nVerts; i_v++)
-			fprintf(fp, "%.6f %.6f %.6f\n", 
-				bldshps(ide, i_exp*G_nVerts*3+ i_v*3), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+1), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+2));
-	}
-	fclose(fp);*/
-	fopen_s(&fp, "test_svd_bldshps.txt", "w");
-	fprintf(fp, "%d\n", G_iden_num);
+	//fopen_s(&fp, "test_svd_bldshps_test.txt", "w");
+	//fprintf(fp, "%d\n", 10);
+	//int ide = 1;
+	//for (int i_exp = 0; i_exp< 10; i_exp++) {
+	//	for (int i_v = 0; i_v < G_nVerts; i_v++)
+	//		fprintf(fp, "%.6f %.6f %.6f\n", 
+	//			bldshps(ide, i_exp*G_nVerts*3+ i_v*3), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+1), bldshps(ide, i_exp*G_nVerts * 3 + i_v * 3+2));
+	//}
+	//fclose(fp);
+	fopen_s(&fp, "test_svd_bldshps_test.txt", "w");
+	fprintf(fp, "%d\n", 10);
 	int exp = 0;
-	for (int i_ide = 0; i_ide < G_iden_num; i_ide++) {
+	for (int i_ide = 0; i_ide < 10; i_ide++) {
 		for (int i_v = 0; i_v < G_nVerts; i_v++)
 			fprintf(fp, "%.6f %.6f %.6f\n",
 				bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3), bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3 + 1), bldshps(i_ide, exp*G_nVerts * 3 + i_v * 3 + 2));

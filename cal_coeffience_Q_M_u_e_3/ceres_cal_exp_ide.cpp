@@ -100,7 +100,7 @@
 //			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) + ide[id_idx].center(exp_idx, 1) - V[1];
 //#endif
 //
-//			//printf("+++++++++%.10f \n", f / V(2));
+//			//printf("+++++++++%.6f \n", f / V(2));
 //			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
 //			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
 //				V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
@@ -115,10 +115,10 @@
 //			for (int j = i + 1; j < G_nShape; j++)
 //				temp += x_exp[i] * x_exp[j];
 //		residual[G_land_num * 2] = temp * ((T)beta_exp);
-//		printf("**************** %.10f **\n", residual[2 * G_land_num]);
+//		printf("**************** %.6f **\n", residual[2 * G_land_num]);
 //		//residual[G_land_num * 2] = (T)0;
-//		//printf("- - %.10f\n", ans);
-//		//fprintf(fp, "%.10f\n", ans);
+//		//printf("- - %.6f\n", ans);
+//		//fprintf(fp, "%.6f\n", ans);
 //		return true;
 //	}
 //
@@ -131,7 +131,7 @@
 //};
 //
 //float ceres_exp_one(
-//	float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::VectorXf &exp) {
+//	float focus, iden *ide, int id_idx, int exp_idx, Eigen::MatrixXf &exp_point, Eigen::RowVectorXf &exp) {
 //
 //	puts("optimizing expression coeffients only by ceres");
 //	//google::InitGoogleLogging(argv[0]);
@@ -218,13 +218,13 @@
 //			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) + ide[id_idx].center(exp_idx, 1) - V[1];
 //#endif
 //			
-//			//printf("+++++++++%.10f \n", f / V(2));
+//			//printf("+++++++++%.6f \n", f / V(2));
 //			/*printf("%d %.5f %.5f tr %.5f %.5f\n", i_v,
 //				ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
 //				V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
 //		}
-//		//printf("- - %.10f\n", ans);
-//		//fprintf(fp, "%.10f\n", ans);
+//		//printf("- - %.6f\n", ans);
+//		//fprintf(fp, "%.6f\n", ans);
 //#ifdef strength_eye
 //		for (int i = 27 * 2; i < 35 * 2; i++) residual[i] *= (T)beta_eye;
 //		for (int i = 66 * 2; i < 74 * 2; i++) residual[i] *= (T)beta_eye;
