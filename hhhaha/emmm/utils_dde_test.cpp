@@ -47,7 +47,7 @@ void cal_3d_land(DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3f &la
 	}
 }
 
-void test_load_mesh(std::vector <DataPoint> &data, Eigen::MatrixXf bldshps, int idx, std::string path) {
+void test_load_mesh(std::vector <DataPoint> &data, Eigen::MatrixXf &bldshps, int idx, std::string path) {
 	puts("testing mesh...");
 	Eigen::MatrixX3f mesh(G_nVerts, 3);
 
@@ -75,7 +75,7 @@ void test_load_mesh(std::vector <DataPoint> &data, Eigen::MatrixXf bldshps, int 
 	fclose(fp);
 }
 
-void test_load_3d_land(std::vector <DataPoint> &data, Eigen::MatrixXf bldshps, int idx, std::string path) {
+void test_load_3d_land(std::vector <DataPoint> &data, Eigen::MatrixXf &bldshps, int idx, std::string path) {
 	puts("testing land...");
 	Eigen::MatrixX3f land_3d(G_land_num, 3);
 
@@ -217,7 +217,7 @@ void test_del_tri(Eigen::MatrixX2f &points, cv::Mat& img, cv::Subdiv2D subdiv) {
 
 
 void cal_del_tri(
-	Eigen::MatrixX2f points, cv::Mat& img, std::vector<cv::Vec6f> &triangleList) {
+	Eigen::MatrixX2f &points, cv::Mat& img, std::vector<cv::Vec6f> &triangleList) {
 	/*std ::cout << points << "\n";
 	ans.clear();
 	for (int i = 0; i < G_land_num; i++)
@@ -251,27 +251,60 @@ void cal_del_tri(
 		top = std::min(top, landmark.y);
 		bottom = std::max(bottom, landmark.y);
 	}
-	rect = cv::Rect(left - 10, top - 10, right - left + 21, bottom - top + 21);
+	rect = cv::Rect(left - 10, top - 10, right - left + 25, bottom - top + 25);
 
 	cv::Subdiv2D subdiv(rect);
 	for (cv::Point2d pt : points)
 		subdiv.insert(pt);
 	subdiv.getTriangleList(triangleList);
 
+	int flag = 1;
+	while (flag)
+	{
+		flag = 0;
+		for (auto it = triangleList.begin(); it != triangleList.end(); it++)
+		{
+			std::vector<cv::Point2d> pt(3);
+			cv::Vec6f t = *it;
+			pt[0] = cv::Point2d(t[0], t[1]);
+			pt[1] = cv::Point2d(t[2], t[3]);
+			pt[2] = cv::Point2d(t[4], t[5]);
+
+			if (!(rect.contains(pt[0]) && rect.contains(pt[1]) && rect.contains(pt[2])))
+			{
+				triangleList.erase(it);
+				flag = 1;
+				break;
+			}
+		}
+	}
+
+
+
+
 	tri_idx.resize(triangleList.size(), 3);
-	std::vector<cv::Point> pt(3);
+	std::vector<cv::Point2d> pt(3);
 	for (size_t i = 0; i < triangleList.size(); i++)
 	{
 		cv::Vec6f t = triangleList[i];
-		pt[0] = cv::Point(t[0], t[1]);
-		pt[1] = cv::Point(t[2], t[3]);
-		pt[2] = cv::Point(t[4], t[5]);
+		pt[0] = cv::Point2d(t[0], t[1]);
+		pt[1] = cv::Point2d(t[2], t[3]);
+		pt[2] = cv::Point2d(t[4], t[5]);
 
 		if (rect.contains(pt[0]) && rect.contains(pt[1]) && rect.contains(pt[2]))
 		{
 			for (int k = 0; k < points.size(); k++)
-				for (int j = 0; j < 3; j++)
+				for (int j = 0; j < 3; j++) {
+					if (i==0)
+						printf("%d %d %d dis %.10f cha %.10lf pts %.10lf pt%.10lf chay %.10lf\n", 
+							i, j, k, dis_cv_pt(points[k], pt[j]), points[k].x - pt[j].x, points[k].x, pt[j].x, points[k].y - pt[j].y);
+
 					if (dis_cv_pt(points[k], pt[j]) < EPSILON) tri_idx(i, j) = k;
+					float t = sqrt((points[k].x - pt[j].x)*(points[k].x - pt[j].x)
+						+ (points[k].y - pt[j].y)*(points[k].y - pt[j].y));
+
+				}
+			//printf("--++-- %d %d %d %d\n", i, tri_idx(i, 0), tri_idx(i, 1), tri_idx(i, 2));
 		}
 	}
 }
@@ -303,18 +336,18 @@ void cal_del_tri(
 //}
 
 
-float dis_cv_pt(CvPoint pointO, CvPoint pointA)
+double dis_cv_pt(cv::Point2d pointO, cv::Point2d pointA)
 {
-	float distance;
+	double distance;
 	distance = powf((pointO.x - pointA.x), 2) + powf((pointO.y - pointA.y), 2);
 	distance = sqrtf(distance);
 
 	return distance;
 }
 
-float cal_cv_area(CvPoint point0, CvPoint point1, CvPoint point2) {
-	float a = dis_cv_pt(point0, point1), b = dis_cv_pt(point0, point2), c = dis_cv_pt(point1, point2);
-	float q = (a + b + c) / 2;
+double cal_cv_area(cv::Point2d point0, cv::Point2d point1, cv::Point2d point2) {
+	double a = dis_cv_pt(point0, point1), b = dis_cv_pt(point0, point2), c = dis_cv_pt(point1, point2);
+	double q = (a + b + c) / 2;
 	return sqrtf(q*(q - a)*(q - b)*(q - c));
 }
 
@@ -334,6 +367,21 @@ void update_2d_land(DataPoint &data, Eigen::MatrixXf &bldshps) {
 		data.center += temp;
 	}
 	data.center /= G_land_num;
+}
+
+void cal_2d_land_i(
+	std::vector<cv::Point2d> &ans, const Target_type &data, Eigen::MatrixXf &bldshps, DataPoint &ini_data) {
+	ans.resize(G_land_num);
+	Eigen::RowVector2f T = data.tslt.block(0, 0, 1, 2);
+	Eigen::VectorXf user = ini_data.user;
+	Eigen::VectorXf exp = data.exp;
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		Eigen::Vector3f v;
+		for (int axis = 0; axis < 3; axis++)
+			v(axis) = cal_3d_vtx(bldshps, user, exp, ini_data.land_cor(i_v), axis);
+		Eigen::RowVector2f temp = ((ini_data.s) * ((data.rot) * v)).transpose() + T + data.dis.row(i_v);
+		ans[i_v].x = temp(0); ans[i_v].y = ini_data.image.rows - temp(1);
+	}
 }
 
 Target_type shape_difference(const Target_type &s1, const Target_type &s2)
@@ -366,4 +414,115 @@ Target_type shape_adjustment(Target_type &shape, Target_type &offset)
 	result.tslt.array() = shape.tslt.array() + offset.tslt.array();
 
 	return result;
+}
+
+void show_image(cv::Mat img, cv::Rect rect, std::vector<cv::Point2d> landmarks) {
+	cv::Mat image = img.clone();
+	printf("landmarks number: %d\n", landmarks.size());
+	cv::rectangle(image, rect, cv::Scalar(0, 0, 255), 2);
+	for (cv::Point2d landmark : landmarks)
+	{
+		cv::circle(image, landmark, 0.1, cv::Scalar(0, 255, 0), 2);
+	}
+	//}
+	cv::imshow("Alignment result", image);
+	cv::waitKey();
+	system("pause");
+}
+void show_image_0rect(cv::Mat img,std::vector<cv::Point2d> landmarks) {
+	cv::Mat image = img.clone();
+	for (cv::Point2d landmark : landmarks)
+	{
+		cv::circle(image, landmark, 3, cv::Scalar(10, 2, 2), 2);
+	}
+	//}
+	cv::imshow("dde result", image);
+	cv::waitKey();
+	system("pause");
+}
+
+void cal_2d_land_i_0dis(
+	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data) {
+	ans.resize(G_land_num);
+	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+	Eigen::VectorXf user = data.user;
+	Eigen::VectorXf exp = data.shape.exp;
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		Eigen::Vector3f v;
+		for (int axis = 0; axis < 3; axis++)
+			v(axis) = cal_3d_vtx(bldshps, user, exp, data.land_cor(i_v), axis);
+		Eigen::RowVector2f temp = ((data.s) * ((data.shape.rot) * v)).transpose() + T;
+		ans[i_v].x = temp(0); ans[i_v].y = data.image.rows - temp(1);
+	}
+}
+
+void rect_scale(cv::Rect &rect, double scale) {
+	cv::Point2d center = cv::Point2d(rect.x + rect.width / 2, rect.y + rect.height / 2);
+	rect.width *= scale;
+	rect.height *= scale;
+	rect.x = center.x - rect.width / 2;
+	rect.y = center.y - rect.height / 2;
+}
+
+void save_for_debug(DataPoint &temp,std::string name) {
+	std::cout << "saving coefficients...file:" << name << "\n";
+	FILE *fp;
+	fopen_s(&fp, name.c_str(), "wb");
+	for (int j = 0; j < G_iden_num; j++)
+		fwrite(&temp.user(j), sizeof(float), 1, fp);
+
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		fwrite(&temp.land_2d(i_v, 0), sizeof(float), 1, fp);
+		fwrite(&temp.land_2d(i_v, 1), sizeof(float), 1, fp);
+	}
+
+	fwrite(&temp.center(0), sizeof(float), 1, fp);
+	fwrite(&temp.center(1), sizeof(float), 1, fp);
+
+	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+		fwrite(&temp.shape.exp(i_shape), sizeof(float), 1, fp);
+
+	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
+		fwrite(&temp.shape.rot(i, j), sizeof(float), 1, fp);
+
+#ifdef normalization
+	temp.shape.tslt(2) = 0;
+#endif // normalization
+	for (int i = 0; i < 3; i++) fwrite(&temp.shape.tslt(i), sizeof(float), 1, fp);
+
+	for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&temp.land_cor(i_v), sizeof(int), 1, fp);
+
+	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
+		fwrite(&temp.s(i, j), sizeof(float), 1, fp);
+
+	//temp.shape.dis.rowwise() += temp.center;
+
+	//std::cout << temp.shape.dis << "\n";
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		fwrite(&temp.shape.dis(i_v, 0), sizeof(float), 1, fp);
+		fwrite(&temp.shape.dis(i_v, 1), sizeof(float), 1, fp);
+	}
+
+	fclose(fp);
+
+	puts("save successful!");
+}
+void print_datapoint(DataPoint &data) {
+
+	std::cout << "exp:" << data.shape.exp.transpose() << "\n";
+	std::cout << "dis:" << data.shape.dis.transpose() << "\n";
+	std::cout << "rot:" << data.shape.rot << "\n";
+	std::cout << "tslt:" << data.shape.tslt << "\n";
+	std::cout << "user:" << data.user.transpose() << "\n";
+	std::cout << "center:" << data.center << "\n";
+	std::cout << "land:" << data.land_2d.transpose() << "\n";
+	std::cout << "landmark:" << data.landmarks << "\n";
+}
+
+void print_target(Target_type &data) {
+
+	std::cout << "exp:" << data.exp.transpose() << "\n";
+	std::cout << "dis:" << data.dis.transpose() << "\n";
+	std::cout << "rot:" << data.rot << "\n";
+	std::cout << "tslt:" << data.tslt << "\n";
 }

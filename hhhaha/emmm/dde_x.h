@@ -22,16 +22,17 @@ public:
 
 
 	void dde(
-		DataPoint &data, Eigen::MatrixXf &bldshps, 
-		Eigen::MatrixX3i &tri_idx, std::vector<DataPoint> &train_data) const;
+		DataPoint &data, Eigen::MatrixXf &bldshps,
+		Eigen::MatrixX3i &tri_idx, std::vector<DataPoint> &train_data, Eigen::VectorXi &jaw_land_corr,
+		std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect) const;
 
 
 
 	// Return how many landmarks the model provides for a face.
-	int landmarks_count() const
-	{
-		return mean_shape_.size();
-	}
+	//int landmarks_count() const
+	//{
+	//	return mean_shape_.size();
+	//}
 	std::vector<cv::Point2d> get_ref_shape() {
 		return ref_shape_;
 	}

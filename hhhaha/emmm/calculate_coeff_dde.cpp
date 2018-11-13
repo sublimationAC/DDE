@@ -1,6 +1,6 @@
 #include "calculate_coeff_dde.h"
-#define test_coef
-#define test_coef_save_mesh
+//#define test_coef
+//#define test_coef_save_mesh
 //#define test_posit_by2dland
 
 void fit_solve(
@@ -8,7 +8,8 @@ void fit_solve(
 	Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXf &ide_sg_vl,DataPoint &data) {
-	iden ide[2];
+	puts("fitting for the first frame...!");
+	iden ide[1];
 	ide[0].num = 1;
 	ide[0].land_2d.resize(G_land_num, 2);
 	data.land_2d.resize(G_land_num, 2);
@@ -17,17 +18,23 @@ void fit_solve(
 		data.land_2d(i, 0)= landmarks[i].x,data.land_2d(i,1)= data.image.rows- landmarks[i].y;
 	}
 	init_exp_ide_r_t_pq(ide, 1);
-	
+	//data.land_2d = ide[0].land_2d;
 	solve(ide, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl);
-
+	puts("A");
 	data.center = ide[0].center;
+	puts("B");
 	data.landmarks = landmarks;
-	data.land_cor = ide[0].land_cor;
+	puts("E");
+	data.land_cor = ide[0].land_cor.transpose();
+	puts("D");
 	data.s = ide[0].s;
+	puts("D");
 	data.user = ide[0].user;
-	data.shape.exp = ide[0].exp;
-	data.shape.rot = ide[0].rot;
-	data.shape.tslt = ide[0].tslt;
+	puts("D");
+	data.shape.exp = ide[0].exp.row(0);
+	data.shape.rot = ide[0].rot.block(0,0,3,3);
+	data.shape.tslt = ide[0].tslt.row(0);
+	puts("F");
 	recal_dis(data, bldshps);
 }
 
@@ -138,7 +145,7 @@ void solve(
 
 	puts("calclating coeffients begin...");
 	FILE *fp;
-	for (int i_id = 0; i_id < G_train_pic_id_num; i_id++) {
+	for (int i_id = 0; i_id < 1; i_id++) {
 		if (ide[i_id].num == 0)continue;
 		pre_cal_exp_ide_R_t(0, ide, bldshps, inner_land_corr, jaw_land_corr,
 			slt_line, slt_point_rect, i_id, ide_sg_vl);
@@ -174,7 +181,7 @@ float pre_cal_exp_ide_R_t(
 	init_exp_ide(ide, G_train_pic_id_num,id_idx);
 	float error = 0;
 	
-	int tot_r = 4;
+	int tot_r = 4;////////////////////////////////////////////////////////dde reduction
 	Eigen::VectorXf temp(tot_r);
 	//fprintf(fp, "%d\n",tot_r);
 	FILE *fp;

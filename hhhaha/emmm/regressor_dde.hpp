@@ -1,6 +1,6 @@
 #pragma once
-#ifndef FACE_X_REGRESSOR_H_
-#define FACE_X_REGRESSOR_H_
+#ifndef FACE_X_REGRESSOR_DDE_H_
+#define FACE_X_REGRESSOR_DDE_H_
 
 #include<vector>
 #include<utility>

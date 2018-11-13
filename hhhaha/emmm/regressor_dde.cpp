@@ -8,25 +8,16 @@
 
 using namespace std;
 
-void cal_2d_land_i(
-	std::vector<cv::Point2d> &ans,const Target_type &data, Eigen::MatrixXf &bldshps,DataPoint &ini_data) {
-	ans.resize(G_land_num);
-	Eigen::RowVector2f T = data.tslt.block(0, 0, 1, 2);
-	Eigen::VectorXf user = ini_data.user;
-	Eigen::VectorXf exp = data.exp;
-	for (int i_v = 0; i_v < G_land_num; i_v++) {
-		Eigen::Vector3f v;
-		for (int axis = 0; axis < 3; axis++)
-			v(axis) = cal_3d_vtx(bldshps, user, exp, ini_data.land_cor(i_v), axis);
-		Eigen::RowVector2f temp = ((ini_data.s) * ((data.rot) * v)).transpose() + T + data.dis.row(i_v);
-		ans[i_v].x = temp(0); ans[i_v].y = ini_data.image.rows - temp(1);
-	}
-}
-
 
 Target_type regressor_dde::Apply(//const Transform &t,
 	const Target_type &data, Eigen::MatrixX3i &tri_idx,DataPoint &ini_data,Eigen::MatrixXf &bldshps) const
 {
+	//for (int i = 0; i < 50; i++) {
+	//	printf("%d %d %d %d\n", i, tri_idx(i, 0), tri_idx(i, 1), tri_idx(i, 2));
+
+	//}
+
+
 	cv::Mat pixels_val(1, pixels_dde_.size(), CV_64FC1);
 	/*vector<cv::Point2d> offsets(pixels_dde_.size());
 	for (int j = 0; j < pixels_.size(); ++j)
@@ -51,8 +42,10 @@ Target_type regressor_dde::Apply(//const Transform &t,
 	}
 
 	cv::Mat coeffs = cv::Mat::zeros(base_.cols, 1, CV_64FC1);
-	for (int i = 0; i < ferns_dde_.size(); ++i)
+	for (int i = 0; i < ferns_dde_.size(); ++i) {
+		printf("inner regressor %d:\n", i);
 		ferns_dde_[i].ApplyMini(pixels_val, coeffs);
+	}
 
 	cv::Mat result_mat = base_ * coeffs;
 
@@ -84,22 +77,22 @@ Target_type regressor_dde::Apply(//const Transform &t,
 
 void regressor_dde::read(const cv::FileNode &fn)
 {
-	pixels_.clear();
-	ferns_.clear();
+	pixels_dde_.clear();
+	ferns_dde_.clear();
 	cv::FileNode pixels_node = fn["pixels"];
 	for (auto it = pixels_node.begin(); it != pixels_node.end(); ++it)
 	{
 		pair<int, cv::Point2d> pixel;
 		(*it)["first"] >> pixel.first;
 		(*it)["second"] >> pixel.second;
-		pixels_.push_back(pixel);
+		pixels_dde_.push_back(pixel);
 	}
 	cv::FileNode ferns_node = fn["ferns"];
 	for (auto it = ferns_node.begin(); it != ferns_node.end(); ++it)
 	{
-		Fern f;
+		Fern_dde f;
 		*it >> f;
-		ferns_.push_back(f);
+		ferns_dde_.push_back(f);
 	}
 	fn["base"] >> base_;
 }

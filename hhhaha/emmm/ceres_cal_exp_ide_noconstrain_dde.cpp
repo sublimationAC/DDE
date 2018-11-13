@@ -38,7 +38,7 @@ using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
 
-float beta_sum_user = 200;
+float beta_sum_user = 0;
 
 struct ceres_cal_exp {
 	ceres_cal_exp(
