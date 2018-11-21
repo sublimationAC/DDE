@@ -12,7 +12,7 @@ using namespace std;
 const string kModelFileName = "model_all_5_face.xml.gz";
 const string kModelFileName_dde = "model_dde_all_1fi.xml.gz";
 const string kAlt2 = "haarcascade_frontalface_alt2.xml";
-const string kTestImage = "./photo_test/test_samples/005_04_03_051_05.png";
+const string kTestImage = "./photo_test/real_time_test/pose_1.jpg";//22.png"; //005_04_03_051_05.png";
 
 #ifdef win64
 
@@ -28,7 +28,8 @@ std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d2
 std::string save_coef_path = "./ide_fw_p1.lv";
 std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
 std::string fwhs_path_p1 = "D:/sydney/first/data_me/test_lv";
-std::string test_debug_lv_path = "./test_debug_lv_005_04_03_051_05_ide0.lv";
+std::string test_debug_lv_path = "./lv_file/fitting_result_t66_pose_0.lv";
+//std::string debug_lv_save_path = "./lv_file/fitting_result_005_04_03_051_05.lv";
 #endif // win64
 #ifdef linux
 std::string fwhs_path = "/home/weiliu/DDE/cal_coeff/data_me/FaceWarehouse";
@@ -82,7 +83,7 @@ DataPoint pre_process(
 
 	/*for (cv::Rect face : faces)
 	{*/
-	cv::Rect face = faces[1];
+	cv::Rect face = faces[0];
 	rect_scale(face, 1.5);
 
 	start_time = cv::getTickCount();
@@ -100,7 +101,7 @@ DataPoint pre_process(
 	fit_solve(landmarks, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, data);
 
 	//testing the result of fitting
-	cal_2d_land_i_0dis(landmarks, bldshps, data);
+	cal_2d_land_i_0dis_ang(landmarks, bldshps, data);
 #ifdef debug_def
 	data.land_2d.rowwise() -= data.center;
 	save_for_debug(data, test_debug_lv_path);
@@ -119,7 +120,8 @@ DataPoint debug_preprocess(std::string path_name) {
 	for (int i_v = 0; i_v < G_land_num; i_v++)
 		data.landmarks[i_v].x = data.land_2d(i_v, 0), data.landmarks[i_v].y = data.image.rows - data.land_2d(i_v, 1);
 	//std::cout << data.landmarks << "\n";
-	show_image_0rect(data.image, data.landmarks);
+	//show_image_0rect(data.image, data.landmarks);
+	//show_image_land_2d(data.image, data.land_2d);
 	return data;
 }
 
@@ -181,11 +183,28 @@ void DDE_run_test(
 	Eigen::VectorXf &ide_sg_vl, vector<DataPoint> &train_data, Eigen::MatrixX3i &tri_idx) {
 
 	puts("DDE running...");
-	for (int test_round = 0; test_round < 5; test_round++) {
-		printf("dde_round %d: \n", test_round);
-		dde_x.dde(data, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect);
+	Eigen::MatrixXf exp_r_t_all_matrix;
+	cal_exp_r_t_all_matrix(bldshps, data, exp_r_t_all_matrix);
 
-		show_image_0rect(data.image, data.landmarks);
+	Target_type last_data[3];
+	for (int test_round = 0; test_round < 500; test_round++) {
+		printf("dde_round %d: \n", test_round);
+		dde_x.dde(data, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
+
+		if (test_round % 10 == 0) {
+			show_image_0rect(data.image, data.landmarks);
+			save_datapoint(data, kTestImage + "_" + to_string(test_round) + ".lv");
+		}
+
+//--------------------------------------post_processing
+		/*
+		last_data[0] = last_data[1]; last_data[1] = last_data[2]; last_data[2] = data.shape;
+		if (test_round > 1) {
+			ceres_post_processing(data, last_data[0], last_data[1], last_data[2], exp_r_t_point_matrix);
+			update_2d_land(data,bldshps);
+			//update_slt(
+		}
+		*/
 	}
 
 }
@@ -200,7 +219,7 @@ int main()
 {
 	try
 	{		
-#ifdef debug_def
+#ifndef debug_def
 		puts("initializing face...");
 		FaceX face_x(kModelFileName);
 #endif // !debug_def
@@ -224,9 +243,9 @@ int main()
 		
 		Eigen::MatrixX2f points(G_land_num, 2);
 		cal_del_tri(ref_shape, rect, triangleList, tri_idx);
-		std::cout << ref_shape << "\n";
-		std::cout << tri_idx << "\n";
-		system("pause");
+		//std::cout << ref_shape << "\n";
+		//std::cout << tri_idx << "\n";
+		//system("pause");
 		//printf("triangleList.size() %d:\n",triangleList.size());
 		//for (int i = 0; i < triangleList.size(); i++) {
 		//	printf("%d %.2f %.2f %.2f %.2f %.2f %.2f\n", i, triangleList[i][0], triangleList[i][1], triangleList[i][2], triangleList[i][3], triangleList[i][4], triangleList[i][5]);
@@ -243,11 +262,14 @@ int main()
 		//{
 		//case 1:
 #ifdef debug_def
-		//DataPoint init_data = debug_preprocess(test_debug_lv_path);
-		DataPoint init_data = pre_process(face_x, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
-		//init_data.shape.dis.rowwise() -= init_data.center;
-		print_datapoint(init_data);
+		DataPoint init_data = debug_preprocess(test_debug_lv_path);
+		//DataPoint init_data = pre_process(face_x, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
+		//save_datapoint(init_data, test_debug_lv_path);
 
+		//init_data.shape.dis.rowwise() -= init_data.center;
+
+		print_datapoint(init_data);
+		
 
 		//for (int i = 0; i < G_land_num; i++)
 		//	points(i, 0) = ref_shape[i].x, points(i, 1) = ref_shape[i].y;
@@ -255,7 +277,7 @@ int main()
 
 
 		printf("%d %d\n", init_data.image.rows, init_data.image.cols);
-		show_image_0rect(init_data.image, ref_shape);
+		//show_image_0rect(init_data.image, ref_shape);
 		puts("asd");
 #else
 		DataPoint init_data = pre_process(face_x, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);

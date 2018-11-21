@@ -31,11 +31,14 @@ void fit_solve(
 	puts("D");
 	data.user = ide[0].user;
 	puts("D");
-	data.shape.exp = ide[0].exp.row(0);
-	data.shape.rot = ide[0].rot.block(0,0,3,3);
+	data.shape.exp = ide[0].exp.row(0).transpose();
+
+	//data.shape.rot = ide[0].rot.block(0,0,3,3);
+	data.shape.angle = get_uler_angle(ide[0].rot.block(0, 0, 3, 3));
+
 	data.shape.tslt = ide[0].tslt.row(0);
 	puts("F");
-	recal_dis(data, bldshps);
+	recal_dis_ang(data, bldshps);
 }
 
 

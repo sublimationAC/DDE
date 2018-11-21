@@ -24,7 +24,7 @@ public:
 	void dde(
 		DataPoint &data, Eigen::MatrixXf &bldshps,
 		Eigen::MatrixX3i &tri_idx, std::vector<DataPoint> &train_data, Eigen::VectorXi &jaw_land_corr,
-		std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect) const;
+		std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,Eigen::MatrixXf &exp_r_t_all_matrix) const;
 
 
 

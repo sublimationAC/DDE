@@ -22,6 +22,7 @@ void load_land_coef(std::string &path, std::string sfx, std::vector<DataPoint> &
 		struct dirent *dp;
 		while (index < n)
 		{
+			if (num > 200) break;
 			dp = namelist[index];
 
 			if (dp->d_name[0] == '.') {
@@ -49,7 +50,7 @@ void load_land_coef(std::string &path, std::string sfx, std::vector<DataPoint> &
 					}
 					load_land(path + "/" + dp->d_name, temp);
 
-					load_img(p.substr(0, p.find(".land")) + sfx, temp);
+					//load_img(p.substr(0, p.find(".land")) + sfx, temp);
 #ifdef  flap_2dland
 					for (int i = 0; i < temp.landmarks.size(); i++)
 						temp.landmarks[i].y = temp.image.rows - temp.landmarks[i].y;
@@ -208,8 +209,12 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
 		fread(&temp.shape.exp(i_shape), sizeof(float), 1, fp);
 
+	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
+	//	fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
+	Eigen::Matrix3f rot;
 	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
-		fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
+		fread(&rot(i, j), sizeof(float), 1, fp);
+	temp.shape.angle = get_uler_angle(rot);
 
 	for (int i = 0; i < 3; i++) fread(&temp.shape.tslt(i), sizeof(float), 1, fp);
 

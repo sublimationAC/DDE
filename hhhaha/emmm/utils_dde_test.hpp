@@ -41,10 +41,14 @@ const int G_trn_factor = 35;
 const int G_target_type_size = G_nShape + 3 + 3 * 3 + 2 * G_land_num;
 const int G_dde_K = 5;
 
+const float pi = acos(-1);
+const float G_rand_angle_border = 15.0* pi / 180;
+
 struct Target_type {
 	Eigen::VectorXf exp;
 	Eigen::RowVector3f tslt;
-	Eigen::Matrix3f rot;
+	//Eigen::Matrix3f rot;
+	Eigen::Vector3f angle;
 	Eigen::MatrixX2f dis;
 
 };
@@ -73,7 +77,8 @@ float cal_3d_vtx(
 	Eigen::MatrixXf &bldshps,
 	Eigen::VectorXf &user, Eigen::VectorXf &exp, int vtx_idx, int axis);
 
-void recal_dis(DataPoint &data, Eigen::MatrixXf &bldshps);
+//void recal_dis(DataPoint &data, Eigen::MatrixXf &bldshps);
+void recal_dis_ang(DataPoint &data, Eigen::MatrixXf &bldshps);
 
 void cal_mesh(DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3f &mesh);
 void cal_3d_land(DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3f &land_3d);
@@ -102,16 +107,22 @@ void cal_del_tri(
 double dis_cv_pt(cv::Point2d pointO, cv::Point2d pointA);
 double cal_cv_area(cv::Point2d point0, cv::Point2d point1, cv::Point2d point2);
 
-void update_2d_land(DataPoint &data, Eigen::MatrixXf &bldshps);
-void cal_2d_land_i(
-	std::vector<cv::Point2d> &ans, const Target_type &data, Eigen::MatrixXf &bldshps, DataPoint &ini_data);
+//void update_2d_land(DataPoint &data, Eigen::MatrixXf &bldshps);
+//void update_2d_land_0ide(DataPoint &data, Eigen::MatrixXf &exp_r_t_all_matrix);
+void update_2d_land_ang_0ide(DataPoint &data, Eigen::MatrixXf &exp_r_t_all_matrix);
+
+//void cal_2d_land_i(
+//	std::vector<cv::Point2d> &ans, const Target_type &data, Eigen::MatrixXf &bldshps, DataPoint &ini_data);
 Target_type shape_difference(const Target_type &s1, const Target_type &s2);
 Target_type shape_adjustment(Target_type &shape, Target_type &offset);
 
 void show_image(cv::Mat img, cv::Rect rect, std::vector<cv::Point2d> landmarks);
 void show_image_0rect(cv::Mat img, std::vector<cv::Point2d> landmarks);
+void show_image_land_2d(cv::Mat img, Eigen::MatrixX2f &land);
 
-void cal_2d_land_i_0dis(
+//void cal_2d_land_i_0dis(
+//	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data);
+void cal_2d_land_i_0dis_ang(
 	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data);
 
 void rect_scale(cv::Rect &rect, double scale);
@@ -121,3 +132,17 @@ void save_for_debug(DataPoint &temp, std::string name);
 
 void print_datapoint(DataPoint &data);
 void print_target(Target_type &data);
+void save_datapoint(DataPoint &temp, std::string save_name);
+
+void cal_exp_r_t_all_matrix(
+	Eigen::MatrixXf &bldshps, DataPoint &data, Eigen::MatrixXf &result);
+
+void target2vector(Target_type &data, Eigen::VectorXf &ans);
+void vector2target(Eigen::VectorXf &data, Target_type &ans);
+
+float cal_3d_vtx_0ide(
+	Eigen::MatrixXf &exp_r_t_all_matrix, Eigen::VectorXf &exp, int vtx_idx, int axis);
+
+Eigen::RowVector3f get_uler_angle(Eigen::Matrix3f R);
+Eigen::Matrix3f get_r_from_angle(float angle, int axis);
+Eigen::Matrix3f get_r_from_angle(const Eigen::Vector3f &angle);

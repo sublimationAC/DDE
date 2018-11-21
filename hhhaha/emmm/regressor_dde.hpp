@@ -15,7 +15,8 @@ class regressor_dde
 {
 public:
 	Target_type Apply(//const Transform &t,
-		const Target_type &data, Eigen::MatrixX3i &tri_idx, DataPoint &ini_data, Eigen::MatrixXf &bldshps) const;
+		const Target_type &data, Eigen::MatrixX3i &tri_idx, DataPoint &ini_data, Eigen::MatrixXf &bldshps,
+		Eigen::MatrixXf &exp_r_t_all_matrix) const;
 
 	void read(const cv::FileNode &fn);
 
