@@ -134,11 +134,53 @@ void cal_uler_angle(Eigen::Matrix3f R) {
 	system("pause");
 }
 
+Eigen::Matrix3f get_r_from_angle(float angle, int axis) {
+	Eigen::Matrix3f ans;
+	ans.setZero();
+	ans(axis, axis) = 1;
+	int idx_x = 0, idx_y = 1;
+	if (axis == 0)
+		idx_x = 1, idx_y = 2;
+	else
+		if (axis == 2)
+			idx_x = 0, idx_y = 1;
+		else
+			idx_x = 0, idx_y = 2;
+	ans(idx_x, idx_x) = cos(angle), ans(idx_x, idx_y) = -sin(angle), ans(idx_y, idx_x) = sin(angle), ans(idx_y, idx_y) = cos(angle);
+	return ans;
+}
+
+Eigen::Matrix3f get_r_from_angle(const Eigen::Vector3f &angle) {
+	Eigen::Matrix3f ans;
+	float Sa = sin(angle(0)), Ca = cos(angle(0)), Sb = sin(angle(1)),
+		Cb = cos(angle(1)), Sc = sin(angle(2)), Cc = cos(angle(2));
+
+	ans(0, 0) = Ca * Cc - Sa * Cb*Sc;
+	ans(0, 1) = -Sa * Cc - Ca * Cb*Sc;
+	ans(0, 2) = Sb * Sc;
+	ans(1, 0) = Ca * Sc + Sa * Cb*Cc;
+	ans(1, 1) = -Sa * Sc + Ca * Cb*Cc;
+	ans(1, 2) = -Sb * Cc;
+	ans(2, 0) = Sa * Sb;
+	ans(2, 1) = Ca * Sb;
+	ans(2, 2) = Cb;
+	return ans;
+}
+void test_r(DataPoint data) {
+	Eigen::Matrix3f rot;
+	rot = get_r_from_angle(data.shape.tslt(2), 2)*get_r_from_angle(data.shape.tslt(1), 0)*get_r_from_angle(data.shape.tslt(0), 2);
+	std::cout << rot << "\n";
+	std::cout << get_r_from_angle(data.shape.tslt) << "\n";
+	system("pause");
+}
+
 int main() {
 
 	DataPoint data;
-	load_lv("./test/pose_4_t108.lv",data);//data/test_debug_lv_005_04_03_051_05
-	cal_uler_angle(data.shape.rot);
+	data.shape.tslt << 1, 20, 0.5;
+	test_r(data);
+	//load_lv("./test/pose_4_t108.lv",data);//data/test_debug_lv_005_04_03_051_05
+	//cal_uler_angle(data.shape.rot);
 	
 	return 0;
 }
