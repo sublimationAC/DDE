@@ -48,9 +48,9 @@ std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
 
 #endif // win64
 #ifdef linux
-std::string fwhs_path = "/home/weiliu/fitting_dde/fitting_coef/data_me/fw";
-std::string lfw_path = "/home/weiliu/DDE/cal_coeff/data_me/lfw_image";
-std::string gtav_path = "/home/weiliu/fitting_dde/fitting_coef/data_me/GTAV_image";
+std::string fwhs_path = "/home/weiliu/fitting_dde/fitting_coef/fw";
+std::string lfw_path = "/home/weiliu/fitting_dde/fitting_coef/lfw_image";
+std::string gtav_path = "/home/weiliu/fitting_dde/fitting_coef/GTAV_image";
 std::string test_path = "./test";
 std::string test_path_one = "/home/weiliu/DDE/cal_coeff/data_me/test_only_one";
 
@@ -186,7 +186,8 @@ void aug_rand_rot(const vector<DataPoint> &traindata, vector<DataPoint> &data, i
 		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
 
 		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
-		Eigen::RowVector3f V[2];
+//----------------------------------------------------------------------------------------------
+		/*Eigen::RowVector3f V[2];
 		do {
 			do {
 				V[0] = traindata[train_idx].shape.rot.row(0);
@@ -200,7 +201,11 @@ void aug_rand_rot(const vector<DataPoint> &traindata, vector<DataPoint> &data, i
 		V[1].normalize();
 		data[idx].init_shape.rot.row(0) = V[0];
 		data[idx].init_shape.rot.row(1) = V[1];
-		data[idx].init_shape.rot.row(2) = V[0].cross(V[1]);
+		data[idx].init_shape.rot.row(2) = V[0].cross(V[1]);*/
+//-----------------------------------------------------------------------------------------------------
+		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
+		for (int j=0;j<3;j++)
+			data[idx].init_shape.angle(j)+= cv::theRNG().uniform(-G_rand_angle_border, G_rand_angle_border);
 		idx++;
 	}
 }
@@ -212,7 +217,8 @@ void aug_rand_tslt(const vector<DataPoint> &traindata, vector<DataPoint> &data, 
 		data[idx] = traindata[train_idx];
 		data[idx].init_shape.dis = traindata[*it].shape.dis;
 		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
-		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		for (int j = 0; j < 3; j++)
 			data[idx].init_shape.tslt(j) = traindata[train_idx].shape.tslt(j) + cv::theRNG().uniform(-G_rand_tslt_border, G_rand_tslt_border);
 		idx++;
@@ -228,7 +234,8 @@ void aug_rand_exp(const vector<DataPoint> &traindata, vector<DataPoint> &data, i
 		data[idx] = traindata[train_idx];
 		data[idx].init_shape.dis = traindata[*it].shape.dis;
 		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
-		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].init_shape.exp = traindata[*it_e].shape.exp;
 		//		update_slt();
 		idx++;
@@ -246,9 +253,10 @@ void aug_rand_user(const vector<DataPoint> &traindata, vector<DataPoint> &data,
 		data[idx].init_shape.dis = traindata[*it].shape.dis;
 		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
 		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
-		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].user = traindata[*it_u].user;
-		recal_dis(data[idx], bldshps);
+		recal_dis_ang(data[idx], bldshps);
 		idx++;
 	}
 }
@@ -262,7 +270,8 @@ void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data,
 		data[idx] = traindata[train_idx];
 		data[idx].init_shape.dis = traindata[*it].shape.dis;
 		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
-		data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
+		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
 #ifdef posit
 		data[idx].init_f = traindata[train_idx].f + cv::theRNG().uniform(-G_rand_f_border, G_rand_f_border);
@@ -271,7 +280,7 @@ void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data,
 		data[idx].s(0, 0) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
 		data[idx].s(1, 1) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
 #endif
-		recal_dis(data[idx], bldshps);
+		recal_dis_ang(data[idx], bldshps);
 		idx++;
 	}
 }

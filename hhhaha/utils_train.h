@@ -30,6 +30,7 @@ const int G_line_num = 50;
 const int G_jaw_land_num = 20;
 
 const float G_rand_rot_border = 0.1;
+
 const float G_rand_tslt_border = 10;
 const float G_rand_s_border = 10;
 const float G_rand_f_border = 100;
@@ -41,7 +42,9 @@ const int G_rnd_user = 5;
 const int G_rnd_camr = 5;
 const int G_trn_factor = 35;
 
-const int G_target_type_size= G_nShape + 3 + 3 * 3 + 2 * G_land_num;
+
+//const int G_target_type_size= G_nShape + 3 + 3 * 3 + 2 * G_land_num;
+const int G_target_type_size = G_nShape + 2 + 3 + 2 * G_land_num;
 
 #define normalization
 #define EPSILON 1e-6
@@ -59,6 +62,11 @@ const int G_target_type_size= G_nShape + 3 + 3 * 3 + 2 * G_land_num;
 #include <Eigen/Geometry>
 
 #include <opencv2/opencv.hpp>
+#include<math.h>
+
+const float pi = acos(-1);
+const float G_rand_angle_border = 15.0* pi / 180 ;
+
 
 struct TrainingParameters
 {
@@ -87,8 +95,9 @@ struct TrainingParameters
 struct Target_type {
 	Eigen::VectorXf exp;
 	Eigen::RowVector3f tslt;
-	Eigen::Matrix3f rot;
+	//Eigen::Matrix3f rot;
 	Eigen::MatrixX2f dis;
+	Eigen::RowVector3f angle;
 	
 };
 

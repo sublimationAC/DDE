@@ -41,7 +41,7 @@ cv::Point2f div_3(std::vector<cv::Point2f> &pt) {
 }
 
 
-void get_rti_center(
+void get_tri_center(
 	std::vector<cv::Vec6f> &triangleList, std::vector<cv::Point2f> &tri_center, cv::Rect &rect) {
 	tri_center.resize(triangleList.size());
 	std::vector<cv::Point2f> pt(3);
@@ -74,7 +74,7 @@ void RegressorTrain::Regress(std::vector<cv::Vec6f> &triangleList, cv::Rect &rec
 {
 	puts("regressing");
 	std::vector<cv::Point2f> tri_center;
-	get_rti_center(triangleList, tri_center, rect);
+	get_tri_center(triangleList, tri_center, rect);
 	for (int i = 0; i < triangleList.size(); i++) {
 		printf("%d %.2f %.2f %.2f %.2f %.2f %.2f\n", i, triangleList[i][0], triangleList[i][1], triangleList[i][2], triangleList[i][3], triangleList[i][4], triangleList[i][5]);
 		printf("%d %.2f %.2f\n", i, tri_center[i].x, tri_center[i].y);
@@ -115,8 +115,7 @@ void RegressorTrain::Regress(std::vector<cv::Vec6f> &triangleList, cv::Rect &rec
 		training_parameters_.P * training_data.size() + 3]);//////////////////////?????????????/////////
 
 	cv::Mat pixels_val(training_parameters_.P, training_data.size(), CV_64FC1,
-	cv::alignPtr(pixels_val_data.get(), 32));
-	std::vector<cv::Point2d> temp(G_land_num);
+	cv::alignPtr(pixels_val_data.get(), 32));	
 	for (int i = 0; i < pixels_val.cols; ++i)
 	{
 		/*Transform t = Procrustes(training_data[i].init_shape, mean_shape);
@@ -124,8 +123,8 @@ void RegressorTrain::Regress(std::vector<cv::Vec6f> &triangleList, cv::Rect &rec
 		for (int j = 0; j < training_parameters_.P; ++j)
 			offsets[j] = pixels_[j].second;
 		t.Apply(&offsets, false);*/
-		
-		cal_init_2d_land_i(temp, training_data[i], bldshps);
+		std::vector<cv::Point2d> temp(G_land_num);
+		cal_init_2d_land_ang_i(temp, training_data[i], bldshps);
 
 		for (int j = 0; j < training_parameters_.P; ++j)
 		{
@@ -175,24 +174,29 @@ void RegressorTrain::CompressFerns()
 	random_shuffle(rand_index.begin(), rand_index.end());
 	for (int i = 0; i < training_parameters_.Base; ++i)
 	{
-		const Target_type &output = ferns_[rand_index[i] >> training_parameters_.F]
+		Target_type output = ferns_[rand_index[i] >> training_parameters_.F]
 			.outputs[rand_index[i] & ((1 << training_parameters_.F) - 1)];
 		/*for (int j = 0; j < output.size; ++j)
 		{
 			base_.at<double>(j * 2, i) = output[j].x;
 			base_.at<double>(j * 2 + 1, i) = output[j].y;
 		}*/
-		for (int j = 0; j < G_nShape; j++)
-			base_.at<double>(j, i) = output.exp(j);
+		//for (int j = 0; j < G_nShape; j++)
+		//	base_.at<double>(j, i) = output.exp(j);
 
-		for (int j = 0; j < 3; j++)
-			base_.at<double>(G_nShape + j, i) = output.tslt(j);
+		//for (int j = 0; j < 3; j++)
+		//	base_.at<double>(G_nShape + j, i) = output.tslt(j);
 
-		for (int j = 0; j < 3; j++) for (int k = 0; k < 3; k++)
-			base_.at<double>(G_nShape + 3 + j * 3 + k, i) = output.rot(j, k);
+		//for (int j = 0; j < 3; j++) for (int k = 0; k < 3; k++)
+		//	base_.at<double>(G_nShape + 3 + j * 3 + k, i) = output.rot(j, k);
 
-		for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
-			base_.at<double>(G_nShape + 3 + 3 * 3 + j * 2 + k, i) = output.dis(j, k);
+		//for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
+		//	base_.at<double>(G_nShape + 3 + 3 * 3 + j * 2 + k, i) = output.dis(j, k);
+		Eigen::VectorXf temp_v;
+		target2vector(output, temp_v);
+		for (int j = 0; j < G_target_type_size; j++)
+			base_.at<double>(j) = temp_v(j);
+
 		cv::normalize(base_.col(i), base_.col(i));
 	}
 
@@ -200,7 +204,10 @@ void RegressorTrain::CompressFerns()
 	{
 		for (int j = 0; j < (1 << training_parameters_.F); ++j)
 		{
-			const Target_type &output = ferns_[i].outputs[j];
+			//const Target_type &output = ferns_[i].outputs[j];
+			Eigen::VectorXf temp_v;
+			target2vector(ferns_[i].outputs[j], temp_v);
+
 			cv::Mat output_mat(base_.rows, 1, CV_64FC1);
 
 			/*for (int k = 0; k < output.size; ++k)
@@ -209,17 +216,21 @@ void RegressorTrain::CompressFerns()
 				output_mat.at<double>(k * 2 + 1) = output[k].y;
 			}*/
 
-			for (int p = 0; p < G_nShape; p++)
-				output_mat.at<double>(p) = output.exp(p);
+			//for (int p = 0; p < G_nShape; p++)
+			//	output_mat.at<double>(p) = output.exp(p);
 
-			for (int p = 0; p < 3; p++)
-				output_mat.at<double>(G_nShape + p) = output.tslt(p);
+			//for (int p = 0; p < 3; p++)
+			//	output_mat.at<double>(G_nShape + p) = output.tslt(p);
 
-			for (int p = 0; p < 3; p++) for (int q = 0; q < 3; q++)
-				output_mat.at<double>(G_nShape + 3 + p * 3 + q) = output.rot(p, q);
+			//for (int p = 0; p < 3; p++) for (int q = 0; q < 3; q++)
+			//	output_mat.at<double>(G_nShape + 3 + p * 3 + q) = output.rot(p, q);
 
-			for (int p = 0; p < G_land_num; p++) for (int q = 0; q < 2; q++)
-				output_mat.at<double>(G_nShape + 3 + 3 * 3 + p * 2 + q) = output.dis(p, q);
+			//for (int p = 0; p < G_land_num; p++) for (int q = 0; q < 2; q++)
+			//	output_mat.at<double>(G_nShape + 3 + 3 * 3 + p * 2 + q) = output.dis(p, q);
+
+			for (int p = 0; p < G_target_type_size; p++)
+				output_mat.at<double>(p) = temp_v(p);
+
 			ferns_[i].outputs_mini.push_back(OMP(output_mat, base_, training_parameters_.Q));
 		}
 	}
@@ -237,7 +248,8 @@ Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape,
 
 	double *p = pixels_val.ptr<double>(0);
 	vector<cv::Point2d> temp(G_land_num);
-	cal_init_2d_land_i(temp, data, bldshps);
+	//cal_init_2d_land_i(temp, data, bldshps);
+	cal_init_2d_land_ang_i(temp, data, bldshps);
 	for (int j = 0; j < training_parameters_.P; ++j)
 	{
 		//cv::Point pixel_pos = data.init_shape[pixels_[j].first] + offsets[j];
@@ -269,21 +281,24 @@ Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape,
 	//}
 
 	Target_type result;
-	result.dis.resize(G_land_num, 2);
-	result.exp.resize(G_nShape);
+	//result.dis.resize(G_land_num, 2);
+	//result.exp.resize(G_nShape);
 
-	for (int j = 0; j < G_nShape; j++)
-		result.exp(j) = result_mat.at<double>(j);
-		
-	for (int j = 0; j < 3; j++)
-		result.tslt(j) = result_mat.at<double>(j+G_nShape);
+	//for (int j = 0; j < G_nShape; j++)
+	//	result.exp(j) = result_mat.at<double>(j);
+	//	
+	//for (int j = 0; j < 3; j++)
+	//	result.tslt(j) = result_mat.at<double>(j+G_nShape);
 
-	for (int j = 0; j < 3; j++) for (int k = 0; k < 3; k++)
-		result.rot(j,k) = result_mat.at<double>(G_nShape + 3 + j * 3 + k);
-		
-	for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
-		result.dis(j, k) = result_mat.at<double>(G_nShape + 3 + 3 * 3 + j * 2 + k);
-
+	//for (int j = 0; j < 3; j++) for (int k = 0; k < 3; k++)
+	//	result.rot(j,k) = result_mat.at<double>(G_nShape + 3 + j * 3 + k);
+	//	
+	//for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
+	//	result.dis(j, k) = result_mat.at<double>(G_nShape + 3 + 3 * 3 + j * 2 + k);
+	Eigen::VectorXf temp_v(G_target_type_size);
+	for (int i = 0; i < G_target_type_size; i++)
+		temp_v(i) = result_mat.at<double>(i);
+	vector2target(temp_v, result);
 	return result;
 }
 

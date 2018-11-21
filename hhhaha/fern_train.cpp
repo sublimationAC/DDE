@@ -45,17 +45,22 @@ void FernTrain::Regress(vector<Target_type> *targets,
 			Y.at<double>(i, j + 1) = (*targets)[i][j / 2].y;
 		}*/
 
-		for (int j = 0; j < G_nShape; j++)		
-			Y.at<double>(i, j) = (*targets)[i].exp(j);
-			
-		for (int j = 0; j < 3; j++)
-			Y.at<double>(i, G_nShape+j) = (*targets)[i].tslt(j);
+		//for (int j = 0; j < G_nShape; j++)		
+		//	Y.at<double>(i, j) = (*targets)[i].exp(j);
+		//	
+		//for (int j = 0; j < 3; j++)
+		//	Y.at<double>(i, G_nShape+j) = (*targets)[i].tslt(j);
 
-		for (int j=0;j<3;j++) for (int k=0;k<3;k++)
-			Y.at<double>(i, G_nShape + 3+j*3+k) = (*targets)[i].rot(j,k);
-			
-		for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
-			Y.at<double>(i, G_nShape + 3 + 3 * 3 + j*2+k) = (*targets)[i].dis(j, k);
+		//for (int j=0;j<3;j++) for (int k=0;k<3;k++)
+		//	Y.at<double>(i, G_nShape + 3+j*3+k) = (*targets)[i].rot(j,k);
+		//	
+		//for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
+		//	Y.at<double>(i, G_nShape + 3 + 3 * 3 + j*2+k) = (*targets)[i].dis(j, k);
+
+		Eigen::VectorXf temp_v;
+		target2vector((*targets)[i], temp_v);
+		for (int j = 0; j < G_target_type_size; j++)
+			Y.at<double>(i, j) = temp_v(j);
 
 	}
 
@@ -122,7 +127,8 @@ void FernTrain::Regress(vector<Target_type> *targets,
 	tar_zero.dis.setZero();
 	tar_zero.exp.resize(G_nShape);
 	tar_zero.exp.setZero();
-	tar_zero.rot.setZero();
+	//tar_zero.rot.setZero();
+	tar_zero.angle.setZero();
 	tar_zero.tslt.setZero();
 	outputs.assign(outputs_count, tar_zero);
 	vector<int> each_output_count(outputs_count);
@@ -146,7 +152,8 @@ void FernTrain::Regress(vector<Target_type> *targets,
 			p *= 1.0 / (each_output_count[i] + training_parameters.Beta);*/
 		outputs[i].dis.array()*= 1.0 / (each_output_count[i] + training_parameters.Beta);
 		outputs[i].exp.array()*= 1.0 / (each_output_count[i] + training_parameters.Beta);
-		outputs[i].rot.array() *= 1.0 / (each_output_count[i] + training_parameters.Beta);
+		//outputs[i].rot.array() *= 1.0 / (each_output_count[i] + training_parameters.Beta);
+		outputs[i].angle.array() *= 1.0 / (each_output_count[i] + training_parameters.Beta);
 		outputs[i].tslt.array() *= 1.0 / (each_output_count[i] + training_parameters.Beta);
 	}
 }

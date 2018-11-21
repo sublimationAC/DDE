@@ -6,7 +6,7 @@
 
 
 int num = 0;
-void load_img_land_coef(std::string &path, std::string sfx, std::vector<DataPoint> &img) {
+void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &img) {
 	struct dirent **namelist;
 	int n;
 	n = scandir(path.c_str(), &namelist, 0, alphasort);
@@ -58,6 +58,11 @@ void load_img_land_coef(std::string &path, std::string sfx, std::vector<DataPoin
 					//cal_rect(temp);
 					//system("pause");
 					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
+					if (access((p.substr(0, p.find(".land")) + ".lv").c_str(), 0) == -1) {
+						puts("No lv !!!! error !");
+						exit(1);
+
+					}
 
 
 					img.push_back(temp);
@@ -74,7 +79,7 @@ void load_img_land_coef(std::string &path, std::string sfx, std::vector<DataPoin
 
 }
 
-void load_land(std::string &p, DataPoint &temp) {
+void load_land(std::string p, DataPoint &temp) {
 	std::cout << p << '\n';
 	FILE *fp;
 	fopen_s(&fp, p.c_str(), "r");
@@ -91,8 +96,8 @@ void load_land(std::string &p, DataPoint &temp) {
 	fclose(fp);
 	//system("pause");
 }
-void load_img(std::string &p, DataPoint &temp) {	
-	temp.image = cv::imread(p);// , CV_LOAD_IMAGE_GRAYSCALE);
+void load_img(std::string p, DataPoint &temp) {	
+	temp.image = cv::imread(p, CV_LOAD_IMAGE_GRAYSCALE);
 }
 const std::string kAlt2 = "haarcascade_frontalface_alt2.xml";
 #include<algorithm>
@@ -112,7 +117,7 @@ void cal_rect(DataPoint &temp) {
 	cc.detectMultiScale(gray_image, faces);
 	//std::cout << "Detection time: " << (cv::getTickCount() - start_time) / cv::getTickFrequency()
 	//	<< "s" << "\n";
-
+	
 	int cnt = 0, ma = 0;
 	for (cv::Rect face : faces) {
 		face.x = max(0, face.x - 10);// face.y = max(0, face.y - 10);
@@ -188,7 +193,7 @@ void test_data_2dland(DataPoint &temp) {
 	system("pause");
 }
 
-void load_fitting_coef_one(std::string &name, DataPoint &temp) {
+void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	std::cout << "loading coefficients...file:" << name << "\n";
 	FILE *fp;
 	fopen_s(&fp, name.c_str(), "rb");
@@ -210,8 +215,14 @@ void load_fitting_coef_one(std::string &name, DataPoint &temp) {
 	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
 		fread(&temp.shape.exp(i_shape), sizeof(float), 1, fp);
 
+	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
+	//	fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
+	//temp.shape.angle = get_uler_angle(temp.shape.rot);
+
+	Eigen::Matrix3f rot;
 	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
-		fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
+		fread(&rot(i, j), sizeof(float), 1, fp);
+	temp.shape.angle = get_uler_angle(rot);
 
 	for (int i = 0; i < 3; i++) fread(&temp.shape.tslt(i), sizeof(float), 1, fp);
 //#ifdef normalization
