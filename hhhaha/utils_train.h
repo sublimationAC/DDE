@@ -44,10 +44,10 @@ const int G_trn_factor = 35;
 
 
 //const int G_target_type_size= G_nShape + 3 + 3 * 3 + 2 * G_land_num;
-const int G_target_type_size = G_nShape + 2 + 3 + 2 * G_land_num;
+const int G_target_type_size = G_nShape-1 + 2 + 3 + 2 * G_land_num;
 
 #define normalization
-#define EPSILON 1e-6
+#define EPSILON 1e-3
 
 
 #ifndef FACE_X_UTILS_TRAIN_H_
@@ -111,6 +111,7 @@ struct DataPoint
 	Eigen:: VectorXf user;
 	Eigen::RowVector2f center;
 	Eigen::MatrixX2f land_2d;
+	int ide_idx = 0;
 #ifdef posit
 		float f;
 #endif // posit

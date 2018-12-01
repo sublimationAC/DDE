@@ -58,7 +58,7 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 					//cal_rect(temp);
 					//system("pause");
 					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
-					if (access((p.substr(0, p.find(".land")) + ".lv").c_str(), 0) == -1) {
+					if (_access((p.substr(0, p.find(".land")) + ".lv").c_str(), 0) == -1) {
 						puts("No lv !!!! error !");
 						exit(1);
 
@@ -222,7 +222,7 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	Eigen::Matrix3f rot;
 	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
 		fread(&rot(i, j), sizeof(float), 1, fp);
-	temp.shape.angle = get_uler_angle(rot);
+	temp.shape.angle = get_uler_angle_zyx(rot);
 
 	for (int i = 0; i < 3; i++) fread(&temp.shape.tslt(i), sizeof(float), 1, fp);
 //#ifdef normalization

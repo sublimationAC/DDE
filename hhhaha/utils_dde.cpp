@@ -18,6 +18,18 @@ float cal_3d_vtx(
 				*(bldshps(i_id, 3 * G_nVerts*i_shape + vtx_idx * 3 + axis) - bldshps(i_id, vtx_idx * 3 + axis));
 	return ans;
 }
+
+float cal_3d_vtx_0ide(
+	Eigen::MatrixXf &exp_matrix, Eigen::VectorXf &exp, int vtx_idx, int axis) {
+
+	//puts("calculating one vertex coordinate...");
+	float ans = 0;
+
+	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+		ans += exp(i_shape)*(exp_matrix(i_shape, vtx_idx * 3 + axis));
+	return ans;
+}
+
 //void recal_dis(DataPoint &data, Eigen::MatrixXf &bldshps) {
 //	//puts("calculating displacement...");
 //	Eigen::MatrixX2f land(G_land_num, 2);
@@ -37,20 +49,32 @@ void recal_dis_ang(DataPoint &data, Eigen::MatrixXf &bldshps) {
 	//puts("calculating displacement...");
 	Eigen::MatrixX2f land(G_land_num, 2);
 	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.shape.angle);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
 			v(axis) = cal_3d_vtx(bldshps, data.user, data.shape.exp, data.land_cor(i_v), axis);
-
-		Eigen::MatrixX3f rot = get_r_from_angle(data.init_shape.angle(0), 2)*
-			get_r_from_angle(data.init_shape.angle(1), 0)*get_r_from_angle(data.init_shape.angle(2), 2);
-
 		//land.row(i_v) = ((data.s) * ((data.shape.rot) * v)).transpose() + T;
 		land.row(i_v) = ((data.s) * (rot * v)).transpose() + T;
 	}
 
 	data.shape.dis.array() = data.land_2d.array() - land.array();
+}
 
+void recal_dis_ang_0ide(DataPoint &data, Eigen::MatrixXf &exp_matrix) {
+	//puts("calculating displacement...");
+	Eigen::MatrixX2f land(G_land_num, 2);
+	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.shape.angle);
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		Eigen::Vector3f v;
+		for (int axis = 0; axis < 3; axis++)
+			v(axis) = cal_3d_vtx_0ide(exp_matrix, data.shape.exp, i_v, axis);
+		//land.row(i_v) = ((data.s) * ((data.shape.rot) * v)).transpose() + T;
+		land.row(i_v) = ((data.s) * (rot * v)).transpose() + T;
+	}
+
+	data.shape.dis.array() = data.land_2d.array() - land.array();
 }
 
 void cal_mesh(DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3f &mesh) {
@@ -391,18 +415,46 @@ void cal_init_2d_land_ang_i(std::vector<cv::Point2d> &ans, const DataPoint &data
 	Eigen::RowVector2f T = data.init_shape.tslt.block(0, 0, 1, 2);
 	Eigen::VectorXf user = data.user;
 	Eigen::VectorXf init_exp = data.init_shape.exp;
+	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.init_shape.angle);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
 			v(axis) = cal_3d_vtx(bldshps, user, init_exp, data.land_cor(i_v), axis);
 		//Eigen::RowVector2f temp = ((data.s) * ((data.init_shape.rot) * v)).transpose() + T + data.init_shape.dis.row(i_v);
-		Eigen::MatrixX3f rot = get_r_from_angle(data.init_shape.angle(0), 2)*
-			get_r_from_angle(data.init_shape.angle(1), 0)*get_r_from_angle(data.init_shape.angle(2), 2);
 
 		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T + data.init_shape.dis.row(i_v);
 		ans[i_v].x = temp(0); ans[i_v].y = data.image.rows - temp(1);
 	}
 
+}
+
+
+void cal_init_2d_land_ang_0ide_i(
+	std::vector<cv::Point2d> &ans, const DataPoint &data, Eigen::MatrixXf &exp_matrix) {
+	ans.resize(G_land_num);
+	Eigen::RowVector2f T = data.init_shape.tslt.block(0, 0, 1, 2);
+	Eigen::VectorXf init_exp = data.init_shape.exp;
+	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.init_shape.angle);
+	for (int i_v = 0; i_v < G_land_num; i_v++) {
+		Eigen::Vector3f v;
+		for (int axis = 0; axis < 3; axis++)
+			v(axis) = cal_3d_vtx_0ide(exp_matrix, init_exp, i_v, axis);
+		//Eigen::RowVector2f temp = ((data.s) * ((data.init_shape.rot) * v)).transpose() + T + data.init_shape.dis.row(i_v);
+
+		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T + data.init_shape.dis.row(i_v);
+		ans[i_v].x = temp(0); ans[i_v].y = data.image.rows - temp(1);
+	}
+
+}
+
+void get_init_land_ang_0ide_i(
+	std::vector<cv::Point2d> &ans, const DataPoint &data,
+	Eigen::MatrixXf &bldshps, std::vector<Eigen::MatrixXf> &arg_exp_land_matrix) {
+
+	if (data.ide_idx == -1)
+		cal_init_2d_land_ang_i(ans, data, bldshps);
+	else
+		cal_init_2d_land_ang_0ide_i(ans, data, arg_exp_land_matrix[data.ide_idx]);
 }
 
 
@@ -415,6 +467,7 @@ Target_type shape_difference(const Target_type &s1, const Target_type &s2)
 
 	result.exp.resize(G_nShape);
 	result.exp.array() = s1.exp.array() - s2.exp.array();
+	result.exp(0) = 0;
 
 	//result.rot.array() = s1.rot.array() - s2.rot.array();
 	result.angle.array() = s1.angle.array() - s2.angle.array();
@@ -490,66 +543,144 @@ void print_target(Target_type &data) {
 	std::cout << "tslt:" << data.tslt << "\n";
 }
 
+void print_target_file(Target_type &data,FILE* fp) {
+
+	fprintf(fp, "\n exp:\n");
+	for (int i=0;i<G_nShape;i++)
+		fprintf(fp, "%.10f ",data.exp(i));
+	fprintf(fp, "\n dis:\n");
+	for (int i = 0; i < G_land_num; i++)
+		fprintf(fp, "%.10f %.10f , ", data.dis(i,0),data.dis(i, 1));
+	fprintf(fp, "\n angle:\n");
+	for (int i = 0; i < 3; i++)
+		fprintf(fp, "%.10f ", data.angle(i)*180/pi);
+	fprintf(fp, "\n tslt:\n");
+	for (int i = 0; i < 3; i++)
+		fprintf(fp, "%.10f ", data.tslt(i));
+
+}
+
 void target2vector(Target_type &data, Eigen::VectorXf &ans) {
 	ans.resize(G_target_type_size);
-	for (int i = 0; i < G_nShape; i++) ans(i) = data.exp(i);
-	for (int i = 0; i < 2; i++) ans(i + G_nShape) = data.tslt(i);
+	for (int i = 1; i < G_nShape; i++) ans(i-1) = data.exp(i);
+	for (int i = 0; i < 2; i++) ans(i + G_nShape-1) = data.tslt(i);
 	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) ans(G_nShape + 3 + i * 3 + j) = data.rot(i, j);
-	for (int i = 0; i < 3; i++) ans(G_nShape + 2 + i) = data.angle(i);
-	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans(G_nShape + 2 + 3 + i * 2 + j) = data.dis(i, j);
+	for (int i = 0; i < 3; i++) ans(G_nShape - 1 + 2 + i) = data.angle(i);
+	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans(G_nShape - 1 + 2 + 3 + i * 2 + j) = data.dis(i, j);
 }
 void vector2target(Eigen::VectorXf &data, Target_type &ans) {
 	ans.exp.resize(G_nShape);
 	ans.dis.resize(G_land_num, 2);
-	for (int i = 0; i < G_nShape; i++) ans.exp(i) = data(i);
-	for (int i = 0; i < 2; i++) ans.tslt(i) = data(i + G_nShape);
+	for (int i = 1; i < G_nShape; i++) ans.exp(i) = data(i-1);
+	ans.exp(0) = 0;
+	for (int i = 0; i < 2; i++) ans.tslt(i) = data(i + G_nShape - 1);
+	ans.tslt(2) = 0;
 	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) ans.rot(i, j) = data(G_nShape + 3 + i * 3 + j);
-	for (int i = 0; i < 3; i++) ans.angle(i) = data(G_nShape + 2 + i);
-	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans.dis(i, j) = data(G_nShape + 2 + 3 + i * 2 + j);
+	for (int i = 0; i < 3; i++) ans.angle(i) = data(G_nShape - 1 + 2 + i);
+	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans.dis(i, j) = data(G_nShape - 1 + 2 + 3 + i * 2 + j);
 }
 
 //assume the be could not be more than 90
-Eigen::RowVector3f get_uler_angle(Eigen::Matrix3f R) {
-	Eigen::Vector3f x, y, z;
+//Eigen::RowVector3f get_uler_angle(Eigen::Matrix3f R) {
+//	Eigen::Vector3f x, y, z;
+//	x = R.row(0).transpose();
+//	y = R.row(1).transpose();
+//	z = R.row(2).transpose();
+//	float al, be, gaw;
+//	if (fabs(1 - z(2)*z(2)) < 1e-3) {
+//		gaw = be = 0;
+//		al = acos(x(0));
+//		if (y(0) < 0) al = 2 * pi - al;
+//	}
+//	else {
+//
+//		be = acos(z(2));
+//		al = acos(std::max(std::min(float(1.0), z(1) / sqrt(1 - z(2)*z(2))), float(-1.0)));
+//		if (z(0) < 0) al = 2 * pi - al;//according to the sin(al)
+//
+//		gaw = acos(std::max(std::min(float(1.0), -y(2) / sqrt(1 - z(2)*z(2))), float(-1.0)));
+//
+//		if (x(2) < 0) gaw = 2 * pi - gaw;//according to the sin(ga)
+//	}
+//	/*std::cout << R << "\n----------------------\n";
+//	printf("%.10f %.10f %.10f %.10f %.10f\n",z(2), al/pi*180, be / pi * 180, ga / pi * 180, gaw / pi * 180);
+//	system("pause");*/
+//	Eigen::RowVector3f ans;
+//	ans << al, be, gaw;
+//	return ans;
+//}
+
+//Eigen::Matrix3f get_r_from_angle(float angle, int axis) {
+//	Eigen::Matrix3f ans;
+//	ans.setZero();
+//	ans(axis, axis) = 1;
+//	int idx_x=0, idx_y=1;
+//	if (axis == 0)
+//		idx_x = 1, idx_y = 2;
+//	else 
+//		if (axis==2)
+//			idx_x = 0, idx_y = 1;
+//		else
+//			idx_x = 0, idx_y = 2;
+//	ans(idx_x, idx_x) = cos(angle), ans(idx_x, idx_y) = -sin(angle), ans(idx_y, idx_x) = sin(angle), ans(idx_y, idx_y) = cos(angle);
+//	return ans;
+//}
+//Eigen::Matrix3f get_r_from_angle(const Eigen::Vector3f &angle) {
+//	Eigen::Matrix3f ans;
+//	float Sa = sin(angle(0)), Ca = cos(angle(0)), Sb = sin(angle(1)),
+//		Cb = cos(angle(1)), Sc = sin(angle(2)), Cc = cos(angle(2));
+//
+//	ans(0, 0) = Ca * Cc - Sa * Cb*Sc;
+//	ans(0, 1) = -Sa * Cc - Ca * Cb*Sc;
+//	ans(0, 2) = Sb * Sc;
+//	ans(1, 0) = Ca * Sc + Sa * Cb*Cc;
+//	ans(1, 1) = -Sa * Sc + Ca * Cb*Cc;
+//	ans(1, 2) = -Sb * Cc;
+//	ans(2, 0) = Sa * Sb;
+//	ans(2, 1) = Ca * Sb;
+//	ans(2, 2) = Cb;
+//	return ans;
+//}
+
+Eigen::Vector3f get_uler_angle_zyx(Eigen::Matrix3f R) {
+	Eigen::Vector3f x, y, z, t;
 	x = R.row(0).transpose();
 	y = R.row(1).transpose();
 	z = R.row(2).transpose();
-	float al, be, gaw;
-	if (fabs(1 - z(2)*z(2)) < 1e-3) {
-		gaw = be = 0;
-		al = acos(x(0));
-		if (y(0) < 0) al = 2 * pi - al;
+	float al, be, ga;
+	if (fabs(1 - x(2)*x(2)) < 1e-3) {
+		be = asin(x(2));
+		al = ga = 0;
+		exit(1);
 	}
 	else {
 
-		be = acos(z(2));
-		al = acos(std::max(std::min(float(1.0), z(1) / sqrt(1 - z(2)*z(2))), float(-1.0)));
-		if (z(0) < 0) al = 2 * pi - al;//according to the sin(al)
+		be = asin(std::max(std::min(1.0, double(x(2))), -1.0));
+		al = asin(std::max(std::min(1.0, double(-x(1) / sqrt(1 - x(2)*x(2)))), -1.0));
+		ga = asin(std::max(std::min(1.0, double(-y(2) / sqrt(1 - x(2)*x(2)))), -1.0));
 
-		gaw = acos(std::max(std::min(float(1.0), -y(2) / sqrt(1 - z(2)*z(2))), float(-1.0)));
-
-		if (x(2) < 0) gaw = 2 * pi - gaw;//according to the sin(ga)
 	}
-	/*std::cout << R << "\n----------------------\n";
-	printf("%.10f %.10f %.10f %.10f %.10f\n",z(2), al/pi*180, be / pi * 180, ga / pi * 180, gaw / pi * 180);
-	system("pause");*/
-	Eigen::RowVector3f ans;
-	ans << al, be, gaw;
+	//std::cout << R << "\n----------------------\n";
+	//printf("%.10f %.10f %.10f %.10f\n", x(2), al / pi * 180, be / pi * 180, ga / pi * 180);
+	Eigen::Vector3f ans;
+	ans << al, be, ga;
 	return ans;
+	//system("pause");
 }
 
-Eigen::Matrix3f get_r_from_angle(float angle, int axis) {
+Eigen::Matrix3f get_r_from_angle_zyx(const Eigen::Vector3f &angle) {
 	Eigen::Matrix3f ans;
-	ans.setZero();
-	ans(axis, axis) = 1;
-	int idx_x=0, idx_y=1;
-	if (axis == 0)
-		idx_x = 1, idx_y = 2;
-	else 
-		if (axis==2)
-			idx_x = 0, idx_y = 1;
-		else
-			idx_x = 0, idx_y = 2;
-	ans(idx_x, idx_x) = cos(angle), ans(idx_x, idx_y) = -sin(angle), ans(idx_y, idx_x) = sin(angle), ans(idx_y, idx_y) = cos(angle);
+	float Sa = sin(angle(0)), Ca = cos(angle(0)), Sb = sin(angle(1)),
+		Cb = cos(angle(1)), Sc = sin(angle(2)), Cc = cos(angle(2));
+
+	ans(0, 0) = Ca * Cb;
+	ans(0, 1) = -Sa * Cb;
+	ans(0, 2) = Sb;
+	ans(1, 0) = Sa * Cc + Ca * Sb*Sc;
+	ans(1, 1) = Ca * Cc - Sa * Sb*Sc;
+	ans(1, 2) = -Cb * Sc;
+	ans(2, 0) = Sa * Sc - Ca * Sb*Cc;
+	ans(2, 1) = Ca * Sc + Sa * Sb*Cc;
+	ans(2, 2) = Cb * Cc;
 	return ans;
 }

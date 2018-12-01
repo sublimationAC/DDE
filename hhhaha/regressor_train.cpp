@@ -70,7 +70,7 @@ int find_nearest_center(cv::Point2f x, std::vector<cv::Point2f> &tri_center) {
 
 void RegressorTrain::Regress(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect, 
 	Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
-	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps)
+	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps, std::vector<Eigen::MatrixXf> &arg_exp_land_matrix)
 {
 	puts("regressing");
 	std::vector<cv::Point2f> tri_center;
@@ -123,8 +123,17 @@ void RegressorTrain::Regress(std::vector<cv::Vec6f> &triangleList, cv::Rect &rec
 		for (int j = 0; j < training_parameters_.P; ++j)
 			offsets[j] = pixels_[j].second;
 		t.Apply(&offsets, false);*/
+
+		//std::vector<cv::Point2d> temp(G_land_num);
+		//cal_init_2d_land_ang_i(temp, training_data[i], bldshps);
+
 		std::vector<cv::Point2d> temp(G_land_num);
-		cal_init_2d_land_ang_i(temp, training_data[i], bldshps);
+		//cal_init_2d_land_ang_0ide_i(temp, training_data[i],arg_exp_land_matrix[training_data[i].ide_idx]);
+
+		get_init_land_ang_0ide_i(temp, training_data[i], bldshps, arg_exp_land_matrix);
+
+		/*for (int p = 0; p < G_land_num; p++)
+			printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
 
 		for (int j = 0; j < training_parameters_.P; ++j)
 		{
@@ -195,7 +204,7 @@ void RegressorTrain::CompressFerns()
 		Eigen::VectorXf temp_v;
 		target2vector(output, temp_v);
 		for (int j = 0; j < G_target_type_size; j++)
-			base_.at<double>(j) = temp_v(j);
+			base_.at<double>(j,i) = temp_v(j);
 
 		cv::normalize(base_.col(i), base_.col(i));
 	}
@@ -237,7 +246,7 @@ void RegressorTrain::CompressFerns()
 }
 
 Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape, 
-	const DataPoint &data, Eigen::MatrixXf &bldshps,Eigen::MatrixX3i &tri_idx) const
+	const DataPoint &data, Eigen::MatrixXf &bldshps,Eigen::MatrixX3i &tri_idx, std::vector<Eigen::MatrixXf> &arg_exp_land_matrix) const
 {
 	cv::Mat pixels_val(1, training_parameters_.P, CV_64FC1);
 	//Transform t = Procrustes(data.init_shape, mean_shape);
@@ -249,7 +258,14 @@ Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape,
 	double *p = pixels_val.ptr<double>(0);
 	vector<cv::Point2d> temp(G_land_num);
 	//cal_init_2d_land_i(temp, data, bldshps);
-	cal_init_2d_land_ang_i(temp, data, bldshps);
+	//cal_init_2d_land_ang_i(temp, data, bldshps);
+	//std::vector<cv::Point2d> temp___(G_land_num);
+	//cal_init_2d_land_ang_0ide_i(temp___, data, exp_matrix);
+	
+	get_init_land_ang_0ide_i(temp, data, bldshps, arg_exp_land_matrix);
+
+	/*for (int p = 0; p < G_land_num; p++)
+		printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
 	for (int j = 0; j < training_parameters_.P; ++j)
 	{
 		//cv::Point pixel_pos = data.init_shape[pixels_[j].first] + offsets[j];
@@ -265,7 +281,7 @@ Target_type RegressorTrain::Apply(//const vector<cv::Point2d> &mean_shape,
 			p[j] = 0;
 	}
 
-	vector<double> coeffs(training_parameters_.Base);
+	vector<double> coeffs(training_parameters_.Base);//initial 0
 	for (int i = 0; i < training_parameters_.K; ++i)
 		ferns_[i].ApplyMini(pixels_val, coeffs);
 

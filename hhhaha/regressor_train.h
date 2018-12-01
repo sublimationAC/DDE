@@ -36,10 +36,10 @@ public:
 	RegressorTrain(const TrainingParameters &tp);
 	void Regress(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect,
 		Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
-		const std::vector<DataPoint> &training_data, Eigen::MatrixXf &bldshps) ;
+		const std::vector<DataPoint> &training_data, Eigen::MatrixXf &bldshps,std:: vector<Eigen::MatrixXf> &arg_exp_land_matrix) ;
 
 	Target_type Apply(//const std::vector<cv::Point2d> &mean_shape,
-		const DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3i &tri_idx) const;
+		const DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3i &tri_idx, std::vector<Eigen::MatrixXf> &arg_exp_land_matrix) const;
 
 	void write(cv::FileStorage &fs)const;
 

@@ -38,8 +38,8 @@ struct FernTrain
 
 	void write(cv::FileStorage &fs)const;
 
-	std::vector<double> thresholds;
-	std::vector<std::pair<int, int>> features_index;
+	std::vector<double> thresholds_exp, thresholds_dis, thresholds_tslt, thresholds_angle;
+	std::vector<std::pair<int, int>> features_index_exp, features_index_dis, features_index_tslt, features_index_angle;
 	std::vector<Target_type> outputs;
 	std::vector<std::vector<std::pair<int, double>>> outputs_mini;
 private:
