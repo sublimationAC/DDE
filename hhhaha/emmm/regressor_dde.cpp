@@ -26,7 +26,7 @@ void cal_2d_land_i_ang_0ide(
 	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &exp_r_t_all_matrix, const Target_type &data, DataPoint &ini_data) {
 	ans.resize(G_land_num);
 	Eigen::RowVector2f T = data.tslt.block(0, 0, 1, 2);
-	Eigen::Matrix3f rot = get_r_from_angle(data.angle);
+	Eigen::Matrix3f rot = get_r_from_angle_zyx(data.angle);
 	Eigen::VectorXf exp = data.exp;
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
@@ -54,6 +54,8 @@ Target_type regressor_dde::Apply(//const Transform &t,
 	t.Apply(&offsets, false);*/
 	std ::vector<cv::Point2d> temp(G_land_num);
 	//cal_2d_land_i(temp, data, bldshps,ini_data);
+
+	
 	cal_2d_land_i_ang_0ide(temp, exp_r_t_all_matrix, data,ini_data);
 	
 	double *p = pixels_val.ptr<double>(0);
@@ -74,7 +76,7 @@ Target_type regressor_dde::Apply(//const Transform &t,
 
 	cv::Mat coeffs = cv::Mat::zeros(base_.cols, 1, CV_64FC1);
 	for (int i = 0; i < ferns_dde_.size(); ++i) {
-		printf("inner regressor %d:\n", i);
+		//printf("inner regressor %d:\n", i);
 		ferns_dde_[i].ApplyMini(pixels_val, coeffs);
 	}
 
@@ -102,7 +104,7 @@ Target_type regressor_dde::Apply(//const Transform &t,
 
 	//for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
 	//	result.dis(j, k) = result_mat.at<double>(G_nShape + 3 + 3 * 3 + j * 2 + k);
-	Eigen::VectorXf temp_v;
+	Eigen::VectorXf temp_v(G_target_type_size);
 	for (int i = 0; i < G_target_type_size; i++) temp_v(i) = result_mat.at<double>(i);
 	vector2target(temp_v, result);
 	return result;

@@ -10,15 +10,16 @@
 using namespace std;
 
 const string kModelFileName = "model_all_5_face.xml.gz";
-const string kModelFileName_dde = "model_dde_all_1fi.xml.gz";
+const string kModelFileName_dde = "model_dde_zyx_beta250.xml.gz";
 const string kAlt2 = "haarcascade_frontalface_alt2.xml";
-const string kTestImage = "./photo_test/real_time_test/pose_1.jpg";//22.png"; //005_04_03_051_05.png";
+const string kTestImage = "./photo_test/real_time_test/pose_23.jpg";//real_time_test//22.png"; /test_samples/005_04_03_051_05.png";
+std::string test_debug_lv_path = "./lv_file/fitting_result_t66_pose_0.lv";
 
 #ifdef win64
 
-std::string fwhs_path = "D:/sydney/first/data_me/FaceWarehouse";
-std::string lfw_path = "D:/sydney/first/data_me/lfw_image";
-std::string gtav_path = "D:/sydney/first/data_me/GTAV_image";
+std::string fwhs_path_lv = "D:/sydney/first/data_me/test_lv/fw";
+std::string lfw_path_lv = "D:/sydney/first/data_me/test_lv/lfw_image";
+std::string gtav_path_lv = "D:/sydney/first/data_me/test_lv/GTAV_image";
 std::string test_path = "D:/sydney/first/data_me/test";
 std::string test_path_one = "D:/sydney/first/data_me/test_only_one";
 std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
@@ -28,7 +29,7 @@ std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d2
 std::string save_coef_path = "./ide_fw_p1.lv";
 std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
 std::string fwhs_path_p1 = "D:/sydney/first/data_me/test_lv";
-std::string test_debug_lv_path = "./lv_file/fitting_result_t66_pose_0.lv";
+
 //std::string debug_lv_save_path = "./lv_file/fitting_result_005_04_03_051_05.lv";
 #endif // win64
 #ifdef linux
@@ -190,10 +191,19 @@ void DDE_run_test(
 	for (int test_round = 0; test_round < 500; test_round++) {
 		printf("dde_round %d: \n", test_round);
 		dde_x.dde(data, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
+		printf("dde_round %d: \n", test_round);
+		puts("---------------------------------------------------");
+		print_datapoint(data);
+		show_image_0rect(data.image, data.landmarks);
+		
+		//system("pause");
 
 		if (test_round % 10 == 0) {
-			show_image_0rect(data.image, data.landmarks);
+			//show_image_0rect(data.image, data.landmarks);
+			
 			save_datapoint(data, kTestImage + "_" + to_string(test_round) + ".lv");
+			puts("been saven");
+			system("pause");
 		}
 
 //--------------------------------------post_processing
@@ -234,7 +244,11 @@ int main()
 		load_bldshps(bldshps, bldshps_path, ide_sg_vl, sg_vl_path);
 		vector<DataPoint> training_data;
 		training_data.clear();
-		load_land_coef(fwhs_path_p1, ".jpg", training_data);
+		load_land_coef(fwhs_path_lv, ".jpg", training_data);
+		load_land_coef(lfw_path_lv, ".jpg", training_data);
+		load_land_coef(gtav_path_lv, ".bmp", training_data);
+		printf("traindata size %d\n", training_data.size());
+		//system("pause");
 
 		Eigen::MatrixX3i tri_idx;
 		std::vector<cv::Vec6f> triangleList;
@@ -243,8 +257,8 @@ int main()
 		
 		Eigen::MatrixX2f points(G_land_num, 2);
 		cal_del_tri(ref_shape, rect, triangleList, tri_idx);
-		//std::cout << ref_shape << "\n";
-		//std::cout << tri_idx << "\n";
+		std::cout << ref_shape << "\n";
+		std::cout << tri_idx << "\n";
 		//system("pause");
 		//printf("triangleList.size() %d:\n",triangleList.size());
 		//for (int i = 0; i < triangleList.size(); i++) {

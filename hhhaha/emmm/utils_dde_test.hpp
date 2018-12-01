@@ -38,7 +38,7 @@ const int G_rnd_user = 5;
 const int G_rnd_camr = 5;
 const int G_trn_factor = 35;
 
-const int G_target_type_size = G_nShape + 3 + 3 * 3 + 2 * G_land_num;
+const int G_target_type_size = G_nShape -1 + 2 + 3 + 2 * G_land_num;
 const int G_dde_K = 5;
 
 const float pi = acos(-1);
@@ -111,6 +111,9 @@ double cal_cv_area(cv::Point2d point0, cv::Point2d point1, cv::Point2d point2);
 //void update_2d_land_0ide(DataPoint &data, Eigen::MatrixXf &exp_r_t_all_matrix);
 void update_2d_land_ang_0ide(DataPoint &data, Eigen::MatrixXf &exp_r_t_all_matrix);
 
+void cal_2d_land_i_ang_0ide(
+	std::vector<cv::Point2d> &ans, const Target_type &data, Eigen::MatrixXf &exp_r_t_all_matrix,
+	const DataPoint &data_dp);
 //void cal_2d_land_i(
 //	std::vector<cv::Point2d> &ans, const Target_type &data, Eigen::MatrixXf &bldshps, DataPoint &ini_data);
 Target_type shape_difference(const Target_type &s1, const Target_type &s2);
@@ -143,6 +146,9 @@ void vector2target(Eigen::VectorXf &data, Target_type &ans);
 float cal_3d_vtx_0ide(
 	Eigen::MatrixXf &exp_r_t_all_matrix, Eigen::VectorXf &exp, int vtx_idx, int axis);
 
-Eigen::RowVector3f get_uler_angle(Eigen::Matrix3f R);
-Eigen::Matrix3f get_r_from_angle(float angle, int axis);
-Eigen::Matrix3f get_r_from_angle(const Eigen::Vector3f &angle);
+//Eigen::RowVector3f get_uler_angle(Eigen::Matrix3f R);
+//Eigen::Matrix3f get_r_from_angle(float angle, int axis);
+//Eigen::Matrix3f get_r_from_angle(const Eigen::Vector3f &angle);
+
+Eigen::Vector3f get_uler_angle_zyx(Eigen::Matrix3f R);
+Eigen::Matrix3f get_r_from_angle_zyx(const Eigen::Vector3f &angle);

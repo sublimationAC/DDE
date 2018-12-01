@@ -34,7 +34,7 @@ void fit_solve(
 	data.shape.exp = ide[0].exp.row(0).transpose();
 
 	//data.shape.rot = ide[0].rot.block(0,0,3,3);
-	data.shape.angle = get_uler_angle(ide[0].rot.block(0, 0, 3, 3));
+	data.shape.angle = get_uler_angle_zyx(ide[0].rot.block(0, 0, 3, 3));
 
 	data.shape.tslt = ide[0].tslt.row(0);
 	puts("F");
