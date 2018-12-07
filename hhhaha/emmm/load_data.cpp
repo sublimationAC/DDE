@@ -22,6 +22,7 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 		struct dirent *dp;
 		while (index < n)
 		{
+			printf("load_img_land_coef idx:%d n:%d\n", index, n);
 			dp = namelist[index];
 
 			if (dp->d_name[0] == '.') {
@@ -42,7 +43,11 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 					std::string p = path + "/" + dp->d_name;
 
 
-					if (_access((p.substr(0, p.find(".land")) + sfx).c_str(), 0) == -1) continue;
+					if (_access((p.substr(0, p.find(".land")) + sfx).c_str(), 0) == -1) {
+						free(namelist[index]);
+						index++;
+						continue;
+					}
 					load_land(path + "/" + dp->d_name, temp);
 
 					load_img(p.substr(0, p.find(".land")) + sfx, temp);
@@ -53,6 +58,11 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 					//cal_rect(temp);
 					//system("pause");
 					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
+					if (_access((p.substr(0, p.find(".land")) + ".lv").c_str(), 0) == -1) {
+						puts("No lv !!!! error !");
+						exit(1);
+
+					}
 
 
 					img.push_back(temp);
@@ -84,12 +94,13 @@ void load_land(std::string p, DataPoint &temp) {
 		printf("%d %.10f %.10f \n", temp.landmarks.size(),temp.landmarks[i].x, temp.landmarks[i].y);*/
 	}
 	fclose(fp);
-	system("pause");
+	//system("pause");
 }
 void load_img(std::string p, DataPoint &temp) {	
-	temp.image = cv::imread(p);// , CV_LOAD_IMAGE_GRAYSCALE);
+	temp.image = cv::imread(p, CV_LOAD_IMAGE_GRAYSCALE);
 }
 const std::string kAlt2 = "haarcascade_frontalface_alt2.xml";
+#include<algorithm>
 void cal_rect(DataPoint &temp) {
 	puts("testing image");
 	cv::Mat gray_image;
@@ -106,7 +117,7 @@ void cal_rect(DataPoint &temp) {
 	cc.detectMultiScale(gray_image, faces);
 	//std::cout << "Detection time: " << (cv::getTickCount() - start_time) / cv::getTickFrequency()
 	//	<< "s" << "\n";
-
+	
 	int cnt = 0, ma = 0;
 	for (cv::Rect face : faces) {
 		face.x = max(0, face.x - 10);// face.y = max(0, face.y - 10);
@@ -183,7 +194,7 @@ void test_data_2dland(DataPoint &temp) {
 }
 
 void load_fitting_coef_one(std::string name, DataPoint &temp) {
-	std::cout << "saving coefficients...file:" << name << "\n";
+	std::cout << "loading coefficients...file:" << name << "\n";
 	FILE *fp;
 	fopen_s(&fp, name.c_str(), "rb");
 	temp.user.resize(G_iden_num);
@@ -204,10 +215,19 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
 		fread(&temp.shape.exp(i_shape), sizeof(float), 1, fp);
 
+	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
+	//	fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
+	//temp.shape.angle = get_uler_angle(temp.shape.rot);
+
+	Eigen::Matrix3f rot;
 	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
-		fread(&temp.shape.rot(i, j), sizeof(float), 1, fp);
+		fread(&rot(i, j), sizeof(float), 1, fp);
+	temp.shape.angle = get_uler_angle_zyx(rot);
 
 	for (int i = 0; i < 3; i++) fread(&temp.shape.tslt(i), sizeof(float), 1, fp);
+//#ifdef normalization
+//	temp.shape.tslt(2) = 0;
+//#endif // normalization
 
 	temp.land_cor.resize(G_land_num);
 	for (int i_v = 0; i_v < G_land_num; i_v++) fread(&temp.land_cor(i_v), sizeof(int), 1, fp);
@@ -228,7 +248,7 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	puts("load successful!");
 }
 
-void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name, Eigen::VectorXf &ide_sg_vl, std::string sg_vl_path) {
+void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name) {
 
 	puts("loading blendshapes...");
 	std::cout << name << std::endl;
@@ -237,52 +257,6 @@ void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name, Eigen::VectorXf &
 	for (int i = 0; i < G_iden_num; i++) {
 		for (int j = 0; j < G_nShape*G_nVerts * 3; j++)
 			fread(&bldshps(i, j), sizeof(float), 1, fp);
-	}
-	fclose(fp);
-	fopen_s(&fp, sg_vl_path.c_str(), "r");
-	for (int i = 0; i < G_iden_num; i++) {
-		fscanf_s(fp, "%f", &ide_sg_vl(i));
-	}
-	fclose(fp);
-}
-
-void load_inner_land_corr(Eigen::VectorXi &cor) {
-	puts("loading inner landmarks correspondence...");
-	FILE *fp;
-	fopen_s(&fp, "./inner_jaw/inner_vertex_corr.txt", "r");
-	for (int i = 0; i < G_inner_land_num; i++) fscanf_s(fp, "%d", &cor(i));
-	//std::cout << cor <<"------------------------------\n"<< '\n';
-	fclose(fp);
-}
-void load_jaw_land_corr(Eigen::VectorXi &jaw_cor) {
-	puts("loading jaw landmarks correspondence...");
-	FILE *fp;
-	fopen_s(&fp, "./inner_jaw/jaw_vertex.txt", "r");
-	for (int i = 0; i < G_jaw_land_num; i++) fscanf_s(fp, "%d", &jaw_cor(i));
-	//std::cout << cor <<"------------------------------\n"<< '\n';
-	fclose(fp);
-}
-
-void load_slt(
-	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
-	std::string path_slt, std::string path_rect) {
-	puts("loading silhouette line&vertices...");
-	FILE *fp;
-	fopen_s(&fp, path_slt.c_str(), "r");
-	for (int i = 0; i < G_line_num; i++) {
-		int num;
-		fscanf_s(fp, "%d", &num);
-		slt_line[i].resize(num);
-		for (int j = 0; j < num; j++)
-			fscanf_s(fp, "%d", &slt_line[i][j]);
-	}
-	fclose(fp);
-	fopen_s(&fp, path_rect.c_str(), "r");
-	for (int i = 0; i < 496; i++) {
-		int idx, num;
-		fscanf_s(fp, "%d%d", &idx, &num);
-		slt_point_rect[idx].resize(num);
-		for (int j = 0; j < num; j++) fscanf_s(fp, "%d%d", &slt_point_rect[idx][j].first, &slt_point_rect[idx][j].second);
 	}
 	fclose(fp);
 }
