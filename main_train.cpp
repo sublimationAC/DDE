@@ -1,22 +1,3 @@
-/*
-FaceX-Train is a tool to train model file for FaceX, which is an open
-source face alignment library.
-
-Copyright(C) 2015  Yang Cao
-
-This program is free software : you can redistribute it and / or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.If not, see <http://www.gnu.org/licenses/>.
-*/
 
 #include <iostream>
 #include <fstream>
@@ -32,8 +13,8 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 #include "regressor_train.h"
 //#include "load_data.hpp"
 
-//#define win64
-#define linux
+#define win64
+//#define linux
 #define changed
 
 #ifdef win64
@@ -44,7 +25,7 @@ std::string gtav_path = "D:/sydney/first/data_me/GTAV_image";
 std::string test_path = "D:/sydney/first/data_me/test";
 std::string test_path_one = "D:/sydney/first/data_me/test_only_one";
 std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
-
+std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
 
 #endif // win64
 #ifdef linux
@@ -53,15 +34,14 @@ std::string lfw_path = "/home/weiliu/fitting_dde/fitting_coef/lfw_image";
 std::string gtav_path = "/home/weiliu/fitting_dde/fitting_coef/GTAV_image";
 std::string test_path = "./test";
 std::string test_path_one = "/home/weiliu/DDE/cal_coeff/data_me/test_only_one";
-
 //std::string fwhs_path_p1 = "/home/weiliu/fitting_dde/1cal/data_me/fw_p1";
 std::string fwhs_path_p1 = "D:/sydney/first/data_me/test_lv";
 std::string fwhs_path_p2 = "/home/weiliu/fitting_dde/2cal/data_me/fw_p2";
 std::string fwhs_path_p3 = "/home/weiliu/fitting_dde/3cal/data_me/fw_p3";
 std::string fwhs_path_p4 = "/home/weiliu/fitting_dde/4cal/data_me/fw_p4";
 std::string fwhs_path_p5 = "/home/weiliu/fitting_dde/5cal/data_me/fw_p5";
-//std::string bldshps_path = "/home/weiliu/fitting_dde/cal/deal_data/blendshape_ide_svd_77.lv";
-std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
+std::string bldshps_path = "/home/weiliu/fitting_dde/cal/deal_data/blendshape_ide_svd_77.lv";
+
 #endif // linux
 
 using namespace std;
@@ -155,10 +135,10 @@ vector<DataPoint> GetTrainingData(const TrainingParameters &tp)
 {
 
 	vector<DataPoint> result;
-	/*load_img_land(fwhs_path,".jpg",result);
-	load_img_land(lfw_path, ".jpg", result);
-	load_img_land(gtav_path, ".bmp", result);*/
-	load_img_land_coef(fwhs_path_p1, ".jpg", result);
+	/*load_img_land_coef(fwhs_path,".jpg",result);
+	load_img_land_coef(lfw_path, ".jpg", result);
+	load_img_land_coef(gtav_path, ".bmp", result);*/
+	load_img_land_coef(fwhs_path, ".jpg", result);
 
 	return result;
 }
@@ -184,7 +164,7 @@ void aug_rand_rot(const vector<DataPoint> &traindata, vector<DataPoint> &data, i
 		data[idx] = traindata[train_idx];
 		data[idx].init_shape.dis = traindata[*it].shape.dis;
 		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
-
+		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
 		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
 //----------------------------------------------------------------------------------------------
 		/*Eigen::RowVector3f V[2];
@@ -204,6 +184,7 @@ void aug_rand_rot(const vector<DataPoint> &traindata, vector<DataPoint> &data, i
 		data[idx].init_shape.rot.row(2) = V[0].cross(V[1]);*/
 //-----------------------------------------------------------------------------------------------------
 		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
+		data[idx].ide_idx = train_idx;
 		for (int j=0;j<3;j++)
 			data[idx].init_shape.angle(j)+= cv::theRNG().uniform(-G_rand_angle_border, G_rand_angle_border);
 		idx++;
@@ -217,10 +198,13 @@ void aug_rand_tslt(const vector<DataPoint> &traindata, vector<DataPoint> &data, 
 		data[idx] = traindata[train_idx];
 		data[idx].init_shape.dis = traindata[*it].shape.dis;
 		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
 		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
 		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
-		for (int j = 0; j < 3; j++)
+		data[idx].ide_idx = train_idx;
+		for (int j = 0; j < 2; j++)
 			data[idx].init_shape.tslt(j) = traindata[train_idx].shape.tslt(j) + cv::theRNG().uniform(-G_rand_tslt_border, G_rand_tslt_border);
+		data[idx].init_shape.tslt(2) = 0;
 		idx++;
 	}
 }
@@ -237,6 +221,8 @@ void aug_rand_exp(const vector<DataPoint> &traindata, vector<DataPoint> &data, i
 		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
 		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].init_shape.exp = traindata[*it_e].shape.exp;
+		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
+		data[idx].ide_idx = train_idx;
 		//		update_slt();
 		idx++;
 	}
@@ -253,10 +239,13 @@ void aug_rand_user(const vector<DataPoint> &traindata, vector<DataPoint> &data,
 		data[idx].init_shape.dis = traindata[*it].shape.dis;
 		data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
 		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
 		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
 		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].user = traindata[*it_u].user;
+		data[idx].ide_idx = -1;
 		recal_dis_ang(data[idx], bldshps);
+		//recal_dis_ang_0ide(data[idx],arg_exp_land_matrix[*it_u]);
 		idx++;
 	}
 }
@@ -273,6 +262,8 @@ void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data,
 		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
 		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].init_shape.exp = traindata[train_idx].shape.exp;
+		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
+		data[idx].ide_idx = train_idx;
 #ifdef posit
 		data[idx].init_f = traindata[train_idx].f + cv::theRNG().uniform(-G_rand_f_border, G_rand_f_border);
 #endif // posit
@@ -281,11 +272,13 @@ void aug_rand_f(const vector<DataPoint> &traindata, vector<DataPoint> &data,
 		data[idx].s(1, 1) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
 #endif
 		recal_dis_ang(data[idx], bldshps);
+		//recal_dis_ang_0ide(data[idx], arg_exp_land_matrix[train_idx]);
 		idx++;
 	}
 }
 
-vector<DataPoint> ArgumentData(const vector<DataPoint> &training_data, Eigen::MatrixXf &bldshps)
+vector<DataPoint> ArgumentData(
+	const vector<DataPoint> &training_data, Eigen::MatrixXf &bldshps)
 {
 
 	vector<DataPoint> result(training_data.size() * G_trn_factor);
@@ -319,6 +312,28 @@ vector<Target_type> ComputeTargets(const vector<DataPoint> &data)
 	return result;
 }
 
+void cal_exp_land_matrix(std::vector<Eigen::MatrixXf> &arg_exp_land_matrix, Eigen::MatrixXf &bldshps, const vector<DataPoint> &training_data) {
+	for (int idx = 0; idx < training_data.size(); idx++) {
+		arg_exp_land_matrix[idx].resize(G_nShape, 3 * G_land_num);
+		for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+			for (int i_v = 0; i_v < G_land_num; i_v++) {
+				Eigen::Vector3f V;
+				V.setZero();
+				for (int j = 0; j < 3; j++)
+					for (int i_id = 0; i_id < G_iden_num; i_id++)
+						if (i_shape == 0)
+							V(j) += training_data[idx].user(i_id)*bldshps(i_id, training_data[idx].land_cor(i_v) * 3 + j);
+						else
+							V(j) += training_data[idx].user(i_id)*
+							(bldshps(i_id, i_shape*G_nVerts * 3 + training_data[idx].land_cor(i_v) * 3 + j)
+								- bldshps(i_id, training_data[idx].land_cor(i_v) * 3 + j));
+
+				for (int j = 0; j < 3; j++)
+					arg_exp_land_matrix[idx](i_shape, i_v * 3 + j) = V(j);
+			}
+	}
+}
+
 
 void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters &tp, Eigen::MatrixXf &bldshps)
 {
@@ -330,21 +345,33 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		shapes.push_back(dp.landmarks);
 	//puts("D");
 	vector<cv::Point2d> ref_shape = mean_shape(shapes, tp);
-	//puts("A");
+	//puts("A");	
 
-	vector<DataPoint> argumented_training_data = 
-		ArgumentData(training_data, bldshps);	
+	vector<Eigen::MatrixXf> arg_exp_land_matrix(training_data.size());
+
+	cal_exp_land_matrix(arg_exp_land_matrix,bldshps,training_data);
+
+	vector<DataPoint> argumented_training_data =
+		ArgumentData(training_data, bldshps);
+
 	//for (int i = 0; i < 100; i++)
 	//	print_datapoint(argumented_training_data[i]);
-	puts("B");
-	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));
 	puts("C");
 	Eigen::MatrixX3i tri_idx;
 	std::vector<cv::Vec6f> triangleList;
 	cv::Rect rect;
 	puts("D");
 	cal_del_tri(ref_shape, rect, triangleList, tri_idx);
+
+	cv::Rect left_eye_rect, right_eye_rect;
+	cal_left_eye_rect(ref_shape, left_eye_rect);
+	cal_right_eye_rect(ref_shape, right_eye_rect);
+
 	puts("E");
+
+	puts("B");
+	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));
+
 	for (int i = 0; i < tp.T; ++i)
 	{
 		long long s = cv::getTickCount();
@@ -354,13 +381,14 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 
 		stage_regressors[i].Regress(
-			triangleList,rect,tri_idx,ref_shape, &targets,
-			argumented_training_data, bldshps);
+			triangleList,rect, left_eye_rect, right_eye_rect,tri_idx,ref_shape, &targets,
+			argumented_training_data, bldshps, arg_exp_land_matrix);
+
 
 		for (DataPoint &dp : argumented_training_data)
 		{
 			Target_type offset = 
-				stage_regressors[i].Apply(dp,bldshps,tri_idx);
+				stage_regressors[i].Apply(dp,bldshps,tri_idx, arg_exp_land_matrix);
 			/*Transform t = Procrustes(dp.init_shape, mean_shape);
 			t.Apply(&offset, false);*/
 			dp.init_shape = shape_adjustment(dp.init_shape, offset);

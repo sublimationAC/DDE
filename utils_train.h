@@ -1,22 +1,3 @@
-/*
-FaceX-Train is a tool to train model file for FaceX, which is an open
-source face alignment library.
-
-Copyright(C) 2015  Yang Cao
-
-This program is free software : you can redistribute it and / or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.If not, see <http://www.gnu.org/licenses/>.
-*/
 
 const int G_land_num = 74;
 const int G_train_pic_id_num = 3300;
@@ -31,7 +12,7 @@ const int G_jaw_land_num = 20;
 
 const float G_rand_rot_border = 0.1;
 
-const float G_rand_tslt_border = 10;
+const float G_rand_tslt_border = 20;
 const float G_rand_s_border = 10;
 const float G_rand_f_border = 100;
 
@@ -44,10 +25,12 @@ const int G_trn_factor = 35;
 
 
 //const int G_target_type_size= G_nShape + 3 + 3 * 3 + 2 * G_land_num;
-const int G_target_type_size = G_nShape + 2 + 3 + 2 * G_land_num;
+const int G_target_type_size = G_nShape-1 + 2 + 3 + 2 * G_land_num;
+const int G_tslt_num = 2;
+const int G_angle_num = 3;
 
 #define normalization
-#define EPSILON 1e-6
+#define EPSILON 1e-3
 
 
 #ifndef FACE_X_UTILS_TRAIN_H_
@@ -111,6 +94,7 @@ struct DataPoint
 	Eigen:: VectorXf user;
 	Eigen::RowVector2f center;
 	Eigen::MatrixX2f land_2d;
+	int ide_idx = 0;
 #ifdef posit
 		float f;
 #endif // posit
