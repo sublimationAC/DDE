@@ -74,39 +74,91 @@ Target_type regressor_dde::Apply(//const Transform &t,
 			p[j] = 0;
 	}
 
-	cv::Mat coeffs = cv::Mat::zeros(base_.cols, 1, CV_64FC1);
+	//cv::Mat coeffs = cv::Mat::zeros(base_.cols, 1, CV_64FC1);
+	//for (int i = 0; i < ferns_dde_.size(); ++i) {
+	//	//printf("inner regressor %d:\n", i);
+	//	ferns_dde_[i].ApplyMini(pixels_val, coeffs);
+	//}
+
+	//cv::Mat result_mat = base_ * coeffs;
+
+	///*vector<cv::Point2d> result(init_shape.size());
+	//for (int i = 0; i < result.size(); ++i)
+	//{
+	//	result[i].x = result_mat.at<double>(i * 2);
+	//	result[i].y = result_mat.at<double>(i * 2 + 1);
+	//}*/
+
+	//Target_type result;
+	////result.dis.resize(G_land_num, 2);
+	////result.exp.resize(G_nShape);
+
+	////for (int j = 0; j < G_nShape; j++)
+	////	result.exp(j) = result_mat.at<double>(j);
+
+	////for (int j = 0; j < 3; j++)
+	////	result.tslt(j) = result_mat.at<double>(j + G_nShape);
+
+	////for (int j = 0; j < 3; j++) for (int k = 0; k < 3; k++)
+	////	result.rot(j, k) = result_mat.at<double>(G_nShape + 3 + j * 3 + k);
+
+	////for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
+	////	result.dis(j, k) = result_mat.at<double>(G_nShape + 3 + 3 * 3 + j * 2 + k);
+	//Eigen::VectorXf temp_v(G_target_type_size);
+	//for (int i = 0; i < G_target_type_size; i++) temp_v(i) = result_mat.at<double>(i);
+	//vector2target(temp_v, result);
+	//return result;
+	
+	cv::Mat coeffs_exp = cv::Mat::zeros(base_exp_.cols, 1, CV_64FC1);
+	cv::Mat coeffs_dis = cv::Mat::zeros(base_dis_.cols, 1, CV_64FC1);
+	cv::Mat result_mat_tslt = cv::Mat::zeros(G_tslt_num, 1, CV_64FC1);
+	cv::Mat result_mat_angle = cv::Mat::zeros(G_angle_num, 1, CV_64FC1);
+
+
 	for (int i = 0; i < ferns_dde_.size(); ++i) {
-		//printf("inner regressor %d:\n", i);
-		ferns_dde_[i].ApplyMini(pixels_val, coeffs);
+		//printf("inner regressor mini %d:\n", i);
+		ferns_dde_[i].ApplyMini(pixels_val, coeffs_exp, coeffs_dis);
+		//printf("inner regressor tslt&angle %d:\n", i);
+		ferns_dde_[i].apply_tslt_angle(pixels_val, result_mat_tslt, result_mat_angle);
 	}
 
-	cv::Mat result_mat = base_ * coeffs;
+	//cv::Mat result_mat = cv::Mat::zeros(G_target_type_size, 1, CV_64FC1);
+	//for (int i = 0; i < training_parameters_.Base; ++i)
+	//	result_mat += coeffs[i] * base_.col(i);
 
-	/*vector<cv::Point2d> result(init_shape.size());
-	for (int i = 0; i < result.size(); ++i)
-	{
-		result[i].x = result_mat.at<double>(i * 2);
-		result[i].y = result_mat.at<double>(i * 2 + 1);
-	}*/
+	cv::Mat result_mat_exp = base_exp_ * coeffs_exp;
+	cv::Mat result_mat_dis = base_dis_ * coeffs_dis;
+
+
+	//vector<cv::Point2d> result(mean_shape.size());
+	//for (int i = 0; i < result.size(); ++i)
+	//{
+	//	result[i].x = result_mat.at<double>(i * 2);
+	//	result[i].y = result_mat.at<double>(i * 2 + 1);
+	//}
 
 	Target_type result;
-	//result.dis.resize(G_land_num, 2);
-	//result.exp.resize(G_nShape);
+	result.dis.resize(G_land_num, 2);
+	result.exp.resize(G_nShape);
 
-	//for (int j = 0; j < G_nShape; j++)
-	//	result.exp(j) = result_mat.at<double>(j);
+	result.exp(0) = 0;
+	for (int j = 1; j < G_nShape; j++)
+		result.exp(j) = result_mat_exp.at<double>(j - 1);
 
-	//for (int j = 0; j < 3; j++)
-	//	result.tslt(j) = result_mat.at<double>(j + G_nShape);
+	for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
+		result.dis(j, k) = result_mat_dis.at<double>(j * 2 + k);
 
-	//for (int j = 0; j < 3; j++) for (int k = 0; k < 3; k++)
-	//	result.rot(j, k) = result_mat.at<double>(G_nShape + 3 + j * 3 + k);
+	result.tslt.setZero();
+	for (int j = 0; j < G_tslt_num; j++)
+		result.tslt(j) = result_mat_tslt.at<double>(j);
 
-	//for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
-	//	result.dis(j, k) = result_mat.at<double>(G_nShape + 3 + 3 * 3 + j * 2 + k);
-	Eigen::VectorXf temp_v(G_target_type_size);
-	for (int i = 0; i < G_target_type_size; i++) temp_v(i) = result_mat.at<double>(i);
-	vector2target(temp_v, result);
+	for (int j = 0; j < G_angle_num; j++)
+		result.angle(j) = result_mat_angle.at<double>(j);
+
+	//Eigen::VectorXf temp_v(G_target_type_size);
+	//for (int i = 0; i < G_target_type_size; i++)
+	//	temp_v(i) = result_mat.at<double>(i);
+	//vector2target(temp_v, result);
 	return result;
 }
 
@@ -129,7 +181,10 @@ void regressor_dde::read(const cv::FileNode &fn)
 		*it >> f;
 		ferns_dde_.push_back(f);
 	}
-	fn["base"] >> base_;
+
+	//fn["base_"] >> base_;
+	fn["base_exp_"] >> base_exp_;
+	fn["base_dis_"] >> base_dis_;
 }
 
 void read(const cv::FileNode& node, regressor_dde& r, const regressor_dde&)
@@ -138,4 +193,40 @@ void read(const cv::FileNode& node, regressor_dde& r, const regressor_dde&)
 		throw runtime_error("Model file is corrupt!");
 	else
 		r.read(node);
+}
+
+void regressor_dde::visualize_feature_cddt(//const Transform &t,
+	cv::Mat rgb_images,Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &landmarks) const {
+
+	//for (cv::Point2d landmark : landmarks)
+	//{
+	//	cv::circle(rbg_image, landmark, 0.1, cv::Scalar(0, 255, 0), 2);
+	//}
+	////}
+	//cv::imshow("visual land", rbg_image);
+	//cv::waitKey();
+
+	cv::Mat image = rgb_images.clone();
+	std::vector<cv::Point> pixel_positions(pixels_dde_.size());
+	for (int j = 0; j < pixels_dde_.size(); ++j)
+	{
+		//cv::Point pixel_pos = init_shape[pixels_[j].first] + offsets[j];
+
+		cv::Point pixel_pos =
+			landmarks[tri_idx(pixels_dde_[j].first, 0)] * pixels_dde_[j].second.x +
+			landmarks[tri_idx(pixels_dde_[j].first, 1)] * pixels_dde_[j].second.y +
+			landmarks[tri_idx(pixels_dde_[j].first, 2)] * (1 - pixels_dde_[j].second.x - pixels_dde_[j].second.y);
+		pixel_positions[j] = pixel_pos;
+		cv::circle(image, pixel_pos, 0.1, cv::Scalar(0, 255, 0), 2);
+	}
+	
+	cv::imshow("feature point candidate", image);
+	cv::waitKey();
+	for (int i = 0; i < ferns_dde_.size(); ++i) {
+
+		ferns_dde_[i].visualize_feature_cddt(image, tri_idx, pixel_positions);
+
+	}
+	cv::imshow("feature point candidate", image);
+	cv::waitKey();
 }

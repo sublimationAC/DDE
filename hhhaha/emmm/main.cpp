@@ -1,20 +1,29 @@
 #include <iostream>
 #include <string>
+#include <io.h>
 
 #include <opencv2/opencv.hpp>
 
 #include "face_x.h"
 #include "calculate_coeff_dde.h"
 #define debug_def
+#define from_video
+#define show_feature_def
 
 using namespace std;
 
-const string kModelFileName = "model_all_5_face.xml.gz";
-const string kModelFileName_dde = "model_dde_zyx_beta250.xml.gz";
-const string kAlt2 = "haarcascade_frontalface_alt2.xml";
-const string kTestImage = "./photo_test/real_time_test/pose_23.jpg";//real_time_test//22.png"; /test_samples/005_04_03_051_05.png";
-std::string test_debug_lv_path = "./lv_file/fitting_result_t66_pose_0.lv";
+const string kModelFileName = "model_r/model_all_5_face.xml.gz";
+const string kModelFileName_dde = "model_r/model_dde_new_gauss.xml.gz";
+const string kAlt2 = "model_r/haarcascade_frontalface_alt2.xml";
+const string kTestImage = "./photo_test/video/lv_mp4/images/frame0.jpg";//real_time_test//22.png"; /test_samples/005_04_03_051_05.png";
+const string videoImage = "./photo_test/video/lv_mp4/images/frame";
 
+const string videolvsave = "./photo_test/video/lv_hard/lv_hard";
+
+const std::string test_debug_lv_path = "./lv_file/lv_mp4_frame0.lv";// fitting_result_t66_pose_0.lv";
+const string video_path = "D:\\sydney\\first\\code\\2017\\DDE\\FaceX/photo_test/video/lv_hard.avi";
+const string image_se_path = "D:/sydney/first/data_me/test_lv/fw/Tester_1/TrainingPose/pose_%1d.jpg";
+string land_video_save_path = "./photo_test/video/lv_hard_land.avi";
 #ifdef win64
 
 std::string fwhs_path_lv = "D:/sydney/first/data_me/test_lv/fw";
@@ -67,9 +76,18 @@ DataPoint pre_process(
 	//cout << "picture name:";
 	//string pic_name;
 	//cin >> pic_name;
+#ifdef from_video
+	cv::VideoCapture cap(video_path);
+	cv::Mat image;
+	cap >> image;
+#else
 	cv::Mat image = cv::imread(kTestImage);// +pic_name);
+#endif // from_video
+	cv::imshow("Alignment result", image);
+	cv::waitKey();
+	
 	cv::Mat gray_image;
-	cv::cvtColor(image, gray_image, CV_BGR2GRAY);
+	cv::cvtColor(image, gray_image, cv::COLOR_BGR2GRAY);
 	cv::CascadeClassifier cc(kAlt2);
 	if (cc.empty())
 	{
@@ -115,7 +133,10 @@ DataPoint pre_process(
 
 DataPoint debug_preprocess(std::string path_name) {
 	DataPoint data;
-	data.image = cv::imread(kTestImage , CV_LOAD_IMAGE_GRAYSCALE);
+#ifndef from_video
+	data.image = cv::imread(kTestImage, cv::IMREAD_GRAYSCALE);
+#endif // !from_video
+
 	load_fitting_coef_one(path_name,data);
 	data.landmarks.resize(G_land_num);
 	for (int i_v = 0; i_v < G_land_num; i_v++)
@@ -159,7 +180,7 @@ void Tracking_face(const FaceX & face_x)
 		}
 		if (flag) cv::rectangle(frame, faces[0], cv::Scalar(100, 200, 255), 2);
 		cv::imshow("\"r\" to re-initialize, \"q\" to exit", frame);
-		int key = cv::waitKey(10);
+		int key = cv::waitKey(1);
 		if (key == 'q')
 			break;
 		else if (key == 'r')
@@ -219,19 +240,168 @@ void DDE_run_test(
 
 }
 
+void DDE_video_test(
+	DataPoint &data, const DDEX &dde_x, Eigen::MatrixXf &bldshps,
+	Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXf &ide_sg_vl, vector<DataPoint> &train_data, Eigen::MatrixX3i &tri_idx) {
+
+	if (_access(video_path.c_str(),0)==-1)
+	{
+		cout << "File does not exist" << endl;
+		exit(-1);
+	}
+	cv::VideoCapture cap(video_path);
+	if (!cap.isOpened()) exit(2);//如果视频不能正常打开则返回
+	cv::Mat rgb_image;
+	cap >> rgb_image;
+	
+	cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
+	for (int i_v = 0; i_v < G_land_num; i_v++)
+		data.landmarks[i_v].x = data.land_2d(i_v, 0), data.landmarks[i_v].y = data.image.rows - data.land_2d(i_v, 1);
+	dde_x.visualize_feature_cddt(rgb_image, tri_idx, data.landmarks);
+
+	//cv::imshow("result", data.image);
+	//cv::waitKey();
+
+	puts("DDE running...");
+	Eigen::MatrixXf exp_r_t_all_matrix;	
+//	cv::resize(data.image, data.image,cv::Size(640, 480*3));
+	cv::VideoWriter output_video(land_video_save_path, CV_FOURCC_DEFAULT, 25.0, cv::Size(data.image.cols, data.image.rows));
+	//std::cout << data.image.cols << " " << data.image.rows << "\n" << cv::Size(data.image.cols, data.image.rows) << "\n";
+	//output_video << data.image;
+	//system("pause");
+	cal_exp_r_t_all_matrix(bldshps, data, exp_r_t_all_matrix);
+	Target_type last_data[3];
+
+	for (int test_round = 1;/*&&test_round < 2000*/; test_round++) {
+		cap >> rgb_image;
+		if (rgb_image.empty()) break;
+		cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
+		printf("dde_round %d: \n", test_round);
+		//data.image = cv::imread(videoImage+ to_string(test_round) + ".jpg", cv::IMREAD_GRAYSCALE);
+		dde_x.dde(data, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
+		printf("dde_round %d: \n", test_round);
+		puts("---------------------------------------------------");
+
+		//show_image_0rect(data.image, data.landmarks);
+
+		//--------------------------------------post_processing
+
+		last_data[0] = last_data[1]; last_data[1] = last_data[2]; last_data[2] = data.shape;
+		if (test_round > 3) {
+			Eigen::MatrixXf exp_r_t_matrix;
+			exp_r_t_matrix.resize(G_nShape, 3 * G_land_num);
+			for (int i_exp = 0; i_exp < G_nShape; i_exp++)
+				for (int i_v = 0; i_v < G_land_num; i_v++)
+					for (int axis = 0; axis < 3; axis++)
+						exp_r_t_matrix(i_exp, i_v * 3 + axis) = exp_r_t_all_matrix(i_exp, data.land_cor(i_v) * 3 + axis);
+			ceres_post_processing(data, last_data[0], last_data[1], last_data[2], exp_r_t_matrix);
+			//recal_dis_ang(data,bldshps);
+			data.shape.exp(0) = 1;
+			update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+			//update_slt(
+		}
+		last_data[2] = data.shape;
+		////system("pause");
+//	print_datapoint(data);
+		save_datapoint(data, videolvsave + "_" + to_string(test_round) + ".lv");
+		//print_datapoint(data);
+		//show_image_0rect(data.image, data.landmarks);
+			//save_video(data.image, data.landmarks, output_video);
+		save_video(rgb_image, data.landmarks, output_video);
+		//if (test_round % 30 == 1) {
+		//	//show_image_0rect(data.image, data.landmarks);
+		//	print_datapoint(data);
+		//	show_image_0rect(data.image, data.landmarks);
+		//	//system("pause");
+		//}
+		
+	}
+
+}
+
+
+
+
+
+
+
+
+
 Eigen::MatrixXf bldshps(G_iden_num, G_nShape * 3 * G_nVerts);
 Eigen::VectorXf ide_sg_vl(G_iden_num);
 Eigen::VectorXi inner_land_corr(G_inner_land_num);
 Eigen::VectorXi jaw_land_corr(G_jaw_land_num);
 std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
 std::vector<int> slt_line[G_line_num];
+
+void camera() {
+	cv::Mat frame;
+	cv::Mat img;
+	cv::VideoCapture vc(0);
+	vc >> frame;
+	cv::VideoWriter output_video("lv_hard_glass.avi", CV_FOURCC('M', 'J', 'P', 'G'), 25.0, cv::Size(640, 480));
+	long long start_time = cv::getTickCount();
+	for (;;)
+	{
+		vc >> frame;
+		cv::cvtColor(frame, img, cv::COLOR_BGR2GRAY);
+		cv::imshow("Gray image", img);
+		cv::imshow("gg", frame);
+		cv::waitKey(20);
+		output_video << frame;
+		if ((cv::getTickCount() - start_time) / cv::getTickFrequency() > 45) break;
+	}
+	//exit(0);
+}
+//#include <dirent.h>
+//#include <videoio.hpp>
+//#include <video.hpp>
+//#include<videostab.hpp>
+void test_video() {
+	cv::VideoCapture cap(video_path);
+	if (!cap.isOpened()) exit(2);//如果视频不能正常打开则返回
+	cv::Mat rgb_image;
+	
+	puts("ppp");
+	for (int test_round = 1; ; test_round++) {
+		cap >> rgb_image;
+		if (rgb_image.empty()) break;
+		//printf("%d %d\n", test_round, fl);
+		cv::imshow("gg", rgb_image);
+		cv::waitKey(20);
+		printf("%d\n", test_round);
+	}
+}
 int main()
 {
+	//camera();
+	//return 0;
+	//test_video();
+	//if (_access("test.avi",0)==-1)
+	//{
+	//	cout << "File does not exist" << endl;
+	//	return -1;
+	//}
+	//cv::VideoCapture cap;
+	////cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+	//cap.open("test.avi");
+	//if (!cap.isOpened())//如果视频不能正常打开则返回
+	//	exit(2);
+	//cv::Mat image;
+	//puts("QAQ");
+	//cap >> image;
+	//cv::imshow("result", image);
+	//cv::waitKey();
+
 	try
-	{		
+	{	
+
 #ifndef debug_def
 		puts("initializing face...");
 		FaceX face_x(kModelFileName);
+		//Tracking_face(face_x);
 #endif // !debug_def
 
 		
@@ -241,7 +411,7 @@ int main()
 		load_jaw_land_corr(jaw_land_corr);
 		//std::cout << inner_land_corr << '\n';
 		load_slt(slt_line, slt_point_rect, slt_path, rect_path);
-		load_bldshps(bldshps, bldshps_path, ide_sg_vl, sg_vl_path);
+//		load_bldshps(bldshps, bldshps_path, ide_sg_vl, sg_vl_path);
 		vector<DataPoint> training_data;
 		training_data.clear();
 		load_land_coef(fwhs_path_lv, ".jpg", training_data);
@@ -277,8 +447,10 @@ int main()
 		//case 1:
 #ifdef debug_def
 		DataPoint init_data = debug_preprocess(test_debug_lv_path);
+
 		//DataPoint init_data = pre_process(face_x, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
 		//save_datapoint(init_data, test_debug_lv_path);
+		//return 0;
 
 		//init_data.shape.dis.rowwise() -= init_data.center;
 
@@ -290,15 +462,18 @@ int main()
 		//cal_del_tri(points, init_data.image, triangleList);
 
 
-		printf("%d %d\n", init_data.image.rows, init_data.image.cols);
+		//printf("%d %d\n", init_data.image.rows, init_data.image.cols);
 		//show_image_0rect(init_data.image, ref_shape);
-		puts("asd");
+		//puts("asd");
 #else
 		DataPoint init_data = pre_process(face_x, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
 #endif // debug_def
 
-		
+#ifdef from_video
+		DDE_video_test(init_data, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
+#else
 		DDE_run_test(init_data, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
+#endif
 		//	break;
 		//case 2:
 		//	//Tracking(face_x);

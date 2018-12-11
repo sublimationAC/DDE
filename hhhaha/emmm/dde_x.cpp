@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
-//#define update_slt_def
+#define update_slt_def
 
 using namespace std;
 
@@ -49,13 +49,26 @@ void change_nearest(DataPoint &data, std::vector<DataPoint> &train_data) {
 	//data.shape.rot = train_data[idx].shape.rot;
 	data.shape.angle = train_data[idx].shape.angle;
 }
+
+std::vector<pair<int,float> > init_shape_la(G_dde_K);
+int flag_init_shape = 0;
+int cmp_init_shape(pair<int, float> x, pair<int, float> y) {
+	return y.second < x.second;
+}
 void get_init_shape(std::vector<Target_type> &ans, DataPoint &data, std::vector<DataPoint>&train_data) {
 
 	puts("calculating initial shape");
 	float mi_land[G_dde_K]; int idx[G_dde_K];
 	for (int i = 0; i < G_dde_K; i++) mi_land[i] = 100000000, idx[i] = 0;
+	if (flag_init_shape) {
+		for (int i = 0; i < G_dde_K; i++) init_shape_la[i].second =
+			((data.land_2d.rowwise() - data.center) -
+			(train_data[init_shape_la[i].first].land_2d.rowwise() - train_data[init_shape_la[i].first].center)).norm();
+		std::sort(init_shape_la.begin(), init_shape_la.end(), cmp_init_shape);
+		for (int i = 0; i < G_dde_K; i++) mi_land[i] = init_shape_la[i].second, idx[i] = init_shape_la[i].first;
+	}
 	for (int i = 0; i < train_data.size(); i++) {
-		float distance_land = ((data.land_2d.rowwise() - data.center) - (train_data[i].land_2d.rowwise() - train_data[i].center)).norm();
+		float distance_land = ((data.land_2d- train_data[i].land_2d).rowwise()-(data.center-train_data[i].center)).norm();
 		//for (int j=0;j<G_dde_K;j++)
 		//	if (distance_land < mi_land[j]) {
 		//		for (int k = G_dde_K - 1; k > j; k--) {
@@ -109,11 +122,14 @@ void get_init_shape(std::vector<Target_type> &ans, DataPoint &data, std::vector<
 		ans[i].tslt.block(0, 0, 1, 2) += data.center;
 
 
-
+		init_shape_la[i].first = idx[i];
 		printf("%d ",idx[i]);
 	}
 	puts("");
+	flag_init_shape = 1;
 }
+
+
 
 void update_slt(
 	Eigen::MatrixXf &exp_r_t_all_matrix,std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
@@ -221,7 +237,7 @@ void DDEX::dde(
 	//result.rot.setZero();
 	result.angle.setZero();
 	
-	show_image_0rect(data.image, data.landmarks);
+	//show_image_0rect(data.image, data.landmarks);
 
 	std::cout << "older angle:" << ((data.shape.angle)*180/pi) << "\n";
 	change_nearest(data,train_data);
@@ -237,15 +253,16 @@ void DDEX::dde(
 	//std::cout << data.shape.dis << "\n";
 	//print_datapoint(data);
 
-	data.shape.exp(0) = 1;
-	update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+	//data.shape.exp(0) = 1;
+	//update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
 	//std::cout << data.landmarks << "\n";
 	
-	show_image_0rect(data.image, data.landmarks);
+	//show_image_0rect(data.image, data.landmarks);
 
 	//find init
 	long long start_time = cv::getTickCount();
 	std::vector<Target_type> init_shape(G_dde_K);
+
 	get_init_shape(init_shape, data, train_data);
 
 	cout << "finding time: "
@@ -265,6 +282,7 @@ void DDEX::dde(
 		//cal_2d_land_i_ang_0ide(land_temp, result_shape, exp_r_t_all_matrix, data);
 		//print_target(result_shape);
 		//show_image_0rect(data.image, land_temp);
+
 		long long start_time = cv::getTickCount();
 
 		for (int j = 0; j < stage_regressors_dde_.size(); ++j)
@@ -284,6 +302,7 @@ void DDEX::dde(
 			<< "s" << endl;
 		//std::vector<cv::Point2d> land_temp;
 //-----------------------------------------------------------------------------------------------------------
+
 		//result_shape.exp(0) = 1;
 		//cal_2d_land_i_ang_0ide(land_temp, result_shape, exp_r_t_all_matrix,data);
 		//print_target(result_shape);
@@ -310,4 +329,12 @@ void DDEX::dde(
 	update_slt(exp_r_t_all_matrix, slt_line, slt_point_rect, jaw_land_corr, data);
 #endif // update_slt_def
 	update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+}
+
+void DDEX::visualize_feature_cddt(cv::Mat rbg_image, Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &landmarks)const {
+
+	puts("dde... visualizing feature index");
+	for (int j = 0; j < stage_regressors_dde_.size(); ++j) {
+		stage_regressors_dde_[j].visualize_feature_cddt(rbg_image, tri_idx,landmarks);
+	}
 }

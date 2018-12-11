@@ -142,7 +142,7 @@ bool check_in_ccmc(Eigen::MatrixX2f &points, int i, int j, int k, int l) {
 // Draw delaunay triangles
 void draw_point(cv::Mat& img, cv::Point2f fp, cv::Scalar color)
 {
-	circle(img, fp, 2, color, CV_FILLED, CV_AA, 0);
+	circle(img, fp, 2, color, cv::FILLED, cv::LINE_AA, 0);
 }
 
 
@@ -165,9 +165,9 @@ void draw_delaunay(cv::Mat& img, cv::Subdiv2D& subdiv, cv::Scalar delaunay_color
 		// Draw rectangles completely inside the image.
 		if (rect.contains(pt[0]) && rect.contains(pt[1]) && rect.contains(pt[2]))
 		{
-			line(img, pt[0], pt[1], delaunay_color, 1, CV_AA, 0);
-			line(img, pt[1], pt[2], delaunay_color, 1, CV_AA, 0);
-			line(img, pt[2], pt[0], delaunay_color, 1, CV_AA, 0);
+			line(img, pt[0], pt[1], delaunay_color, 1, cv::LINE_AA, 0);
+			line(img, pt[1], pt[2], delaunay_color, 1, cv::LINE_AA, 0);
+			line(img, pt[2], pt[0], delaunay_color, 1, cv::LINE_AA, 0);
 		}
 	}
 }
@@ -193,8 +193,8 @@ void draw_voronoi(cv::Mat& img, cv::Subdiv2D& subdiv)
 		fillConvexPoly(img, ifacet, color, 8, 0);
 
 		ifacets[0] = ifacet;
-		polylines(img, ifacets, true, cv::Scalar(), 1, CV_AA, 0);
-		circle(img, centers[i], 3, cv::Scalar(), CV_FILLED, CV_AA, 0);
+		polylines(img, ifacets, true, cv::Scalar(), 1, cv::LINE_AA, 0);
+		circle(img, centers[i], 3, cv::Scalar(), cv::FILLED, cv::LINE_AA, 0);
 	}
 }
 
@@ -523,6 +523,15 @@ void show_image_land_2d(cv::Mat img, Eigen::MatrixX2f &land) {
 	//system("pause");
 }
 
+void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter &output_video) {
+	cv::Mat image = img.clone();
+	for (cv::Point2d landmark : landmarks)
+	{
+		cv::circle(image, landmark, 0.1, cv::Scalar(250, 250, 220), 2);
+	}
+	//cv::resize(image, image, cv::Size(640, 480 * 3));
+	output_video << image;
+}
 
 //void cal_2d_land_i_0dis(
 //	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data) {
@@ -714,21 +723,22 @@ void cal_exp_r_t_all_matrix(
 void target2vector(Target_type &data, Eigen::VectorXf &ans) {
 	ans.resize(G_target_type_size);
 	for (int i = 1; i < G_nShape; i++) ans(i - 1) = data.exp(i);
-	for (int i = 0; i < 2; i++) ans(i + G_nShape - 1) = data.tslt(i);
+	for (int i = 0; i < G_tslt_num; i++) ans(i + G_nShape - 1) = data.tslt(i);
 	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) ans(G_nShape + 3 + i * 3 + j) = data.rot(i, j);
-	for (int i = 0; i < 3; i++) ans(G_nShape - 1 + 2 + i) = data.angle(i);
-	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans(G_nShape - 1 + 2 + 3 + i * 2 + j) = data.dis(i, j);
+	for (int i = 0; i < G_angle_num; i++) ans(G_nShape - 1 + 2 + i) = data.angle(i);
+	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans(G_nShape - 1 + G_tslt_num + G_angle_num + i * 2 + j) = data.dis(i, j);
 }
 void vector2target(Eigen::VectorXf &data, Target_type &ans) {
 	ans.exp.resize(G_nShape);
 	ans.dis.resize(G_land_num, 2);
 	for (int i = 1; i < G_nShape; i++) ans.exp(i) = data(i - 1);
 	ans.exp(0) = 0;
-	for (int i = 0; i < 2; i++) ans.tslt(i) = data(i + G_nShape - 1);
 	ans.tslt(2) = 0;
+	for (int i = 0; i < G_tslt_num; i++) ans.tslt(i) = data(i + G_nShape - 1);
+	
 	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) ans.rot(i, j) = data(G_nShape + 3 + i * 3 + j);
-	for (int i = 0; i < 3; i++) ans.angle(i) = data(G_nShape - 1 + 2 + i);
-	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans.dis(i, j) = data(G_nShape - 1 + 2 + 3 + i * 2 + j);
+	for (int i = 0; i < G_angle_num; i++) ans.angle(i) = data(G_nShape - 1 + 2 + i);
+	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans.dis(i, j) = data(G_nShape - 1 + G_tslt_num + G_angle_num + i * 2 + j);
 }
 
 

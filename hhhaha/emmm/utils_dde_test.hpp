@@ -8,6 +8,7 @@
 #include <Eigen/Geometry>
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/videoio.hpp>
 #define win64
 //#define linux
 #define normalization
@@ -38,11 +39,16 @@ const int G_rnd_user = 5;
 const int G_rnd_camr = 5;
 const int G_trn_factor = 35;
 
-const int G_target_type_size = G_nShape -1 + 2 + 3 + 2 * G_land_num;
+const int G_tslt_num = 2;
+const int G_angle_num = 3;
+const int G_target_type_size = G_nShape - 1 + G_tslt_num + G_angle_num + 2 * G_land_num;
+
+
 const int G_dde_K = 5;
 
 const float pi = acos(-1);
 const float G_rand_angle_border = 15.0* pi / 180;
+
 
 struct Target_type {
 	Eigen::VectorXf exp;
@@ -123,6 +129,7 @@ void show_image(cv::Mat img, cv::Rect rect, std::vector<cv::Point2d> landmarks);
 void show_image_0rect(cv::Mat img, std::vector<cv::Point2d> landmarks);
 void show_image_land_2d(cv::Mat img, Eigen::MatrixX2f &land);
 
+void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter &output_video);
 //void cal_2d_land_i_0dis(
 //	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data);
 void cal_2d_land_i_0dis_ang(
