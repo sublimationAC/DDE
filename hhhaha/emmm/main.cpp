@@ -8,22 +8,22 @@
 #include "calculate_coeff_dde.h"
 #define debug_def
 #define from_video
-#define show_feature_def
+//#define show_feature_def
 
 using namespace std;
 
 const string kModelFileName = "model_r/model_all_5_face.xml.gz";
-const string kModelFileName_dde = "model_r/model_dde_new_gauss.xml.gz";
+const string kModelFileName_dde = "model_r/model_dde_gauss_eye.xml.gz";
 const string kAlt2 = "model_r/haarcascade_frontalface_alt2.xml";
 const string kTestImage = "./photo_test/video/lv_mp4/images/frame0.jpg";//real_time_test//22.png"; /test_samples/005_04_03_051_05.png";
 const string videoImage = "./photo_test/video/lv_mp4/images/frame";
 
-const string videolvsave = "./photo_test/video/lv_hard/lv_hard";
+const string videolvsave = "./photo_test/video/rubbish/r";
 
-const std::string test_debug_lv_path = "./lv_file/lv_mp4_frame0.lv";// fitting_result_t66_pose_0.lv";
-const string video_path = "D:\\sydney\\first\\code\\2017\\DDE\\FaceX/photo_test/video/lv_hard.avi";
+const std::string test_debug_lv_path = "./lv_file/lv_exp_pre.lv";// fitting_result_t66_pose_0.lv";
+const string video_path = "D:\\sydney\\first\\code\\2017\\DDE\\FaceX/photo_test/video/lv_exp.avi";
 const string image_se_path = "D:/sydney/first/data_me/test_lv/fw/Tester_1/TrainingPose/pose_%1d.jpg";
-string land_video_save_path = "./photo_test/video/lv_hard_land.avi";
+string land_video_save_path = "./photo_test/video/rand_exp.avi";
 #ifdef win64
 
 std::string fwhs_path_lv = "D:/sydney/first/data_me/test_lv/fw";
@@ -255,26 +255,30 @@ void DDE_video_test(
 	if (!cap.isOpened()) exit(2);//如果视频不能正常打开则返回
 	cv::Mat rgb_image;
 	cap >> rgb_image;
-	
+	G_debug_up_image = rgb_image.clone();
 	cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
 	for (int i_v = 0; i_v < G_land_num; i_v++)
 		data.landmarks[i_v].x = data.land_2d(i_v, 0), data.landmarks[i_v].y = data.image.rows - data.land_2d(i_v, 1);
+#ifdef show_feature_def
 	dde_x.visualize_feature_cddt(rgb_image, tri_idx, data.landmarks);
+#endif // show_feature_def
+	
 
 	//cv::imshow("result", data.image);
 	//cv::waitKey();
 
 	puts("DDE running...");
 	Eigen::MatrixXf exp_r_t_all_matrix;	
+	cal_exp_r_t_all_matrix(bldshps, data, exp_r_t_all_matrix);
+	Target_type last_data[3];
 //	cv::resize(data.image, data.image,cv::Size(640, 480*3));
 	cv::VideoWriter output_video(land_video_save_path, CV_FOURCC_DEFAULT, 25.0, cv::Size(data.image.cols, data.image.rows));
 	//std::cout << data.image.cols << " " << data.image.rows << "\n" << cv::Size(data.image.cols, data.image.rows) << "\n";
 	//output_video << data.image;
 	//system("pause");
-	cal_exp_r_t_all_matrix(bldshps, data, exp_r_t_all_matrix);
-	Target_type last_data[3];
+	
 
-	for (int test_round = 1;/*&&test_round < 2000*/; test_round++) {
+	for (int test_round = 1;test_round < 150; test_round++) {
 		cap >> rgb_image;
 		if (rgb_image.empty()) break;
 		cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
@@ -288,23 +292,23 @@ void DDE_video_test(
 
 		//--------------------------------------post_processing
 
-		last_data[0] = last_data[1]; last_data[1] = last_data[2]; last_data[2] = data.shape;
-		if (test_round > 3) {
-			Eigen::MatrixXf exp_r_t_matrix;
-			exp_r_t_matrix.resize(G_nShape, 3 * G_land_num);
-			for (int i_exp = 0; i_exp < G_nShape; i_exp++)
-				for (int i_v = 0; i_v < G_land_num; i_v++)
-					for (int axis = 0; axis < 3; axis++)
-						exp_r_t_matrix(i_exp, i_v * 3 + axis) = exp_r_t_all_matrix(i_exp, data.land_cor(i_v) * 3 + axis);
-			ceres_post_processing(data, last_data[0], last_data[1], last_data[2], exp_r_t_matrix);
-			//recal_dis_ang(data,bldshps);
-			data.shape.exp(0) = 1;
-			update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
-			//update_slt(
-		}
-		last_data[2] = data.shape;
+		//last_data[0] = last_data[1]; last_data[1] = last_data[2]; last_data[2] = data.shape;
+		//if (test_round > 3) {
+		//	Eigen::MatrixXf exp_r_t_matrix;
+		//	exp_r_t_matrix.resize(G_nShape, 3 * G_land_num);
+		//	for (int i_exp = 0; i_exp < G_nShape; i_exp++)
+		//		for (int i_v = 0; i_v < G_land_num; i_v++)
+		//			for (int axis = 0; axis < 3; axis++)
+		//				exp_r_t_matrix(i_exp, i_v * 3 + axis) = exp_r_t_all_matrix(i_exp, data.land_cor(i_v) * 3 + axis);
+		//	ceres_post_processing(data, last_data[0], last_data[1], last_data[2], exp_r_t_matrix);
+		//	//recal_dis_ang(data,bldshps);
+		//	data.shape.exp(0) = 1;
+		//	update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+		//	//update_slt(
+		//}
+		//last_data[2] = data.shape;
 		////system("pause");
-//	print_datapoint(data);
+		print_datapoint(data);
 		save_datapoint(data, videolvsave + "_" + to_string(test_round) + ".lv");
 		//print_datapoint(data);
 		//show_image_0rect(data.image, data.landmarks);
@@ -317,6 +321,8 @@ void DDE_video_test(
 		//	//system("pause");
 		//}
 		
+		//cv::imshow("G_debug_up_image", G_debug_up_image);
+		//cv::waitKey(10);
 	}
 
 }
@@ -341,7 +347,7 @@ void camera() {
 	cv::Mat img;
 	cv::VideoCapture vc(0);
 	vc >> frame;
-	cv::VideoWriter output_video("lv_hard_glass.avi", CV_FOURCC('M', 'J', 'P', 'G'), 25.0, cv::Size(640, 480));
+	cv::VideoWriter output_video("lv_exp.avi", CV_FOURCC('M', 'J', 'P', 'G'), 25.0, cv::Size(640, 480));
 	long long start_time = cv::getTickCount();
 	for (;;)
 	{
@@ -351,9 +357,10 @@ void camera() {
 		cv::imshow("gg", frame);
 		cv::waitKey(20);
 		output_video << frame;
-		if ((cv::getTickCount() - start_time) / cv::getTickFrequency() > 45) break;
+		if ((cv::getTickCount() - start_time) / cv::getTickFrequency() > 15) break;
+		std::cout << (cv::getTickCount() - start_time) / cv::getTickFrequency() << "\n";
 	}
-	//exit(0);
+	puts("over");
 }
 //#include <dirent.h>
 //#include <videoio.hpp>
@@ -374,10 +381,86 @@ void test_video() {
 		printf("%d\n", test_round);
 	}
 }
+void find_nearest(DataPoint &data, std::vector<DataPoint> &train_data) {
+	puts("change nearest");
+	float mi_land = 100000000;
+	int idx = 0;
+	for (int i = 0; i < train_data.size(); i++) {
+		//float distance = (data.center - train_data[i].center).norm();
+		float distance_land = 0;// ((data.land_2d.rowwise() - data.center) - (train_data[i].land_2d.rowwise() - train_data[i].center)).norm();
+		for (int j = 0; j < G_land_num; j++) {
+			//printf("%.5f %.5f %.5f %.5f\n", i);
+			Eigen::RowVector2f temp = (data.land_2d.row(j) - data.center - (train_data[i].land_2d.row(j) - train_data[i].center));
+			distance_land += temp.norm();
+		}
+		if (distance_land < mi_land) {
+			idx = i;
+			mi_land = distance_land;
+			printf("idx %d dis%.10f center :%.10f %.10f train_center :%.10f %.10f\n",
+				idx, mi_land, data.center(0), data.center(1), train_data[i].center(0), train_data[i].center(1));
+		}
+	}
+	printf("nearest vertex: %d train dataset size: %d\n", idx, train_data.size());
+
+}
+void draw_land_train_pic(cv::Mat image,DataPoint &data, DataPoint &training_data, cv::Scalar color) {
+	float loss_norm = 0, loss = 0, tot_norm = 0;;
+	for (int i = 15; i < G_land_num; i++) {
+		//printf("%.5f %.5f %.5f %.5f\n", i);
+		Eigen::RowVector2f temp = (data.land_2d.row(i) - data.center - (training_data.land_2d.row(i) - training_data.center));
+		loss_norm += temp.norm();
+		loss += sqrt(temp(0)*temp(0) + temp(1)*temp(1));
+		tot_norm += temp(0)*temp(0) + temp(1)*temp(1);
+		temp = training_data.land_2d.row(i) - training_data.center + data.center;
+		cv::circle(image, cv::Point2f(temp(0),image.rows- temp(1)), 0.1,color, 2);
+	}
+	printf("loss %.10f loss_norm %.10f tot %.10f\n", loss, loss_norm,sqrt(tot_norm));
+	int i = 0;
+	Eigen::RowVector2f temp = (data.land_2d.row(i) - data.center - (training_data.land_2d.row(i) - training_data.center));
+	loss_norm = temp.norm();
+	loss = sqrt(temp(0)*temp(0) + temp(1)*temp(1));
+	printf("++loss %.10f loss_norm %.10f\n", loss, loss_norm);
+}
+void show_data_land() {
+
+	cv::VideoCapture cap(video_path);
+	if (!cap.isOpened()) exit(2);//如果视频不能正常打开则返回
+	cv::Mat rgb_image;
+	cap >> rgb_image;
+
+	DataPoint data;
+#ifndef from_video
+	data.image = cv::imread(kTestImage, cv::IMREAD_GRAYSCALE);
+#endif // !from_video
+
+	load_fitting_coef_one(test_debug_lv_path, data);
+	data.landmarks.resize(G_land_num);
+
+	vector<DataPoint> training_data;
+	training_data.clear();
+	
+	load_land_coef(fwhs_path_lv, ".jpg", training_data);
+	//load_land_coef(lfw_path_lv, ".jpg", training_data);
+	//load_land_coef(gtav_path_lv, ".bmp", training_data);
+	printf("%d \n", training_data.size());
+	//find_nearest(data, training_data);
+	//draw_land_train_pic(rgb_image, data,training_data[1605], cv::Scalar(0, 0, 250));
+	//draw_land_train_pic(rgb_image,data, training_data[1585], cv::Scalar(250, 0, 0));
+
+	for (int i=0;i<training_data.size();i++)
+		draw_land_train_pic(rgb_image,data, training_data[i], cv::Scalar(250, 0, 0));
+	cv::imshow("debug_nearest", rgb_image);
+	cv::waitKey(0);
+
+}
+
 int main()
 {
-	//camera();
-	//return 0;
+	//show_data_land();
+
+	/*camera();
+	return 0;*/
+
 	//test_video();
 	//if (_access("test.avi",0)==-1)
 	//{
@@ -395,6 +478,8 @@ int main()
 	//cv::imshow("result", image);
 	//cv::waitKey();
 
+	//show_data_land();
+
 	try
 	{	
 
@@ -411,12 +496,14 @@ int main()
 		load_jaw_land_corr(jaw_land_corr);
 		//std::cout << inner_land_corr << '\n';
 		load_slt(slt_line, slt_point_rect, slt_path, rect_path);
-//		load_bldshps(bldshps, bldshps_path, ide_sg_vl, sg_vl_path);
+		load_bldshps(bldshps, bldshps_path, ide_sg_vl, sg_vl_path);
 		vector<DataPoint> training_data;
 		training_data.clear();
+		
 		load_land_coef(fwhs_path_lv, ".jpg", training_data);
 		load_land_coef(lfw_path_lv, ".jpg", training_data);
 		load_land_coef(gtav_path_lv, ".bmp", training_data);
+
 		printf("traindata size %d\n", training_data.size());
 		//system("pause");
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 #define update_slt_def
+#define no_nearest_me
 
 using namespace std;
 
@@ -48,18 +49,23 @@ void change_nearest(DataPoint &data, std::vector<DataPoint> &train_data) {
 	printf("nearest vertex: %d train dataset size: %d\n", idx,train_data.size());
 	//data.shape.rot = train_data[idx].shape.rot;
 	data.shape.angle = train_data[idx].shape.angle;
+	FILE *fp;
+	fopen_s(&fp, "debug_ite_nearest_idx.txt", "a");
+	fprintf(fp, "%d %.10f\n", idx,mi_land);
+	fclose(fp);
+
 }
 
 std::vector<pair<int,float> > init_shape_la(G_dde_K);
 int flag_init_shape = 0;
 int cmp_init_shape(pair<int, float> x, pair<int, float> y) {
-	return y.second < x.second;
+	return x.second < y.second;
 }
 void get_init_shape(std::vector<Target_type> &ans, DataPoint &data, std::vector<DataPoint>&train_data) {
 
 	puts("calculating initial shape");
 	float mi_land[G_dde_K]; int idx[G_dde_K];
-	for (int i = 0; i < G_dde_K; i++) mi_land[i] = 100000000, idx[i] = 0;
+	for (int i = 0; i < G_dde_K; i++) mi_land[i] = 100000000, idx[i] = -1;
 	if (flag_init_shape) {
 		for (int i = 0; i < G_dde_K; i++) init_shape_la[i].second =
 			((data.land_2d.rowwise() - data.center) -
@@ -67,8 +73,18 @@ void get_init_shape(std::vector<Target_type> &ans, DataPoint &data, std::vector<
 		std::sort(init_shape_la.begin(), init_shape_la.end(), cmp_init_shape);
 		for (int i = 0; i < G_dde_K; i++) mi_land[i] = init_shape_la[i].second, idx[i] = init_shape_la[i].first;
 	}
+	for (int t = 0; t < G_dde_K; t++)
+		printf("%d ", idx[t]);
+	puts("");
+	for (int t = 0; t < G_dde_K; t++)
+		printf("%.5f ", mi_land[t]);
+	puts("");
 	for (int i = 0; i < train_data.size(); i++) {
-		float distance_land = ((data.land_2d- train_data[i].land_2d).rowwise()-(data.center-train_data[i].center)).norm();
+		bool fl = 0;
+		for (int j = 0; j < G_dde_K; j++)
+			if (i == idx[j]) fl = 1;
+		if (fl) continue;
+		float distance_land = ((data.land_2d - train_data[i].land_2d).rowwise()-(data.center-train_data[i].center)).norm();
 		//for (int j=0;j<G_dde_K;j++)
 		//	if (distance_land < mi_land[j]) {
 		//		for (int k = G_dde_K - 1; k > j; k--) {
@@ -94,7 +110,10 @@ void get_init_shape(std::vector<Target_type> &ans, DataPoint &data, std::vector<
 				mi_land[j] = distance_land;
 				for (int t = 0; t < G_dde_K; t++)
 					printf("%d ", idx[t]);
-				puts("");
+				puts("+++");
+				for (int t = 0; t < G_dde_K; t++)
+					printf("%.5f ", mi_land[t]);
+				puts("++++");
 				break;
 			}
 			if (j == 0) {
@@ -127,9 +146,110 @@ void get_init_shape(std::vector<Target_type> &ans, DataPoint &data, std::vector<
 	}
 	puts("");
 	flag_init_shape = 1;
+	//system("pause");
 }
 
+void get_init_shape_rand(std::vector<Target_type> &ans, DataPoint &data, std::vector<DataPoint>&train_data) {
 
+	puts("calculating initial shape");
+	
+	for (int i = 0; i < G_dde_K; i++) {
+		int rnd= cv::theRNG().uniform(0, train_data.size());
+		ans[i] = train_data[rnd].shape;
+
+		//align the center by tslt
+		ans[i].tslt.block(0, 0, 1, 2) -= train_data[rnd].center;
+		ans[i].tslt.block(0, 0, 1, 2) += data.center;
+
+		printf("%d ", rnd);
+	}
+	puts("");
+	flag_init_shape = 1;
+	//system("pause");
+}
+
+void get_init_shape_exp(std::vector<Target_type> &ans, DataPoint &data, std::vector<DataPoint>&train_data) {
+
+	puts("calculating initial shape");
+	float mi_land[G_dde_K]; int idx[G_dde_K];
+	for (int i = 0; i < G_dde_K; i++) mi_land[i] = 100000000, idx[i] = -1;
+	if (flag_init_shape) {
+		for (int i = 0; i < G_dde_K; i++) init_shape_la[i].second =
+			(data.shape.exp - train_data[init_shape_la[i].first].shape.exp).norm();
+		std::sort(init_shape_la.begin(), init_shape_la.end(), cmp_init_shape);
+		for (int i = 0; i < G_dde_K; i++) mi_land[i] = init_shape_la[i].second, idx[i] = init_shape_la[i].first;
+	}
+	for (int t = 0; t < G_dde_K; t++)
+		printf("%d ", idx[t]);
+	puts("");
+	for (int t = 0; t < G_dde_K; t++)
+		printf("%.5f ", mi_land[t]);
+	puts("");
+	for (int i = 0; i < train_data.size(); i++) {
+		bool fl = 0;
+		for (int j = 0; j < G_dde_K; j++)
+			if (i == idx[j]) fl = 1;
+		if (fl) continue;
+		float distance_land = (data.shape.exp - train_data[i].shape.exp).norm();
+		//for (int j=0;j<G_dde_K;j++)
+		//	if (distance_land < mi_land[j]) {
+		//		for (int k = G_dde_K - 1; k > j; k--) {
+		//			idx[k] = idx[k - 1];
+		//			mi_land[k] = mi_land[k - 1];
+		//		}
+		//		idx[j] = i;
+		//		mi_land[j] = distance_land;
+		//		for (int t = 0; t < G_dde_K; t++)
+		//			printf("%d ", idx[t]);
+		//		puts("");
+		//		break;
+		//	}
+		for (int j = G_dde_K - 1; j >= 0; j--) {
+			if (distance_land > mi_land[j]) {
+				j++;
+				if (j == G_dde_K) break;
+				for (int k = G_dde_K - 1; k > j; k--) {
+					idx[k] = idx[k - 1];
+					mi_land[k] = mi_land[k - 1];
+				}
+				idx[j] = i;
+				mi_land[j] = distance_land;
+				for (int t = 0; t < G_dde_K; t++)
+					printf("%d ", idx[t]);
+				puts("+++");
+				for (int t = 0; t < G_dde_K; t++)
+					printf("%.5f ", mi_land[t]);
+				puts("++++");
+				break;
+			}
+			if (j == 0) {
+				for (int k = G_dde_K - 1; k > j; k--) {
+					idx[k] = idx[k - 1];
+					mi_land[k] = mi_land[k - 1];
+				}
+				idx[j] = i;
+				mi_land[j] = distance_land;
+				for (int t = 0; t < G_dde_K; t++)
+					printf("%d ", idx[t]);
+				puts("");
+				for (int t = 0; t < G_dde_K; t++)
+					printf("%.5f ", mi_land[t]);
+				puts("");
+				break;
+			}
+		}
+	}
+	for (int i = 0; i < G_dde_K; i++) {
+		ans[i] = data.shape;
+		ans[i].exp = train_data[idx[i]].shape.exp;
+
+		init_shape_la[i].first = idx[i];
+		printf("%d ", idx[i]);
+	}
+	puts("");
+	flag_init_shape = 1;
+	//system("pause");
+}
 
 void update_slt(
 	Eigen::MatrixXf &exp_r_t_all_matrix,std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
@@ -219,14 +339,14 @@ void update_slt(
 }
 
 
-
+int debug_ite = 0;
+cv::Mat G_debug_up_image;
 void DDEX::dde(
 	DataPoint &data, Eigen::MatrixXf &bldshps,
 	Eigen::MatrixX3i &tri_idx, std::vector<DataPoint> &train_data, Eigen::VectorXi &jaw_land_corr,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,Eigen::MatrixXf &exp_r_t_all_matrix)const {
 
-	std::cout << tri_idx.transpose() << "\n";
-
+	//std::cout << tri_idx.transpose() << "\n";
 
 	Target_type result;
 	result.dis.resize(G_land_num, 2);
@@ -239,9 +359,9 @@ void DDEX::dde(
 	
 	//show_image_0rect(data.image, data.landmarks);
 
-	std::cout << "older angle:" << ((data.shape.angle)*180/pi) << "\n";
-	change_nearest(data,train_data);
-	std::cout << "new angle:" << ((data.shape.angle) * 180 / pi) << "\n";
+	//std::cout << "older angle:" << ((data.shape.angle)*180/pi) << "\n";
+	//change_nearest(data,train_data);
+	//std::cout << "new angle:" << ((data.shape.angle) * 180 / pi) << "\n";
 	//system("pause");
 
 	//std::cout <<data.shape.dis << "\n";
@@ -252,18 +372,40 @@ void DDEX::dde(
 	//show_image_0rect(data.image, data.landmarks);
 	//std::cout << data.shape.dis << "\n";
 	//print_datapoint(data);
+	
 
 	//data.shape.exp(0) = 1;
 	//update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+	//debug_ite++;
+	//for (cv::Point2d landmark : data.landmarks)
+	//{
+	//	cv::circle(G_debug_up_image, landmark, 0.1*debug_ite, cv::Scalar(0,0,debug_ite*20), 2);
+	//}
 	//std::cout << data.landmarks << "\n";
 	
 	//show_image_0rect(data.image, data.landmarks);
 
 	//find init
 	long long start_time = cv::getTickCount();
+#ifdef no_nearest_me
+	std::vector<Target_type> init_shape(G_dde_K);
+
+	//get_init_shape_rand(init_shape, data, train_data);
+	get_init_shape_exp(init_shape, data, train_data);
+#else
 	std::vector<Target_type> init_shape(G_dde_K);
 
 	get_init_shape(init_shape, data, train_data);
+#endif // no_nearest_me
+
+	
+
+	FILE *fp;
+	fopen_s(&fp, "debug_ite_k_near_idx.txt", "a");
+	fprintf(fp, "%d ", debug_ite);
+	for (int i=0;i<G_dde_K;i++) fprintf(fp, " %d", init_shape_la[i].first);
+	fprintf(fp, "\n");
+	fclose(fp);
 
 	cout << "finding time: "
 		<< (cv::getTickCount() - start_time) / cv::getTickFrequency()
@@ -315,11 +457,11 @@ void DDEX::dde(
 		result.tslt.array() += result_shape.tslt.array();
 
 	}
-	result.dis.array() /= G_dde_K;
-	result.exp.array() /= G_dde_K;
+	result.dis.array() /= init_shape.size();
+	result.exp.array() /= init_shape.size();
 	//result.rot.array() /= G_dde_K;
-	result.angle.array() /= G_dde_K;
-	result.tslt.array() /= G_dde_K;
+	result.angle.array() /= init_shape.size();
+	result.tslt.array() /= init_shape.size();
 	data.shape = result;
 
 
