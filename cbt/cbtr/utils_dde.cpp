@@ -749,3 +749,41 @@ void cal_mouse_rect(const std::vector<cv::Point2d> &ref_shape, cv::Rect &mouse_r
 	}
 	mouse_rect = cv::Rect(left, top, right - left, bottom - top);
 }
+
+void rect_scale(cv::Rect &rect, double scale) {
+	cv::Point2d center = cv::Point2d(rect.x + rect.width / 2, rect.y + rect.height / 2);
+	rect.width *= scale;
+	rect.height *= scale;
+	rect.x = center.x - rect.width / 2;
+	rect.y = center.y - rect.height / 2;
+}
+
+void normalize_gauss_face_rect(cv::Mat image,cv::Rect &rect) {
+	float ave = 0;
+	puts("A");
+	int top = rect.y, bottom = rect.y + rect.height+1;
+	int left=rect.x,right=rect.x+rect.width+1;
+	for (int i_row = top; i_row < bottom; i_row++)
+		for (int i_col = left; i_col < right; i_col++) {
+			//std::cout << i_row << ' ' << i_col << "\n";
+			//std::cout << image.rows << ' ' << image.cols << "\n";
+			//std::cout << image.channels() << "\n";
+			//printf("%d %d %d\n", i_row, i_col, image.at <uchar>(2,2));
+			//printf("%d %d %d\n", i_row, i_col, image.at <uchar>(i_row, i_col));
+
+			ave += image.at <uchar>(i_row, i_col);
+		}
+	ave /= (rect.height + 1)*(rect.width + 1);
+	puts("B");
+	float sig = 0;
+	for (int i_row = top; i_row < bottom; i_row++)
+		for (int i_col = left; i_col < right; i_col++)
+			sig += (image.at <uchar>(i_row, i_col) - ave)*(image.at <uchar>(i_row, i_col) - ave);
+	sig /= (rect.height + 1)*(rect.width + 1);
+	sig = sqrt(sig);
+	puts("C");
+	for (int i_row = top; i_row < bottom; i_row++)
+		for (int i_col = left; i_col < right; i_col++)
+			image.at <uchar>(i_row, i_col) =
+			(uchar)(((image.at <uchar>(i_row, i_col) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave);
+}

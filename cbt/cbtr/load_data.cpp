@@ -22,6 +22,7 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 		struct dirent *dp;
 		while (index < n)
 		{
+			if (num > 20) break;
 			printf("load_img_land_coef idx:%d n:%d\n", index, n);
 			dp = namelist[index];
 
@@ -55,7 +56,7 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 					for (int i = 0; i < temp.landmarks.size(); i++)
 						temp.landmarks[i].y = temp.image.rows - temp.landmarks[i].y;
 #endif //  flap_2dland
-					//cal_rect(temp);
+					cal_rect(temp);
 					//system("pause");
 					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
 					if (_access((p.substr(0, p.find(".land")) + ".lv").c_str(), 0) == -1) {
@@ -103,14 +104,19 @@ const std::string kAlt2 = "haarcascade_frontalface_alt2.xml";
 #include<algorithm>
 void cal_rect(DataPoint &temp) {
 	puts("testing image");
+	//puts("AA");
 	cv::Mat gray_image;
-	cv::cvtColor(temp.image, gray_image, CV_BGR2GRAY);
+	//puts("AB");
+	//cv::cvtColor(temp.image, gray_image, CV_BGR2GRAY);
+	gray_image = temp.image;
+	//puts("AC");
 	cv::CascadeClassifier cc(kAlt2);
 	if (cc.empty())
 	{
 		std::cout << "Cannot open model file " << kAlt2 << " for OpenCV face detector!\n";
 		return;
 	}
+	//puts("AA");
 	std::vector<cv::Rect> faces;
 	double start_time = cv::getTickCount();
 
@@ -120,9 +126,13 @@ void cal_rect(DataPoint &temp) {
 	
 	int cnt = 0, ma = 0;
 	for (cv::Rect face : faces) {
-		face.x = max(0, face.x - 10);// face.y = max(0, face.y - 10);
-		face.width = min(temp.image.rows - face.x, face.width + 25);
-		face.height = min(temp.image.cols - face.y, face.height + 25);
+		//rect_scale(face, 1.5);
+		//face.x = max(face.x, 0); face.y = max(0, face.y);
+		//face.width = min(face.width, gray_image.cols - face.x);
+		//face.height = min(face.height, gray_image.rows - face.y);
+		//face.x = max(0, face.x - 10);// face.y = max(0, face.y - 10);
+		//face.width = min(temp.image.rows - face.x, face.width + 25);
+		//face.height = min(temp.image.cols - face.y, face.height + 25);
 		int in_num = 0;
 		for (cv::Point2d landmark : temp.landmarks)
 			if (landmark.inside(face)) in_num++;
@@ -137,7 +147,19 @@ void cal_rect(DataPoint &temp) {
 		top = min(top, landmark.y);
 		bottom = max(bottom, landmark.y);
 	}
-	if (ma == 0) temp.face_rect = cv::Rect(left - 10, top - 10, right - left + 21, bottom - top + 21);
+
+	//if (ma == 0) temp.face_rect = cv::Rect(left - 10, top - 10, right - left + 21, bottom - top + 21);
+	//cv::Rect temp_rect(left, top, right - left, bottom - top);
+	//rect_scale(temp_rect, 1.5);
+	//temp_rect.x = max(temp_rect.x, 0); temp_rect.y = max(0, temp_rect.y);
+	//temp_rect.width = min(temp_rect.width, gray_image.cols - temp_rect.x);
+	//temp_rect.height = min(temp_rect.height, gray_image.rows - temp_rect.y);
+	if (ma == 0) temp.face_rect = cv::Rect(left, top, right - left, bottom - top);
+	rect_scale(temp.face_rect, 1.5);
+	temp.face_rect.x = max(temp.face_rect.x, 0); temp.face_rect.y = max(0, temp.face_rect.y);
+	temp.face_rect.width = min(temp.face_rect.width, gray_image.cols - temp.face_rect.x);
+	temp.face_rect.height = min(temp.face_rect.height, gray_image.rows - temp.face_rect.y);
+
 }
 
 void test_data_2dland(DataPoint &temp) {

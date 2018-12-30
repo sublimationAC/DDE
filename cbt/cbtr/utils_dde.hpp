@@ -74,3 +74,7 @@ Eigen::Matrix3f get_r_from_angle_zyx(const Eigen::Vector3f &angle);
 void cal_left_eye_rect(const std::vector<cv::Point2d> &ref_shape, cv::Rect &left_eye_rect);
 void cal_right_eye_rect(const std::vector<cv::Point2d> &ref_shape, cv::Rect &right_eye_rect);
 void cal_mouse_rect(const std::vector<cv::Point2d> &ref_shape, cv::Rect &mouse_rect);
+
+void rect_scale(cv::Rect &rect, double scale);
+
+void normalize_gauss_face_rect(cv::Mat image,cv::Rect &rect);

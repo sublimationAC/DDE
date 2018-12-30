@@ -27,9 +27,6 @@ void cal_Y_pixels_cov_proj_cov(cv::Mat Y,cv::Mat pixels_val, vector<double> &Y_p
 	}
 }
 
-
-
-
 void get_feature_idx_thresthod(
 	cv::Mat pixels_val, vector<double> &Y_pixels_cov, double Y_proj_cov, cv::Mat pixels_cov,
 	std::vector<std::pair<int, int>> &features_index, std::vector<double> &thresholds,int i) {
@@ -72,6 +69,11 @@ void get_feature_idx_thresthod(
 	thresholds[i] = (threshold_max + threshold_min) / 2
 		+ cv::theRNG().uniform(-(threshold_max - threshold_min) * 0.1,
 		(threshold_max - threshold_min) * 0.1);
+	FILE *fp;
+	fopen_s(&fp, "cnt_fern.txt", "a");
+	fprintf(fp, "i %d f_idx_fi %d f_idx_se %d thsld_min %.10f thsld_max %.10f thsld %.10f\n", i, features_index[i].first, features_index[i].second, threshold_min, threshold_max, thresholds[i]);
+	fclose(fp);
+
 }
 
 void cal_outputs(
@@ -94,24 +96,30 @@ void cal_outputs(
 		++each_output_count[mask];
 	}
 
+	FILE *fp;
+	fopen_s(&fp, "cnt_fern.txt", "a");
+	fprintf(fp, "each_output_count[i] which:%c :\n", which);
+
 	for (int i = 0; i < outputs_count; ++i)
 	{
 		/*for (cv::Point2d &p : outputs[i])
 			p *= 1.0 / (each_output_count[i] + training_parameters.Beta);*/
 		for (int j = 0; j < outputs[i].size(); j++)
 			outputs[i][j] *= 1.0 / (each_output_count[i] + Beta);
+
+		fprintf(fp, " %d:%d\n", i, each_output_count[i]);
 	}
+
+	fprintf(fp, "\n");
+	fclose(fp);
 }
 
 
 
-void FernTrain::Regress(vector<Target_type> *targets,
+void FernTrain::Regress_ta(vector<Target_type> *targets,
 	cv::Mat pixels_val, cv::Mat pixels_cov)
 {
 
-
-	cv::Mat Y_exp(targets->size(), G_nShape-1, CV_64FC1);
-	cv::Mat Y_dis(targets->size(), 2*G_land_num, CV_64FC1);
 	cv::Mat Y_tslt(targets->size(), G_tslt_num, CV_64FC1);
 	cv::Mat Y_angle(targets->size(), G_angle_num, CV_64FC1);
 	for (int i = 0; i < targets->size(); ++i)
@@ -121,12 +129,6 @@ void FernTrain::Regress(vector<Target_type> *targets,
 			Y.at<double>(i, j) = (*targets)[i][j / 2].x;
 			Y.at<double>(i, j + 1) = (*targets)[i][j / 2].y;
 		}*/
-
-		for (int j = 1; j < G_nShape; j++)
-			Y_exp.at<double>(i, j - 1) = (*targets)[i].exp(j);
-		
-		for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
-			Y_dis.at<double>(i, j * 2 + k) = (*targets)[i].dis(j, k);
 
 		for (int j = 0; j < G_tslt_num; j++)
 			Y_tslt.at<double>(i, j) = (*targets)[i].tslt(j);
@@ -143,12 +145,8 @@ void FernTrain::Regress(vector<Target_type> *targets,
 	}
 
 
-	features_index_exp.assign(training_parameters.F, pair<int, int>());
-	features_index_dis.assign(training_parameters.F, pair<int, int>());
 	features_index_tslt.assign(training_parameters.F, pair<int, int>());
 	features_index_angle.assign(training_parameters.F, pair<int, int>());
-	thresholds_exp.assign(training_parameters.F, 0);
-	thresholds_dis.assign(training_parameters.F, 0);
 	thresholds_tslt.assign(training_parameters.F, 0);
 	thresholds_angle.assign(training_parameters.F, 0);
 
@@ -165,18 +163,13 @@ void FernTrain::Regress(vector<Target_type> *targets,
 		//cv::Mat projection_tslt(Y_tslt.cols, 1, CV_64FC1);
 		//cv::Mat projection_angle(Y_angle.cols, 1, CV_64FC1);
 
-		double Y_exp_proj_cov = 0, Y_dis_proj_cov = 0, Y_tslt_proj_cov = 0, Y_angle_proj_cov = 0;
+		double Y_tslt_proj_cov = 0, Y_angle_proj_cov = 0;
 		std::vector<double> 
-			Y_exp_pixels_cov(pixels_val.rows), Y_dis_pixels_cov(pixels_val.rows), 
 			Y_tslt_pixels_cov(pixels_val.rows), Y_angle_pixels_cov(pixels_val.rows);
 
-		cal_Y_pixels_cov_proj_cov(Y_exp, pixels_val, Y_exp_pixels_cov, Y_exp_proj_cov);
-		cal_Y_pixels_cov_proj_cov(Y_dis, pixels_val, Y_dis_pixels_cov, Y_dis_proj_cov);
 		cal_Y_pixels_cov_proj_cov(Y_tslt, pixels_val, Y_tslt_pixels_cov, Y_tslt_proj_cov);
 		cal_Y_pixels_cov_proj_cov(Y_angle, pixels_val, Y_angle_pixels_cov, Y_angle_proj_cov);
 
-		get_feature_idx_thresthod(pixels_val, Y_exp_pixels_cov, Y_exp_proj_cov, pixels_cov, features_index_exp, thresholds_exp, i);
-		get_feature_idx_thresthod(pixels_val, Y_dis_pixels_cov, Y_dis_proj_cov, pixels_cov, features_index_dis, thresholds_dis, i);
 		get_feature_idx_thresthod(pixels_val, Y_tslt_pixels_cov, Y_tslt_proj_cov, pixels_cov, features_index_tslt, thresholds_tslt, i);
 		get_feature_idx_thresthod(pixels_val, Y_angle_pixels_cov, Y_angle_proj_cov, pixels_cov, features_index_angle, thresholds_angle, i);
 
@@ -184,19 +177,89 @@ void FernTrain::Regress(vector<Target_type> *targets,
 
 	int outputs_count = 1 << training_parameters.F;
 
-	outputs_exp.assign(outputs_count, vector<double>(G_nShape-1));
-	outputs_dis.assign(outputs_count, vector<double>(2*G_land_num));
+
 	outputs_tslt.assign(outputs_count, vector<double>(3));
 	outputs_angle.assign(outputs_count, vector<double>(G_angle_num));
 
 	//vector<int> each_output_count_exp(outputs_count), each_output_count_dis(outputs_count), each_output_count_tslt(outputs_count), each_output_count_angle(outputs_count);
 
-	cal_outputs(outputs_exp, targets, training_parameters.F, training_parameters.Beta, pixels_val, features_index_exp, thresholds_exp,'e');
-	cal_outputs(outputs_dis, targets, training_parameters.F, training_parameters.Beta, pixels_val, features_index_dis, thresholds_dis,'d');
 	cal_outputs(outputs_tslt, targets, training_parameters.F, training_parameters.Beta, pixels_val, features_index_tslt, thresholds_tslt,'t');
 	cal_outputs(outputs_angle, targets, training_parameters.F, training_parameters.Beta, pixels_val, features_index_angle, thresholds_angle,'a');
 
 	
+}
+
+void FernTrain::Regress_expdis(vector<Target_type> *targets,
+	cv::Mat pixels_val, cv::Mat pixels_cov)
+{
+
+
+	cv::Mat Y_exp(targets->size(), G_nShape - 1, CV_64FC1);
+	cv::Mat Y_dis(targets->size(), 2 * G_land_num, CV_64FC1);
+
+	for (int i = 0; i < targets->size(); ++i)
+	{
+		/*for (int j = 0; j < Y.cols; j += 2)
+		{
+			Y.at<double>(i, j) = (*targets)[i][j / 2].x;
+			Y.at<double>(i, j + 1) = (*targets)[i][j / 2].y;
+		}*/
+
+		for (int j = 1; j < G_nShape; j++)
+			Y_exp.at<double>(i, j - 1) = (*targets)[i].exp(j);
+
+		for (int j = 0; j < G_land_num; j++) for (int k = 0; k < 2; k++)
+			Y_dis.at<double>(i, j * 2 + k) = (*targets)[i].dis(j, k);
+
+
+		//Eigen::VectorXf temp_v;
+		//target2vector((*targets)[i], temp_v);
+		//for (int j = 0; j < G_target_type_size; j++)
+		//	Y.at<double>(i, j) = temp_v(j);
+
+	}
+
+
+	features_index_exp.assign(training_parameters.F, pair<int, int>());
+	features_index_dis.assign(training_parameters.F, pair<int, int>());
+	thresholds_exp.assign(training_parameters.F, 0);
+	thresholds_dis.assign(training_parameters.F, 0);
+
+	//for (int i = 0; i <= 20; i++) {
+	//	printf("line %d :", i);
+	//	for (int j = 0; j < 100; j++)
+	//		std::cout << Y.at<double>(i, j);
+	//}
+
+	for (int i = 0; i < training_parameters.F; ++i)
+	{
+		//cv::Mat projection_exp(Y_exp.cols, 1, CV_64FC1);
+		//cv::Mat projection_dis(Y_dis.cols, 1, CV_64FC1);
+		//cv::Mat projection_tslt(Y_tslt.cols, 1, CV_64FC1);
+		//cv::Mat projection_angle(Y_angle.cols, 1, CV_64FC1);
+
+		double Y_exp_proj_cov = 0, Y_dis_proj_cov = 0;
+		std::vector<double>
+			Y_exp_pixels_cov(pixels_val.rows), Y_dis_pixels_cov(pixels_val.rows);
+
+		cal_Y_pixels_cov_proj_cov(Y_exp, pixels_val, Y_exp_pixels_cov, Y_exp_proj_cov);
+		cal_Y_pixels_cov_proj_cov(Y_dis, pixels_val, Y_dis_pixels_cov, Y_dis_proj_cov);
+
+		get_feature_idx_thresthod(pixels_val, Y_exp_pixels_cov, Y_exp_proj_cov, pixels_cov, features_index_exp, thresholds_exp, i);
+		get_feature_idx_thresthod(pixels_val, Y_dis_pixels_cov, Y_dis_proj_cov, pixels_cov, features_index_dis, thresholds_dis, i);
+
+	}
+
+	int outputs_count = 1 << training_parameters.F;
+
+	outputs_exp.assign(outputs_count, vector<double>(G_nShape - 1));
+	outputs_dis.assign(outputs_count, vector<double>(2 * G_land_num));
+
+	//vector<int> each_output_count_exp(outputs_count), each_output_count_dis(outputs_count), each_output_count_tslt(outputs_count), each_output_count_angle(outputs_count);
+
+	cal_outputs(outputs_exp, targets, training_parameters.F, training_parameters.Beta, pixels_val, features_index_exp, thresholds_exp, 'e');
+	cal_outputs(outputs_dis, targets, training_parameters.F, training_parameters.Beta, pixels_val, features_index_dis, thresholds_dis, 'd');
+
 }
 
 int get_feature_index(
@@ -213,16 +276,38 @@ int get_feature_index(
 	return outputs_index;
 }
 
-Target_type FernTrain::Apply(cv::Mat features)const
+Target_type FernTrain::Apply_ta(cv::Mat features)const
 {
 	Target_type result;
 
-	int feature_index_exp = 0, feature_index_dis = 0, feature_index_tslt = 0, feature_index_angle = 0;
+	int feature_index_tslt = 0, feature_index_angle = 0;
+
+	feature_index_tslt = get_feature_index(training_parameters.F, features, features_index_tslt, thresholds_tslt);
+	feature_index_angle = get_feature_index(training_parameters.F, features, features_index_angle, thresholds_angle);
+
+	result.exp.resize(G_nShape);
+	result.exp.setZero();
+	result.dis.resize(G_land_num, 2);
+	result.dis.setZero();
+
+	result.tslt.setZero();
+	for (int i = 0; i < G_tslt_num; i++)
+		result.tslt(i) = outputs_tslt[feature_index_tslt][i];
+
+	for (int i = 0; i < G_angle_num; i++)
+		result.angle(i) = outputs_angle[feature_index_angle][i];
+
+	return result;
+}
+
+Target_type FernTrain::Apply_expdis(cv::Mat features)const
+{
+	Target_type result;
+
+	int feature_index_exp = 0, feature_index_dis = 0;
 
 	feature_index_exp=get_feature_index(training_parameters.F, features, features_index_exp, thresholds_exp);
 	feature_index_dis=get_feature_index(training_parameters.F, features, features_index_dis, thresholds_dis);
-	feature_index_tslt=get_feature_index(training_parameters.F, features, features_index_tslt, thresholds_tslt);
-	feature_index_angle=get_feature_index(training_parameters.F, features, features_index_angle, thresholds_angle);
 
 	result.exp.resize(G_nShape);
 	result.exp(0) = 0;
@@ -234,11 +319,8 @@ Target_type FernTrain::Apply(cv::Mat features)const
 		result.dis(j, k) = outputs_dis[feature_index_dis][j * 2 + k];
 
 	result.tslt.setZero();
-	for (int i = 0; i < G_tslt_num; i++)
-		result.tslt(i) = outputs_tslt[feature_index_tslt][i];
+	result.angle.setZero();
 
-	for (int i = 0; i < G_angle_num; i++)
-		result.angle(i) = outputs_angle[feature_index_angle][i];
 
 	return result;
 }

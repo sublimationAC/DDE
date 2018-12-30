@@ -13,9 +13,14 @@
 struct FernTrain
 {
 	FernTrain(const TrainingParameters &tp);
-	void Regress(std::vector<Target_type> *targets,
+	void Regress_ta(std::vector<Target_type> *targets,
 		cv::Mat pixels_val, cv::Mat pixels_cov);
-	Target_type Apply(cv::Mat features)const;
+	void Regress_expdis(std::vector<Target_type> *targets,
+		cv::Mat pixels_val, cv::Mat pixels_cov);
+
+	Target_type Apply_ta(cv::Mat features)const;
+	Target_type Apply_expdis(cv::Mat features)const;
+
 	void ApplyMini(cv::Mat features, std::vector<double> &coeffs_exp, std::vector<double> &coeffs_dis)const;
 	void apply_tslt_angle(cv::Mat features, cv::Mat tslt, cv::Mat angle)const;
 

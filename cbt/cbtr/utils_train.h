@@ -27,11 +27,18 @@ const int G_trn_factor = 35;
 
 //const int G_target_type_size= G_nShape + 3 + 3 * 3 + 2 * G_land_num;
 const int G_target_type_size = G_nShape-1 + 2 + 3 + 2 * G_land_num;
+const int G_ta_size = 2 + 3;
+const int G_disexp_size = 2 * G_land_num + G_nShape - 1;
 const int G_tslt_num = 2;
 const int G_angle_num = 3;
 
+const float G_norm_face_rect_ave = 120;
+const float G_norm_face_rect_sig = 60;
+
 #define normalization
 #define EPSILON 1e-3
+
+#define norm_point_def
 
 
 #ifndef FACE_X_UTILS_TRAIN_H_

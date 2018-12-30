@@ -19,9 +19,9 @@
 
 #ifdef win64
 
-std::string fwhs_path = "D:/sydney/first/data_me/FaceWarehouse";
-std::string lfw_path = "D:/sydney/first/data_me/lfw_image";
-std::string gtav_path = "D:/sydney/first/data_me/GTAV_image";
+std::string fwhs_path = "D:/sydney/first/data_me/test_lv/fw";
+std::string lfw_path = "D:/sydney/first/data_me/test_lv/lfw_image";
+std::string gtav_path = "D:/sydney/first/data_me/test_lv/GTAV_image";
 std::string test_path = "D:/sydney/first/data_me/test";
 std::string test_path_one = "D:/sydney/first/data_me/test_only_one";
 std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
@@ -143,6 +143,17 @@ vector<DataPoint> GetTrainingData(const TrainingParameters &tp)
 	return result;
 }
 
+void train_data_normalize(vector<DataPoint> &training_data) {
+	puts("normalizing face rect....!");
+	for (auto data : training_data) {
+//		cv::imshow("ini", data.image);
+		//cv::waitKey(0);
+		normalize_gauss_face_rect(data.image, data.face_rect);
+//		cv::rectangle(data.image, data.face_rect, 0);
+		//cv::imshow("after_norm", data.image);
+		//cv::waitKey(0);
+	}
+}
 
 set<int> rand_df_idx(int which, int border, int num) {
 	set<int> result;
@@ -378,16 +389,20 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 	puts("B");
 	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));
-
+	puts("training tr.....");
 	for (int i = 0; i < tp.T; ++i)
 	{
 		long long s = cv::getTickCount();
 
 		vector<Target_type> targets = 
 			ComputeTargets(argumented_training_data);
+		FILE *fp;
+		fopen_s(&fp, "debug_target.txt", "a");
+		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
+		fclose(fp);
 
 
-		stage_regressors[i].Regress(
+		stage_regressors[i].Regress_ta(
 			triangleList,rect, left_eye_rect, right_eye_rect, mouse_rect,tri_idx,ref_shape, &targets,
 			argumented_training_data, bldshps, arg_exp_land_matrix);
 
@@ -395,18 +410,53 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		for (DataPoint &dp : argumented_training_data)
 		{
 			Target_type offset = 
-				stage_regressors[i].Apply(dp,bldshps,tri_idx, arg_exp_land_matrix);
+				stage_regressors[i].Apply_ta(dp,bldshps,tri_idx, arg_exp_land_matrix);
 			/*Transform t = Procrustes(dp.init_shape, mean_shape);
 			t.Apply(&offset, false);*/
 			dp.init_shape = shape_adjustment(dp.init_shape, offset);
 		}
 
-		cout << "(^_^) Finish training " << i + 1 << " regressor. Using " 
+		cout << "(^_^) Finish training  tr..... " << i + 1 << " regressor. Using " 
 			<< (cv::getTickCount() - s) / cv::getTickFrequency() 
 			<< "s. " << tp.T << " in total." << endl;
 		cout << "around " << (tp.T - i - 1)*(cv::getTickCount() - s) / cv::getTickFrequency() / 60
 			<< "minutes letf!\n";
 	}
+
+	puts("training dis exp.....");
+	for (int i = 0; i < tp.T; ++i)
+	{
+		long long s = cv::getTickCount();
+
+		vector<Target_type> targets =
+			ComputeTargets(argumented_training_data);
+		FILE *fp;
+		fopen_s(&fp, "debug_target.txt", "a");
+		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
+		fclose(fp);
+
+		stage_regressors[i].Regress_expdis(
+			triangleList, rect, left_eye_rect, right_eye_rect, mouse_rect, tri_idx, ref_shape, &targets,
+			argumented_training_data, bldshps, arg_exp_land_matrix);
+
+
+		for (DataPoint &dp : argumented_training_data)
+		{
+			Target_type offset =
+				stage_regressors[i].Apply_expdis(dp, bldshps, tri_idx, arg_exp_land_matrix);
+			/*Transform t = Procrustes(dp.init_shape, mean_shape);
+			t.Apply(&offset, false);*/
+			dp.init_shape = shape_adjustment(dp.init_shape, offset);
+		}
+
+		cout << "(^_^) Finish training dis exp....." << i + 1 << " regressor. Using "
+			<< (cv::getTickCount() - s) / cv::getTickFrequency()
+			<< "s. " << tp.T << " in total." << endl;
+		cout << "around " << (tp.T - i - 1)*(cv::getTickCount() - s) / cv::getTickFrequency() / 60
+			<< "minutes letf!\n";
+	}
+
+
 	puts("B");
 	system("pause");
 	cv::FileStorage model_file;
@@ -440,8 +490,10 @@ int main(int argc, char *argv[])
 		//cout << tp.Base << ' ' << tp.F << "\n";
 		//system("pause");
 		cout << "Training begin." << endl;
-		load_bldshps(bldshps, bldshps_path);
 		vector<DataPoint> training_data = GetTrainingData(tp);
+		train_data_normalize(training_data);
+		load_bldshps(bldshps, bldshps_path);
+		
 		//system("pause");
 		TrainModel(training_data, tp, bldshps);
 	}
