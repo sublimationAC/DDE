@@ -14,6 +14,7 @@
 #define normalization
 //#define posit
 #define EPSILON 1e-3
+#define norm_point_def
 
 
 const int G_land_num = 74;
@@ -49,6 +50,8 @@ const int G_dde_K = 5;
 const float pi = acos(-1);
 const float G_rand_angle_border = 15.0* pi / 180;
 
+const float G_norm_face_rect_ave = 120;
+const float G_norm_face_rect_sig = 60;
 
 struct Target_type {
 	Eigen::VectorXf exp;
@@ -136,7 +139,6 @@ void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter
 void cal_2d_land_i_0dis_ang(
 	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data);
 
-void rect_scale(cv::Rect &rect, double scale);
 
 
 void save_for_debug(DataPoint &temp, std::string name);
@@ -162,3 +164,6 @@ Eigen::Vector3f get_uler_angle_zyx(Eigen::Matrix3f R);
 Eigen::Matrix3f get_r_from_angle_zyx(const Eigen::Vector3f &angle);
 
 void update_training_data(DataPoint &data, std::vector<DataPoint> &training_data, Eigen::MatrixXf &exp_r_t_all_matrix);
+
+void rect_scale(cv::Rect &rect, double scale);
+void normalize_gauss_face_rect(cv::Mat image, cv::Rect &rect);

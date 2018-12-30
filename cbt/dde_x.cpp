@@ -446,7 +446,7 @@ void update_slt(
 
 
 int debug_ite = 0;
-cv::Mat G_debug_up_image;
+
 void DDEX::dde(
 	cv::Mat debug_init_img, DataPoint &data, Eigen::MatrixXf &bldshps,
 	Eigen::MatrixX3i &tri_idx, std::vector<DataPoint> &train_data, Eigen::VectorXi &jaw_land_corr,
@@ -549,12 +549,23 @@ void DDEX::dde(
 			//Transform t = Procrustes(init_shape, mean_shape_);
 			result_shape.exp(0) = 1;
 			Target_type offset =
-				stage_regressors_dde_[j].Apply(result_shape,tri_idx,data,bldshps, exp_r_t_all_matrix);
+				stage_regressors_dde_[j].Apply_ta(result_shape,tri_idx,data,bldshps, exp_r_t_all_matrix);
 			//t.Apply(&offset, false);
 			result_shape = shape_adjustment(result_shape, offset);
 			//printf("outer regressor == %d:\n", j);
 		}
 		
+		for (int j = 0; j < stage_regressors_dde_.size(); ++j)
+		{
+			//printf("outer regressor %d:\n", j);
+			//Transform t = Procrustes(init_shape, mean_shape_);
+			result_shape.exp(0) = 1;
+			Target_type offset =
+				stage_regressors_dde_[j].Apply_expdis(result_shape, tri_idx, data, bldshps, exp_r_t_all_matrix);
+			//t.Apply(&offset, false);
+			result_shape = shape_adjustment(result_shape, offset);
+			//printf("outer regressor == %d:\n", j);
+		}
 		std::cout << "Alignment time: "
 			<< (cv::getTickCount() - start_time) / cv::getTickFrequency()
 			<< "s" << endl;
@@ -596,6 +607,7 @@ void DDEX::visualize_feature_cddt(cv::Mat rbg_image, Eigen::MatrixX3i &tri_idx, 
 
 	puts("dde... visualizing feature index");
 	for (int j = 0; j < stage_regressors_dde_.size(); ++j) {
-		stage_regressors_dde_[j].visualize_feature_cddt(rbg_image, tri_idx,landmarks);
+		stage_regressors_dde_[j].visualize_feature_cddt_ta(rbg_image, tri_idx,landmarks);
+		stage_regressors_dde_[j].visualize_feature_cddt_expdis(rbg_image, tri_idx, landmarks);
 	}
 }

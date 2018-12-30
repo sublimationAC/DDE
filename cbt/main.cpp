@@ -14,7 +14,7 @@
 using namespace std;
 
 const string kModelFileName = "model_r/model_all_5_face.xml.gz";
-const string kModelFileName_dde = "model_r/model_dde_enhance2.xml.gz";
+const string kModelFileName_dde = "model_r/model_dde_ta_ed_enh_norm_gauss.xml.gz";
 const string kAlt2 = "model_r/haarcascade_frontalface_alt2.xml";
 const string kTestImage = "./photo_test/video/lv_mp4/images/frame0.jpg";//real_time_test//22.png"; /test_samples/005_04_03_051_05.png";
 const string videoImage = "./photo_test/video/lv_mp4/images/frame";
@@ -24,7 +24,7 @@ const string videolvsave = "./photo_test/video/rubbish/r_";
 const std::string test_debug_lv_path = "./lv_file/lv_easy_pre.lv";// fitting_result_t66_pose_0.lv";
 const string video_path = "./photo_test/video/lv_easy.avi";
 
-string land_video_save_path = "./photo_test/video/lv_easy_en2_10.avi";
+string land_video_save_path = "./photo_test/video/lv_easy_ta_ed.avi";
 #ifdef win64
 const string image_se_path = "D:/sydney/first/data_me/test_lv/fw/Tester_1/TrainingPose/pose_%1d.jpg";
 std::string fwhs_path_lv = "D:/sydney/first/data_me/test_lv/fw";
@@ -74,8 +74,12 @@ DataPoint pre_process(
 #else
 	cv::Mat image = cv::imread(kTestImage);// +pic_name);
 #endif // from_video
+#ifdef win64
 	cv::imshow("Alignment result", image);
 	cv::waitKey();
+#endif // win64
+
+	
 	
 	cv::Mat gray_image;
 	cv::cvtColor(image, gray_image, cv::COLOR_BGR2GRAY);
@@ -101,7 +105,11 @@ DataPoint pre_process(
 	cout << "Alignment time: "
 		<< (cv::getTickCount() - start_time) / cv::getTickFrequency()
 		<< "s" << endl;
+#ifdef win64
 	show_image(image, face, landmarks);
+#endif // win64
+
+	
 	//save_land(landmarks);
 
 	//fitting
@@ -116,7 +124,10 @@ DataPoint pre_process(
 	data.land_2d.rowwise() -= data.center;
 	save_for_debug(data, test_debug_lv_path);
 #endif
+
+#ifdef win64
 	show_image(image, face, landmarks);
+#endif // win64
 	puts("fitting finished!");
 	return data;
 
@@ -251,10 +262,16 @@ void DDE_video_test(
 	if (!cap.isOpened()) exit(2);//如果视频不能正常打开则返回
 	cv::Mat rgb_image;
 	cap >> rgb_image;
-	G_debug_up_image = rgb_image.clone();
+
 	cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
 	for (int i_v = 0; i_v < G_land_num; i_v++)
 		data.landmarks[i_v].x = data.land_2d(i_v, 0), data.landmarks[i_v].y = data.image.rows - data.land_2d(i_v, 1);
+
+	cv::CascadeClassifier cc(kAlt2);
+	vector<cv::Rect> faces;
+	cc.detectMultiScale(data.image, faces);
+	rect_scale(faces[0], 1.5);
+	normalize_gauss_face_rect(data.image, faces[0]);
 #ifdef show_feature_def
 	dde_x.visualize_feature_cddt(rgb_image, tri_idx, data.landmarks);
 #endif // show_feature_def
@@ -281,6 +298,9 @@ void DDE_video_test(
 		cap >> rgb_image;
 		if (rgb_image.empty()) break;
 		cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
+		normalize_gauss_face_rect(data.image, faces[0]);
+		cv::imshow("nm_gs", data.image);
+		cv::waitKey(0);
 		printf("dde_round %d: \n", test_round);
 		//data.image = cv::imread(videoImage+ to_string(test_round) + ".jpg", cv::IMREAD_GRAYSCALE);
 		dde_x.dde(rgb_image, data, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
@@ -347,7 +367,7 @@ void camera() {
 	cv::Mat img;
 	cv::VideoCapture vc(0);
 	vc >> frame;
-	cv::VideoWriter output_video("lv_easy.avi", CV_FOURCC('M', 'J', 'P', 'G'), 25.0, cv::Size(640, 480));
+	cv::VideoWriter output_video("lv_high.avi", CV_FOURCC('M', 'J', 'P', 'G'), 10.0, cv::Size(640, 480));
 	long long start_time = cv::getTickCount();
 	for (;;)
 	{
@@ -357,7 +377,7 @@ void camera() {
 		cv::imshow("gg", frame);
 		cv::waitKey(20);
 		output_video << frame;
-		if ((cv::getTickCount() - start_time) / cv::getTickFrequency() > 30) break;
+		if ((cv::getTickCount() - start_time) / cv::getTickFrequency() > 10) break;
 		std::cout << (cv::getTickCount() - start_time) / cv::getTickFrequency() << "\n";
 	}
 	puts("over");
