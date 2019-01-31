@@ -35,11 +35,13 @@ const int G_angle_num = 3;
 const float G_norm_face_rect_ave = 120;
 const float G_norm_face_rect_sig = 60;
 
+const int G_pixel_batch_feature_size = 2;
+
 #define normalization
 #define EPSILON 1e-3
 
-#define norm_point_def
 
+//#define small_rect_def
 
 #ifndef FACE_X_UTILS_TRAIN_H_
 #define FACE_X_UTILS_TRAIN_H_

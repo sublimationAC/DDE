@@ -155,11 +155,12 @@ void cal_rect(DataPoint &temp) {
 	//temp_rect.width = min(temp_rect.width, gray_image.cols - temp_rect.x);
 	//temp_rect.height = min(temp_rect.height, gray_image.rows - temp_rect.y);
 	if (ma == 0) temp.face_rect = cv::Rect(left, top, right - left, bottom - top);
+#ifndef small_rect_def
 	rect_scale(temp.face_rect, 1.5);
 	temp.face_rect.x = max(temp.face_rect.x, 0); temp.face_rect.y = max(0, temp.face_rect.y);
 	temp.face_rect.width = min(temp.face_rect.width, gray_image.cols - temp.face_rect.x);
 	temp.face_rect.height = min(temp.face_rect.height, gray_image.rows - temp.face_rect.y);
-
+#endif // !small_rect_def
 }
 
 void test_data_2dland(DataPoint &temp) {

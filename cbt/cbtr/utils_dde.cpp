@@ -1,5 +1,6 @@
 #include "utils_dde.hpp"
-
+using std::min;
+using std::max;
 
 float cal_3d_vtx(
 	Eigen::MatrixXf &bldshps,
@@ -786,4 +787,66 @@ void normalize_gauss_face_rect(cv::Mat image,cv::Rect &rect) {
 		for (int i_col = left; i_col < right; i_col++)
 			image.at <uchar>(i_row, i_col) =
 			(uchar)(((image.at <uchar>(i_row, i_col) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave);
+}
+
+uchar get_batch_feature(cv::Mat img, cv::Point p) {
+	float ans = 0;
+	for (int i_x = p.x - G_pixel_batch_feature_size; i_x <= p.x + G_pixel_batch_feature_size; i_x++)
+		for (int i_y = p.y - G_pixel_batch_feature_size; i_y <= p.y + G_pixel_batch_feature_size; i_y++) {
+			cv::Point pos(i_x, i_y);
+			float r = dis_cv_pt(pos, p);
+
+			pos.x = std::max(std::min(i_x, img.cols), 0);
+			pos.y = std::max(std::min(i_y, img.rows), 0);
+
+			ans += exp(-r * r / 2)*img.at<uchar>(pos);
+		}
+	ans = max(ans, (float)0);
+	return (uchar)(ans);
+}
+
+const float sobel_x_wndw[3][3] = { {-0.125,0,0.125} ,{-0.25,0,0.25} ,{-0.125,0,0.125} };
+const float sobel_y_wndw[3][3] = { {-0.125,-0.25,-0.125} ,{0,0,0} ,{0.125,0.25,0.125} };
+std::pair<float, float> cal_sobel(cv::Mat img, cv::Point p) {
+	//std::cout << p << " \n ";
+	//system("pause");
+	std::pair<float, float> ans;
+	ans.first = 0;
+	for (int i_x = -1; i_x < 2; i_x++)
+		for (int i_y = -1; i_y < 2; i_y++) {
+			cv::Point pos(p.x + i_x, p.y + i_y);
+			//if (p.x==480) std::cout << p << " + " << pos << "\n";
+			pos.x = std::max(std::min(pos.x, img.cols - 1), 0);
+			pos.y = std::max(std::min(pos.y, img.rows - 1), 0);
+			//if (p.x == 480) std::cout << p << " + " << pos << "\n";
+			ans.first += sobel_x_wndw[i_x + 1][i_y + 1] * img.at<uchar>(pos);
+		}
+	ans.second = 0;
+	for (int i_x = -1; i_x < 2; i_x++)
+		for (int i_y = -1; i_y < 2; i_y++) {
+			cv::Point pos(p.x + i_x, p.y + i_y);
+			//if (p.x == 480) std::cout << p << " - " << pos << "\n";
+			pos.x = std::max(std::min(pos.x, img.cols - 1), 0);
+			pos.y = std::max(std::min(pos.y, img.rows - 1), 0);
+			ans.second += sobel_y_wndw[i_x + 1][i_y + 1] * img.at<uchar>(pos);
+		}
+	//if (p.x == 480) std::cout << ans.first << " " << ans.second << "\n";
+	return ans;
+}
+
+uchar get_sobel_batch_feature(cv::Mat img, cv::Point p) {
+	float ans = 0;
+	for (int i_x = p.x - G_pixel_batch_feature_size; i_x <= p.x + G_pixel_batch_feature_size; i_x++)
+		for (int i_y = p.y - G_pixel_batch_feature_size; i_y <= p.y + G_pixel_batch_feature_size; i_y++) {
+			cv::Point pos(i_x, i_y);
+			float r = dis_cv_pt(pos, p);
+
+			pos.x = std::max(std::min(i_x, img.cols), 0);
+			pos.y = std::max(std::min(i_y, img.rows), 0);
+
+			std::pair<float, float> sb = cal_sobel(img, cv::Point(i_x, i_y));
+			ans += exp(-r * r / 2)*sqrt(sb.first*sb.first + sb.second*sb.second);
+		}
+	ans = max(ans, (float)0);
+	return (uchar)(ans);
 }

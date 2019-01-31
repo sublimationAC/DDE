@@ -6,6 +6,14 @@
 #include <algorithm>
 
 #include "utils_dde.hpp"
+//#define loacl_feature_def
+#define eye_mouse_def
+//#define all_face_def
+#define fp_inface_def
+#define norm_fp_def
+//#define sort_fp_def
+//#define drct_fp_def
+#define batch_feature
 
 using namespace std;
 
@@ -47,35 +55,47 @@ int find_nearest_center(cv::Point2f x, std::vector<cv::Point2f> &tri_center) {
 	return ans;
 }
 
-
-
-void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect,
-	cv::Rect &left_eye_rect, cv::Rect &right_eye_rect, cv::Rect &mouse_rect,
-	Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
-	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps, std::vector<Eigen::MatrixXf> &arg_exp_land_matrix)
-{
-	puts("regressing");
-	std::vector<cv::Point2f> tri_center;
-	get_tri_center(triangleList, tri_center, rect);
-	/*for (int i = 0; i < triangleList.size(); i++) {
-		printf("%d %.2f %.2f %.2f %.2f %.2f %.2f\n", i, triangleList[i][0], triangleList[i][1], triangleList[i][2], triangleList[i][3], triangleList[i][4], triangleList[i][5]);
-		printf("%d %.2f %.2f\n", i, tri_center[i].x, tri_center[i].y);
-		printf("%d %d %d %d\n", i, tri_idx(i, 0), tri_idx(i, 1), tri_idx(i, 2));
-
-	}*/
-
+void get_feature_pixel(
+	cv::Rect &rect,cv::Rect &left_eye_rect, cv::Rect &right_eye_rect, cv::Rect &mouse_rect,
+	Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, int P, std::vector<cv::Point2f> &tri_center,
+	std::vector<std::pair<int, cv::Point2d>> &pixels_
+	) {
 	cv::Point2f center, left_eye_center, right_eye_center, mouse_center;
 	center.x = rect.x + rect.width / 2; center.y = rect.y + rect.height / 2;
 	left_eye_center.x = left_eye_rect.x + left_eye_rect.width / 2; left_eye_center.y = left_eye_rect.y + left_eye_rect.height / 2;
 	right_eye_center.x = right_eye_rect.x + right_eye_rect.width / 2; right_eye_center.y = right_eye_rect.y + right_eye_rect.height / 2;
 	mouse_center.x = mouse_rect.x + mouse_rect.width / 2; mouse_center.y = mouse_rect.y + mouse_rect.height / 2;
-	for (int i = 0; i < training_parameters_.P; ++i)
+	for (int i = 0; i < P; ++i)
 	{
 		//printf("+ +%d\n", i);
 
 		double s[4];
 		int idx;
+#ifdef loacl_feature_def
+#ifdef fp_inface_def
 		do {
+#endif // fp_inface_def
+			cv::Point2d temp;
+			//temp.x = cv::theRNG().uniform(rect.x, rect.x+rect.width);
+			//temp.y = cv::theRNG().uniform(rect.y, rect.y+rect.height);
+			temp.x = cv::theRNG().gaussian(left_eye_rect.width / 3);
+			temp.y = cv::theRNG().gaussian(left_eye_rect.height / 3);
+			temp += ref_shape[i / (P / G_land_num)];
+
+			idx = find_nearest_center(temp, tri_center);
+			//printf("i %d idx %d\n %d %d %d\n", i, idx, tri_idx(idx, 0), tri_idx(idx, 1), tri_idx(idx, 2));
+			s[0] = cal_cv_area(temp, ref_shape[tri_idx(idx, 2)], ref_shape[tri_idx(idx, 1)]);
+			s[1] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 2)]);
+			s[2] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
+			s[3] = cal_cv_area(ref_shape[tri_idx(idx, 2)], ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
+#ifdef fp_inface_def		
+		} while (s[0] + s[1] + s[2] - s[3] > EPSILON);
+#endif
+#endif
+#ifdef eye_mouse_def
+#ifdef fp_inface_def
+		do {
+#endif // fp_inface_def
 			cv::Point2f temp;
 			//temp.x = cv::theRNG().uniform(rect.x, rect.x+rect.width);
 			//temp.y = cv::theRNG().uniform(rect.y, rect.y+rect.height);
@@ -115,14 +135,200 @@ void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &
 			s[1] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 2)]);
 			s[2] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
 			s[3] = cal_cv_area(ref_shape[tri_idx(idx, 2)], ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
+#ifdef fp_inface_def		
 		} while (s[0] + s[1] + s[2] - s[3] > EPSILON);
+#endif
+#endif // eye_mouse
+#ifdef all_face_def
+#ifdef fp_inface_def
+		do {
+#endif // fp_inface_def
+		
+			cv::Point2f temp;
+			//temp.x = cv::theRNG().uniform(rect.x, rect.x+rect.width);
+			//temp.y = cv::theRNG().uniform(rect.y, rect.y+rect.height);
+			temp.x = cv::theRNG().gaussian(rect.width / 2);
+			temp.y = cv::theRNG().gaussian(rect.height / 2);
+			temp += center;
+				
+			idx = find_nearest_center(temp, tri_center);
+			//printf("i %d idx %d\n %d %d %d\n", i, idx, tri_idx(idx, 0), tri_idx(idx, 1), tri_idx(idx, 2));
+			s[0] = cal_cv_area(temp, ref_shape[tri_idx(idx, 2)], ref_shape[tri_idx(idx, 1)]);
+			s[1] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 2)]);
+			s[2] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
+			s[3] = cal_cv_area(ref_shape[tri_idx(idx, 2)], ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
+#ifdef fp_inface_def		
+		} while (s[0] + s[1] + s[2] - s[3] > EPSILON);
+#endif
+#endif // all_face_def
+
+		
 
 		for (int j = 0; j < 3; j++) s[j] /= s[3];
 
-		pixels_ta_[i].first = idx;
-		pixels_ta_[i].second.x = s[0];
-		pixels_ta_[i].second.y = s[1];
+		pixels_[i].first = idx;
+		pixels_[i].second.x = s[0];
+		pixels_[i].second.y = s[1];
 	}
+}
+
+void get_pixel_value(
+	int P, std::vector<cv::Point2d> &temp, Eigen::MatrixX3i &tri_idx,
+	const std::vector<std::pair<int, cv::Point2d>> &pixels_,
+	const DataPoint &data,double *p) {
+#ifdef norm_fp_def
+	vector<uchar> pixel_se(P);
+	float ave = 0;
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect)){
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))){
+#endif // small_rect_def
+#ifdef batch_feature
+			pixel_se[j] = get_batch_feature(data.image,pixel_pos);
+#else
+			pixel_se[j] = data.image.at<uchar>(pixel_pos);
+#endif // batch_feature			
+			ave += pixel_se[j];
+		}
+		else
+			pixel_se[j] = 0;
+	}
+	ave /= P;
+	float sig = 0;
+	for (int i_p = 0; i_p < pixel_se.size(); i_p++)
+		sig += (pixel_se[i_p] - ave)*(pixel_se[i_p] - ave);
+	sig /= P;
+	sig = sqrt(sig);
+
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect))
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
+#endif // small_rect_def	
+			p[j] =((data.image.at<uchar>(pixel_pos) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
+		else
+			p[j] = (-ave / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
+	}
+#endif
+#ifdef sort_fp_def
+	vector<uchar> pixel_se(P);
+	float ave = 0;
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect)) {
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))) {
+#endif // small_rect_def	
+#ifdef batch_feature
+			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+#else
+			pixel_se[j] = data.image.at<uchar>(pixel_pos);
+#endif // batch_feature	
+		}
+		else
+			pixel_se[j] = 0;
+		}
+	FILE *fp;
+	fopen_s(&fp, "sort_debug.txt", "w");
+	std::sort(pixel_se.begin(), pixel_se.end());
+	for (int j = 0; j < pixel_se.size(); j++)
+		fprintf(fp, "%d ", pixel_se[j]);
+	fprintf(fp, "\n");
+	std::vector<uchar>::iterator it = std::unique(pixel_se.begin(), pixel_se.end());
+	pixel_se.resize(std::distance(pixel_se.begin(), it));
+	vector<int> hash(260);
+	for (int j = 0; j < pixel_se.size(); j++)
+		hash[pixel_se[j]] = j;
+	for (int j = 0; j < pixel_se.size(); j++)
+		fprintf(fp, "%d ", pixel_se[j]);
+	fprintf(fp, "\n");
+	for (int j = 0; j < hash.size(); j++)
+		fprintf(fp, "%d ", hash[j]);
+	fprintf(fp, "\n");
+	fclose(fp);
+
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect))
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
+#endif // small_rect_def	
+			p[j] = hash[data.image.at<uchar>(pixel_pos)];
+		else
+			p[j] = hash[0];
+	}
+#endif // sort_fp_def
+#ifdef drct_fp_def
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect))
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0,data.image.cols, data.image.rows)))
+#endif // small_rect_def		
+		{
+#ifdef batch_feature
+			p[j] = get_batch_feature(data.image, pixel_pos);
+#else
+			p[j] = data.image.at<uchar>(pixel_pos);
+#endif // batch_feature	
+		}
+		else
+			p[j] = 0;
+	}
+#endif // drct_fp_def
+}
+
+void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect,
+	cv::Rect &left_eye_rect, cv::Rect &right_eye_rect, cv::Rect &mouse_rect,
+	Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
+	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps, std::vector<Eigen::MatrixXf> &arg_exp_land_matrix)
+{
+	puts("regressing");
+	std::vector<cv::Point2f> tri_center;
+	get_tri_center(triangleList, tri_center, rect);
+	/*for (int i = 0; i < triangleList.size(); i++) {
+		printf("%d %.2f %.2f %.2f %.2f %.2f %.2f\n", i, triangleList[i][0], triangleList[i][1], triangleList[i][2], triangleList[i][3], triangleList[i][4], triangleList[i][5]);
+		printf("%d %.2f %.2f\n", i, tri_center[i].x, tri_center[i].y);
+		printf("%d %d %d %d\n", i, tri_idx(i, 0), tri_idx(i, 1), tri_idx(i, 2));
+
+	}*/
+
+	get_feature_pixel(rect,left_eye_rect,right_eye_rect,mouse_rect,tri_idx,ref_shape,training_parameters_.P,
+		tri_center,pixels_ta_);
+
+	
 
 	// If you want to use AVX2, you must pay attention to memory alignment.
 	// AVX2 is not used by default. You can change Covariance in fern_train.cpp
@@ -132,6 +338,9 @@ void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &
 
 	cv::Mat pixels_val(training_parameters_.P, training_data.size(), CV_64FC1,
 		cv::alignPtr(pixels_val_data.get(), 32));
+
+	
+
 	for (int i = 0; i < pixels_val.cols; ++i)
 	{
 		/*Transform t = Procrustes(training_data[i].init_shape, mean_shape);
@@ -150,65 +359,27 @@ void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &
 
 		/*for (int p = 0; p < G_land_num; p++)
 			printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
-#ifdef norm_point_def
-		vector<uchar> pixel_se(training_parameters_.P);
-		float ave = 0;
-		for (int j = 0; j < training_parameters_.P; ++j)
-		{
-			cv::Point pixel_pos =
-				temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
-				temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
-				temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
+		//for (int j = 0; j < training_parameters_.P; ++j)
+		//{
+		//	cv::Point pixel_pos =
+		//		temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
+		//		temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
+		//		temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
 
-			if (pixel_pos.inside(cv::Rect(0, 0,
-				training_data[i].image.cols, training_data[i].image.rows))) {
+		//	if (pixel_pos.inside(cv::Rect(0, 0,
+		//		training_data[i].image.cols, training_data[i].image.rows)))
+		//	{
+		//		pixels_val.at<double>(j, i) = training_data[i].image.at<uchar>(pixel_pos);
+		//	}
+		//	else
+		//		pixels_val.at<double>(j, i) = 0;
+		//}
+		cv::Mat pixels_val_temp(1, training_parameters_.P, CV_64FC1);
+		double *p = pixels_val_temp.ptr<double>(0);
+		get_pixel_value(training_parameters_.P,temp,tri_idx,pixels_ta_,training_data[i],p);
+		for (int j = 0; j < training_parameters_.P; j++)
+			pixels_val.at<double>(j, i) = p[j];
 
-				pixel_se[j] = training_data[i].image.at<uchar>(pixel_pos);
-				ave += pixel_se[j];
-			}
-			else
-				pixel_se[j] = 0;
-		}
-		ave /= training_parameters_.P;
-		float sig = 0;
-		for (int i_p=0;i_p<pixel_se.size();i_p++)
-			sig += (pixel_se[i_p] - ave)*(pixel_se[i_p] - ave);
-		sig /= training_parameters_.P;
-		sig = sqrt(sig);
-
-		for (int j = 0; j < training_parameters_.P; ++j)
-		{
-			cv::Point pixel_pos =
-				temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
-				temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
-				temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
-
-			if (pixel_pos.inside(cv::Rect(0, 0,
-				training_data[i].image.cols, training_data[i].image.rows)))
-			{
-				pixels_val.at<double>(j, i) =
-					((training_data[i].image.at<uchar>(pixel_pos)-ave)/sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-			}
-			else
-				pixels_val.at<double>(j, i) = (-ave / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-		}
-#else
-		for (int j = 0; j < training_parameters_.P; ++j)
-		{
-			cv::Point pixel_pos =
-				temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
-				temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
-				temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
-
-			if (pixel_pos.inside(cv::Rect(0, 0,
-				training_data[i].image.cols, training_data[i].image.rows)))
-			{
-				pixels_val.at<double>(j, i) =training_data[i].image.at<uchar>(pixel_pos);
-			}
-			else
-				pixels_val.at<double>(j, i) = 0;
-		}
-#endif //norm_point_def
 	}
 
 	cv::Mat pixels_cov, means;
@@ -267,65 +438,8 @@ void RegressorTrain::Regress_expdis(std::vector<cv::Vec6f> &triangleList, cv::Re
 
 	}*/
 
-	cv::Point2f center, left_eye_center, right_eye_center, mouse_center;
-	center.x = rect.x + rect.width / 2; center.y = rect.y + rect.height / 2;
-	left_eye_center.x = left_eye_rect.x + left_eye_rect.width / 2; left_eye_center.y = left_eye_rect.y + left_eye_rect.height / 2;
-	right_eye_center.x = right_eye_rect.x + right_eye_rect.width / 2; right_eye_center.y = right_eye_rect.y + right_eye_rect.height / 2;
-	mouse_center.x = mouse_rect.x + mouse_rect.width / 2; mouse_center.y = mouse_rect.y + mouse_rect.height / 2;
-	for (int i = 0; i < training_parameters_.P; ++i)
-	{
-		//printf("+ +%d\n", i);
-
-		double s[4];
-		int idx;
-		do {
-			cv::Point2f temp;
-			//temp.x = cv::theRNG().uniform(rect.x, rect.x+rect.width);
-			//temp.y = cv::theRNG().uniform(rect.y, rect.y+rect.height);
-			if (i < 70) {
-				temp.x = cv::theRNG().gaussian(left_eye_rect.width / 4);
-				temp.y = cv::theRNG().gaussian(left_eye_rect.height / 4);
-				temp += left_eye_center;
-			//	std::cout << left_eye_rect.x << " " << left_eye_rect.x + left_eye_rect.width << " " << left_eye_rect.y << " " << left_eye_rect.y + left_eye_rect.height
-			//		<< " " << left_eye_center << " " << temp << "\n";
-			}
-			else
-				if (i < 140) {
-					temp.x = cv::theRNG().gaussian(right_eye_rect.width / 4);
-					temp.y = cv::theRNG().gaussian(right_eye_rect.height / 4);
-					temp += right_eye_center;
-				//	std::cout << right_eye_rect.x << " " << right_eye_rect.x + right_eye_rect.width << " " << right_eye_rect.y << " " << right_eye_rect.y + right_eye_rect.height
-				//		<< " " << right_eye_center << " " << temp << "\n";
-				}
-				else
-					if (i < 250) {
-						temp.x = cv::theRNG().gaussian(mouse_rect.width / 2);
-						temp.y = cv::theRNG().gaussian(mouse_rect.height / 2);
-						temp += mouse_center;
-					//	std::cout << mouse_rect.x << " " << mouse_rect.x + mouse_rect.width << " " << mouse_rect.y << " " << mouse_rect.y + mouse_rect.height
-					//		<< " " << mouse_center << " " << temp << "\n";
-					}
-					else {
-						temp.x = cv::theRNG().gaussian(rect.width / 6);
-						temp.y = cv::theRNG().gaussian(rect.height / 6);
-						temp += center;
-					//	std::cout << rect.x << " " << rect.x + rect.width << " " << rect.y << " " << rect.y + rect.height
-					//		<< " " << center << " " << temp << "\n";
-					}
-			idx = find_nearest_center(temp, tri_center);
-			//printf("i %d idx %d\n %d %d %d\n", i, idx, tri_idx(idx, 0), tri_idx(idx, 1), tri_idx(idx, 2));
-			s[0] = cal_cv_area(temp, ref_shape[tri_idx(idx, 2)], ref_shape[tri_idx(idx, 1)]);
-			s[1] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 2)]);
-			s[2] = cal_cv_area(temp, ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
-			s[3] = cal_cv_area(ref_shape[tri_idx(idx, 2)], ref_shape[tri_idx(idx, 0)], ref_shape[tri_idx(idx, 1)]);
-		} while (s[0] + s[1] + s[2] - s[3] > EPSILON);
-
-		for (int j = 0; j < 3; j++) s[j] /= s[3];
-
-		pixels_expdis_[i].first = idx;
-		pixels_expdis_[i].second.x = s[0];
-		pixels_expdis_[i].second.y = s[1];
-	}
+	get_feature_pixel(rect, left_eye_rect, right_eye_rect, mouse_rect, tri_idx, ref_shape, training_parameters_.P,
+		tri_center, pixels_expdis_);
 
 	// If you want to use AVX2, you must pay attention to memory alignment.
 	// AVX2 is not used by default. You can change Covariance in fern_train.cpp
@@ -354,65 +468,11 @@ void RegressorTrain::Regress_expdis(std::vector<cv::Vec6f> &triangleList, cv::Re
 		/*for (int p = 0; p < G_land_num; p++)
 			printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
 
-#ifdef norm_point_def
-		vector<uchar> pixel_se(training_parameters_.P);
-		float ave = 0;
-		for (int j = 0; j < training_parameters_.P; ++j)
-		{
-			cv::Point pixel_pos =
-				temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
-				temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
-				temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
-
-			if (pixel_pos.inside(cv::Rect(0, 0,
-				training_data[i].image.cols, training_data[i].image.rows))) {
-
-				pixel_se[j] = training_data[i].image.at<uchar>(pixel_pos);
-				ave += pixel_se[j];
-			}
-			else
-				pixel_se[j] = 0;
-		}
-		ave /= training_parameters_.P;
-		float sig = 0;
-		for (int i_p = 0; i_p < pixel_se.size(); i_p++)
-			sig += (pixel_se[i_p] - ave)*(pixel_se[i_p] - ave);
-		sig /= training_parameters_.P;
-		sig = sqrt(sig);
-
-		for (int j = 0; j < training_parameters_.P; ++j)
-		{
-			cv::Point pixel_pos =
-				temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
-				temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
-				temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
-
-			if (pixel_pos.inside(cv::Rect(0, 0,
-				training_data[i].image.cols, training_data[i].image.rows)))
-			{
-				pixels_val.at<double>(j, i) =
-					((training_data[i].image.at<uchar>(pixel_pos) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-			}
-			else
-				pixels_val.at<double>(j, i) = (-ave / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-		}
-#else
-		for (int j = 0; j < training_parameters_.P; ++j)
-		{
-			cv::Point pixel_pos =
-				temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
-				temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
-				temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
-
-			if (pixel_pos.inside(cv::Rect(0, 0,
-				training_data[i].image.cols, training_data[i].image.rows)))
-			{
-				pixels_val.at<double>(j, i) = training_data[i].image.at<uchar>(pixel_pos);
-			}
-			else
-				pixels_val.at<double>(j, i) = 0;
-		}
-#endif //norm_point_def
+		cv::Mat pixels_val_temp(1, training_parameters_.P, CV_64FC1);
+		double *p = pixels_val_temp.ptr<double>(0);
+		get_pixel_value(training_parameters_.P, temp, tri_idx, pixels_expdis_, training_data[i], p);
+		for (int j = 0; j < training_parameters_.P; j++)
+			pixels_val.at<double>(j, i) = p[j];
 	}
 
 	cv::Mat pixels_cov, means;
@@ -559,21 +619,21 @@ Target_type RegressorTrain::Apply_ta(//const vector<cv::Point2d> &mean_shape,
 
 	/*for (int p = 0; p < G_land_num; p++)
 		printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
-	for (int j = 0; j < training_parameters_.P; ++j)
-	{
-		//cv::Point pixel_pos = data.init_shape[pixels_[j].first] + offsets[j];
-		
-		cv::Point pixel_pos =
-			temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
-			temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
-			temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
-		
-		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
-			p[j] = data.image.at<uchar>(pixel_pos);
-		else
-			p[j] = 0;
-	}
-
+	//for (int j = 0; j < training_parameters_.P; ++j)
+	//{
+	//	//cv::Point pixel_pos = data.init_shape[pixels_[j].first] + offsets[j];
+	//	
+	//	cv::Point pixel_pos =
+	//		temp[tri_idx(pixels_ta_[j].first, 0)] * pixels_ta_[j].second.x +
+	//		temp[tri_idx(pixels_ta_[j].first, 1)] * pixels_ta_[j].second.y +
+	//		temp[tri_idx(pixels_ta_[j].first, 2)] * (1 - pixels_ta_[j].second.x - pixels_ta_[j].second.y);
+	//	
+	//	if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
+	//		p[j] = data.image.at<uchar>(pixel_pos);
+	//	else
+	//		p[j] = 0;
+	//}
+	get_pixel_value(training_parameters_.P, temp, tri_idx, pixels_ta_, data, p);
 	//vector<double> coeffs(training_parameters_.Base);//initial 0
 
 	cv::Mat result_mat_tslt = cv::Mat::zeros(G_tslt_num, 1, CV_64FC1);
@@ -638,21 +698,21 @@ Target_type RegressorTrain::Apply_expdis(//const vector<cv::Point2d> &mean_shape
 
 	/*for (int p = 0; p < G_land_num; p++)
 		printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
-	for (int j = 0; j < training_parameters_.P; ++j)
-	{
-		//cv::Point pixel_pos = data.init_shape[pixels_[j].first] + offsets[j];
+	//for (int j = 0; j < training_parameters_.P; ++j)
+	//{
+	//	//cv::Point pixel_pos = data.init_shape[pixels_[j].first] + offsets[j];
 
-		cv::Point pixel_pos =
-			temp[tri_idx(pixels_expdis_[j].first, 0)] * pixels_expdis_[j].second.x +
-			temp[tri_idx(pixels_expdis_[j].first, 1)] * pixels_expdis_[j].second.y +
-			temp[tri_idx(pixels_expdis_[j].first, 2)] * (1 - pixels_expdis_[j].second.x - pixels_expdis_[j].second.y);
+	//	cv::Point pixel_pos =
+	//		temp[tri_idx(pixels_expdis_[j].first, 0)] * pixels_expdis_[j].second.x +
+	//		temp[tri_idx(pixels_expdis_[j].first, 1)] * pixels_expdis_[j].second.y +
+	//		temp[tri_idx(pixels_expdis_[j].first, 2)] * (1 - pixels_expdis_[j].second.x - pixels_expdis_[j].second.y);
 
-		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
-			p[j] = data.image.at<uchar>(pixel_pos);
-		else
-			p[j] = 0;
-	}
-
+	//	if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
+	//		p[j] = data.image.at<uchar>(pixel_pos);
+	//	else
+	//		p[j] = 0;
+	//}
+	get_pixel_value(training_parameters_.P, temp, tri_idx, pixels_expdis_, data, p);
 	//vector<double> coeffs(training_parameters_.Base);//initial 0
 	vector<double> coeffs_exp(training_parameters_.Base);
 	vector<double> coeffs_dis(training_parameters_.Base);
@@ -739,28 +799,5 @@ void write(cv::FileStorage& fs, const string&, const RegressorTrain& r)
 	r.write(fs);
 }
 /*  sort--------------------------------------------------------------------------------------------
-std::sort(pixel_se.begin(), pixel_se.end());
-		std::vector<uchar>::iterator it = std::unique(pixel_se.begin(), pixel_se.end());
-		pixel_se.resize(std::distance(pixel_se.begin(), it));
-		vector<int> hash(260);
-		for (int j = 0; j < pixel_se.size(); j++)
-			hash[pixel_se[j]] = j;
-		FILE *fp;
-		fopen_s(&fp,"sort_debug.txt", "w");
-		std::sort(pixel_se.begin(), pixel_se.end());
-		for (int j = 0; j < pixel_se.size(); j++)
-			fprintf(fp, "%d ", pixel_se[j]);
-		fprintf(fp, "\n");
-		std::vector<uchar>::iterator it = std::unique(pixel_se.begin(), pixel_se.end());
-		pixel_se.resize(std::distance(pixel_se.begin(), it));
-		vector<int> hash(260);
-		for (int j = 0; j < pixel_se.size(); j++)
-			hash[pixel_se[j]] = j;
-		for (int j = 0; j < pixel_se.size(); j++)
-			fprintf(fp, "%d ", pixel_se[j]);
-		fprintf(fp, "\n");
-		for (int j = 0; j < hash.size(); j++)
-			fprintf(fp, "%d ", hash[j]);
-		fprintf(fp, "\n");
-		fclose(fp);
+
 */

@@ -78,3 +78,5 @@ void cal_mouse_rect(const std::vector<cv::Point2d> &ref_shape, cv::Rect &mouse_r
 void rect_scale(cv::Rect &rect, double scale);
 
 void normalize_gauss_face_rect(cv::Mat image,cv::Rect &rect);
+
+uchar get_batch_feature(cv::Mat img, cv::Point p);
