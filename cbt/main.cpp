@@ -9,22 +9,34 @@
 #include "calculate_coeff_dde.hpp"
 #define debug_def
 #define from_video
+//#define norm_lk_face
+//#define gs_filter
+//#define md_filter
 //#define show_feature_def
+#define lk_rgb_def
+#define lk_opencv_def
 
+const int G_gs_window_size = 6;
+const float G_gs_angle_sig = 3;
 using namespace std;
 
 const string kModelFileName = "model_r/model_all_5_face.xml.gz";
 const string kModelFileName_dde = "model_r/model_dde_ta_ed_enh_norm_gauss.xml.gz";
 const string kAlt2 = "model_r/haarcascade_frontalface_alt2.xml";
-const string kTestImage = "./photo_test/video/lv_mp4/images/frame0.jpg";//real_time_test//22.png"; /test_samples/005_04_03_051_05.png";
+const string kTestImage = "./photo_test/test_samples//005_04_03_051_05.png";//video/lv_mp4/images/frame0.jpg";// /test_samples/005_04_03_051_05.png";
 const string videoImage = "./photo_test/video/lv_mp4/images/frame";
 
 const string videolvsave = "./photo_test/video/rubbish/r_";
+const string gs_smooth_videolvsave = "./photo_test/video/lv_out_npmxini_pp204_gs_smooth/lv_out_npmxini_pp204_gs_smooth";
 
 const std::string test_debug_lv_path = "./lv_file/lv_easy_pre.lv";// fitting_result_t66_pose_0.lv";
 const string video_path = "./photo_test/video/lv_easy.avi";
 
-string land_video_save_path = "./photo_test/video/lv_easy_ta_ed.avi";
+string land_video_save_path = "./photo_test/video/lv_easy_npmxini_pp204.avi";
+string land_gs_smooth_video_save_path = "./photo_test/video/lv_easy_mxini_pp204_gs_smooth.avi";
+
+
+string lk_video_save_path = "./lv_easy_lk.avi";
 #ifdef win64
 const string image_se_path = "D:/sydney/first/data_me/test_lv/fw/Tester_1/TrainingPose/pose_%1d.jpg";
 std::string fwhs_path_lv = "D:/sydney/first/data_me/test_lv/fw";
@@ -270,7 +282,9 @@ void DDE_video_test(
 	cv::CascadeClassifier cc(kAlt2);
 	vector<cv::Rect> faces;
 	cc.detectMultiScale(data.image, faces);
+#ifndef small_rect_def
 	rect_scale(faces[0], 1.5);
+#endif // !small_rect_def	
 	normalize_gauss_face_rect(data.image, faces[0]);
 #ifdef show_feature_def
 	dde_x.visualize_feature_cddt(rgb_image, tri_idx, data.landmarks);
@@ -292,15 +306,21 @@ void DDE_video_test(
 	//std::cout << data.image.cols << " " << data.image.rows << "\n" << cv::Size(data.image.cols, data.image.rows) << "\n";
 	//output_video << data.image;
 	//system("pause");
-	
-
+	FILE *fp_t, *fp_a;
+	fopen_s(&fp_t, "tslt_save.txt", "w");
+	fopen_s(&fp_a, "angle_save.txt", "w");
+	Target_type smooth_data[G_gs_window_size+1];
+	//cv::Mat smooth_rgb_image[G_gs_window_size];
+	cv::VideoWriter gs_smooth_output_video(land_gs_smooth_video_save_path, CV_FOURCC_DEFAULT, 25.0, cv::Size(data.image.cols, data.image.rows));
+	cv::Mat lk_frame_last;
+	DataPoint lk_data_last;
 	for (int test_round = 1;/* test_round < 30*/; test_round++) {
 		cap >> rgb_image;
 		if (rgb_image.empty()) break;
 		cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
 		normalize_gauss_face_rect(data.image, faces[0]);
-		cv::imshow("nm_gs", data.image);
-		cv::waitKey(0);
+		/*cv::imshow("nm_gs", data.image);
+		cv::waitKey(0);*/
 		printf("dde_round %d: \n", test_round);
 		//data.image = cv::imread(videoImage+ to_string(test_round) + ".jpg", cv::IMREAD_GRAYSCALE);
 		dde_x.dde(rgb_image, data, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
@@ -311,22 +331,34 @@ void DDE_video_test(
 
 		//--------------------------------------post_processing
 
-		//last_data[0] = last_data[1]; last_data[1] = last_data[2]; last_data[2] = data.shape;
-		//if (test_round > 3) {
-		//	Eigen::MatrixXf exp_r_t_matrix;
-		//	exp_r_t_matrix.resize(G_nShape, 3 * G_land_num);
-		//	for (int i_exp = 0; i_exp < G_nShape; i_exp++)
-		//		for (int i_v = 0; i_v < G_land_num; i_v++)
-		//			for (int axis = 0; axis < 3; axis++)
-		//				exp_r_t_matrix(i_exp, i_v * 3 + axis) = exp_r_t_all_matrix(i_exp, data.land_cor(i_v) * 3 + axis);
-		//	ceres_post_processing(data, last_data[0], last_data[1], last_data[2], exp_r_t_matrix);
-		//	//recal_dis_ang(data,bldshps);
-		//	data.shape.exp(0) = 1;
-		//	update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
-		//	//update_slt(
-		//}
-		//last_data[2] = data.shape;
-		//////system("pause");
+		last_data[0] = last_data[1]; last_data[1] = last_data[2]; last_data[2] = data.shape;
+		if (test_round > 3) {
+			Eigen::MatrixXf exp_r_t_matrix;
+			exp_r_t_matrix.resize(G_nShape, 3 * G_land_num);
+			for (int i_exp = 0; i_exp < G_nShape; i_exp++)
+				for (int i_v = 0; i_v < G_land_num; i_v++)
+					for (int axis = 0; axis < 3; axis++)
+						exp_r_t_matrix(i_exp, i_v * 3 + axis) = exp_r_t_all_matrix(i_exp, data.land_cor(i_v) * 3 + axis);
+
+			lk_post_processing(lk_frame_last, rgb_image, lk_data_last, data);
+			ceres_post_processing(data, last_data[0], last_data[1], last_data[2], exp_r_t_matrix);
+			//recal_dis_ang(data,bldshps);
+			data.shape.exp(0) = 1;
+			update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+			system("pause");
+			//update_slt(
+		}
+		lk_frame_last = rgb_image.clone();
+		lk_data_last = data;
+
+		last_data[2] = data.shape;
+		////system("pause");
+		puts("errorA");
+		fprintf(fp_t, "%.10f %.10f %.10f\n", data.shape.tslt(0), data.shape.tslt(1), (last_data[1].tslt-data.shape.tslt).norm());
+		puts("errorB");
+		fprintf(fp_a, "%.10f %.10f %.10f %.10f\n", data.shape.angle(0)*180/pi , data.shape.angle(1) * 180 / pi, 
+			data.shape.angle(2) * 180 / pi, (last_data[1].angle - data.shape.angle).norm());
+		puts("errorC");
 
 		print_datapoint(data);
 		save_datapoint(data, videolvsave + "_" + to_string(test_round) + ".lv");
@@ -343,8 +375,103 @@ void DDE_video_test(
 		
 		//cv::imshow("G_debug_up_image", G_debug_up_image);
 		//cv::waitKey(10);
-	}
+//------------------------------------------gauss---smooth--------------------------------------------------------
+#ifdef usefilter
 
+
+		for (int j = G_gs_window_size; j >0; j--) smooth_data[j] = smooth_data[j - 1];
+		smooth_data[0] = data.shape;
+		if (test_round > G_gs_window_size ) {
+			DataPoint result=data;			
+			result.shape.angle.setZero();
+			result.shape.tslt.setZero();
+#ifdef gs_filter
+			float sum = 0;
+			for (int j = 0; j <= G_gs_window_size; j++) {
+				float coef = exp(-j * j / (2.0 * G_gs_angle_sig*G_gs_angle_sig));
+				result.shape.angle.array() += smooth_data[j].angle.array()*coef;
+				result.shape.tslt.array() += smooth_data[j].tslt.array()*coef;
+				sum += coef;
+			}
+			result.shape.angle /= sum;
+			result.shape.tslt /= sum;
+#endif // gs_filter
+#ifdef md_filter
+			for (int i_a=0;i_a<G_angle_num;i_a++){
+				std::vector<float> temp(G_gs_window_size + 1);
+				for (int j = 0; j <= G_gs_window_size; j++)
+					temp[j] = smooth_data[j].angle(i_a);
+				sort(temp.begin(), temp.end());
+				result.shape.angle(i_a) = temp[temp.size()/2];
+			}
+			for (int i_t = 0; i_t < G_tslt_num; i_t++) {
+				std::vector<float> temp(G_gs_window_size + 1);
+				for (int j = 0; j <= G_gs_window_size; j++)
+					temp[j] = smooth_data[j].tslt(i_t);
+				sort(temp.begin(), temp.end());
+				result.shape.tslt(i_t) = temp[temp.size() / 2];
+			}
+#endif // md_filter
+
+			
+			dde_x.dde_onlyexpdis(rgb_image, result, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
+
+
+			smooth_data[0].dis = result.shape.dis;
+			smooth_data[0].exp = result.shape.exp;
+
+			result.shape.dis.setZero();
+			result.shape.exp.setZero();
+#ifdef gs_filter
+			sum = 0;
+			for (int j = 0; j <= G_gs_window_size; j++) {
+				float coef = exp(-j * j / (2.0 * G_gs_angle_sig*G_gs_angle_sig));
+				result.shape.dis.array() += smooth_data[j].dis.array()*coef;
+				result.shape.exp.array() += smooth_data[j].exp.array()*coef;
+				sum += coef;
+			}
+
+			result.shape.dis /= sum;
+			result.shape.exp /= sum;
+#endif // gs_filter
+#ifdef md_filter
+			for (int i_e = 0; i_e < G_nShape; i_e++) {
+				std::vector<float> temp(G_gs_window_size + 1);
+				for (int j = 0; j <= G_gs_window_size; j++)
+					temp[j] = smooth_data[j].exp(i_e);
+				sort(temp.begin(), temp.end());
+				result.shape.exp(i_e) = temp[temp.size() / 2];
+			}
+			for (int i_d = 0; i_d < 2*G_land_num; i_d++) {
+				std::vector<float> temp(G_gs_window_size + 1);
+				for (int j = 0; j <= G_gs_window_size; j++)
+					temp[j] = smooth_data[j].dis(i_d/2,i_d&1);
+				sort(temp.begin(), temp.end());
+				result.shape.dis(i_d / 2, i_d & 1) = temp[temp.size() / 2];
+			}
+#endif // md_filter
+
+
+			
+			//smooth_data[0] = data.shape;
+			//result.shape
+			data.shape = result.shape;
+			data.shape.exp(0) = 1;
+			update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+			
+			save_datapoint(data, gs_smooth_videolvsave + "_" + to_string(test_round-G_gs_window_size) + ".lv");
+			//print_datapoint(data);
+			//show_image_0rect(data.image, data.landmarks);
+				//save_video(data.image, data.landmarks, output_video);
+			save_video(rgb_image, data.landmarks, gs_smooth_output_video);
+		}
+		
+#endif // usefilter
+		//for (int j = 0; j < G_gs_window_size - 1; j++) smooth_rgb_image[j] = smooth_rgb_image[j + 1];
+		//smooth_rgb_image[G_gs_window_size - 1] = rgb_image.clone();
+	}
+	fclose(fp_t);
+	fclose(fp_a);
 }
 
 
@@ -488,8 +615,226 @@ void show_data_land() {
 
 }
 
+void test_cv_mat() {
+	float sum = 0;
+	for (int j = 0; j <= G_gs_window_size; j++) {
+		float coef = exp(-j * j / (2.0 * G_gs_angle_sig*G_gs_angle_sig));
+		printf("%.5f ", coef);
+		sum += coef;
+	}
+	puts("");
+	for (int j = 0; j <= G_gs_window_size; j++) {
+		float coef = exp(-j * j / (2.0 * G_gs_angle_sig*G_gs_angle_sig));
+		printf("%.5f ", coef/sum);
+	}
+	puts("");
+	system("pause");
+	for (int j = 0; j < G_gs_window_size; j++) {
+		sum += exp(-(j - G_gs_window_size / 2)*(j - G_gs_window_size / 2) / (2.0 * G_gs_angle_sig*G_gs_angle_sig));
+		printf("%.5f ", exp(-(j - G_gs_window_size / 2)*(j - G_gs_window_size / 2) / (2.0 * G_gs_angle_sig*G_gs_angle_sig)));
+	}
+	puts("");
+	for (int j = 0; j < G_gs_window_size; j++) {
+		
+		printf("%.5f ", exp(-(j - G_gs_window_size / 2)*(j - G_gs_window_size / 2) / (2.0 * G_gs_angle_sig*G_gs_angle_sig))/sum);
+	}
+	puts("");
+	system("pause");
+	cv::VideoCapture cap(video_path);
+	if (!cap.isOpened()) exit(2);//如果视频不能正常打开则返回
+	cv::Mat rgb_image;
+	cap >> rgb_image;
+	cv::Mat smooth_rgb_image[11];
+	for (int test_round = 1;/* test_round < 30*/; test_round++) {
+		cap >> rgb_image;
+		if (rgb_image.empty()) break;
+		for (int j = 0; j < 10; j++) smooth_rgb_image[j] = smooth_rgb_image[j + 1];
+
+		smooth_rgb_image[10] = rgb_image.clone();
+
+		if (test_round > 10) {
+			cv::circle(smooth_rgb_image[8], cv::Point(100, 100), 10, cv::Scalar(0, 250, 220), 2);
+			cv::circle(smooth_rgb_image[10], cv::Point(100, 100), 10, cv::Scalar(0, 250, 220), 2);
+			cv::imshow("test_cv_mat", smooth_rgb_image[7]);
+			cv::waitKey(0);
+
+			cv::imshow("test_cv_mat", smooth_rgb_image[8]);
+			cv::waitKey(0);
+			cv::imshow("test_cv_mat", smooth_rgb_image[9]);
+			cv::waitKey(0);
+
+			cv::imshow("test_cv_mat", smooth_rgb_image[10]);
+			cv::waitKey(0);
+
+		}
+	}
+	exit(0);
+}
+void test_sobel() {
+	cv::Mat image = cv::imread(kTestImage),result;
+	
+	std::vector<cv::Mat> channel;
+	cv::split(image, channel);  //分离色彩通道
+	cv::imshow("img1", channel[0]);
+	cv::imshow("img2", channel[1]);
+	cv::imshow("img3", channel[2]);
+	cv::imshow("result", image);
+	cv::waitKey();
+	
+	for (int ch = 0; ch < 3; ch++) {
+		result = channel[ch].clone();
+		for (int i_x = 0; i_x < channel[ch].cols; i_x++)
+			for (int i_y = 0; i_y < channel[ch].rows; i_y++) {
+				std::pair<float, float> sb = cal_sobel(channel[ch], cv::Point(i_x, i_y));
+				//if (i_x == 480) std::cout <<i_x << ' ' << channel[ch].cols <<' ' << max(min(sqrt(sb.first*sb.first + sb.second*sb.second), float(255)), float(0)) << "++\n";
+				result.at<uchar>(i_y,i_x) = uchar(max(min(sqrt(sb.first*sb.first + sb.second*sb.second), float(255)), float(0)));
+
+			}
+		normalize_gauss_face_rect(result, cv::Rect(0, 0, result.cols, result.rows));
+		cv::imshow("result", result);
+		channel[ch] = result.clone();
+		cv::waitKey();
+	}
+
+	cv::merge(channel, image); //合并色彩通道
+	cv::imshow("result", image);
+	cv::waitKey();
+}
+
+void test_lk() {
+	DataPoint data = debug_preprocess(test_debug_lv_path);
+	puts("testing LK...");
+
+	cv::VideoCapture cap(video_path);
+	if (!cap.isOpened()) exit(2);//如果视频不能正常打开则返回
+	cv::Mat rgb_image;
+	cap >> rgb_image;
+
+	cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
+	cv::CascadeClassifier cc(kAlt2);
+	vector<cv::Rect> faces;
+	cc.detectMultiScale(data.image, faces);
+
+	rect_scale(faces[0], 1.5);
+	
+#ifdef norm_lk_face
+	std::vector<cv::Mat> channel;
+	cv::split(rgb_image, channel);
+	for (int ch = 0; ch < channel.size(); ch++)
+		normalize_gauss_face_rect(channel[ch], faces[0]);
+	cv::merge(channel, rgb_image);
+#endif // norm_lk_face
+	
+
+	for (int i_v = 0; i_v < G_land_num; i_v++)
+		data.landmarks[i_v].x = data.land_2d(i_v, 0), data.landmarks[i_v].y = data.image.rows - data.land_2d(i_v, 1);
+
+	std::vector<cv::Point2f> landmarks_last(G_land_num),landmarks_now(G_land_num), landmarks_inv(G_land_num);
+	for (int i_v = 0; i_v < G_land_num; i_v++)
+		landmarks_last[i_v].x = data.land_2d(i_v, 0), landmarks_last[i_v].y = data.image.rows - data.land_2d(i_v, 1);
+
+	landmarks_now = landmarks_last;
+	//for (int i_v = 0; i_v < G_land_num; i_v++) {
+	//	
+	//	std::cout << landmarks_last[i_v] << " <<< ldmk\n";
+	//}
+
+	cv::VideoWriter output_video(lk_video_save_path, CV_FOURCC_DEFAULT, 25.0, cv::Size(data.image.cols, data.image.rows));
+#ifdef lk_rgb_def
+
+	cv::Mat frame_last=rgb_image.clone();
+#else
+	cv::Mat frame_last = data.image;
+#endif
+	//show_image_0rect(rgb_image, landmarks_last);
+
+	
+
+	for (int test_round = 1;/* test_round < 30*/; test_round++) {
+		cap >> rgb_image;
+		if (rgb_image.empty()) break;
+
+#ifndef lk_rgb_def
+		cv::cvtColor(rgb_image, rgb_image, cv::COLOR_BGR2GRAY);
+#endif // !lk_rgb_def
+
+		
+
+#ifdef norm_lk_face
+		cv::split(rgb_image, channel);
+		for (int ch = 0; ch < channel.size(); ch++)
+			normalize_gauss_face_rect(channel[ch], faces[0]);
+		cv::merge(channel, rgb_image);
+#endif // norm_lk_face
+
+
+		printf("test_round %d: \n", test_round);
+		//if (test_round == 15) {
+		//	cv::imshow("now", rgb_image);
+		//	cv::imshow("last", frame_last);
+		//	//cv::waitKey();
+
+			int i_v = 55;
+			cv::Point p = landmarks_last[i_v];
+			
+
+#ifdef lk_opencv_def
+			std::vector<uchar> lk_sts(G_land_num);
+			std::vector<float> lk_err(G_land_num);
+			cv::calcOpticalFlowPyrLK(frame_last, rgb_image, landmarks_last, landmarks_now, lk_sts, lk_err);
+			cv::calcOpticalFlowPyrLK(rgb_image,frame_last, landmarks_now, landmarks_inv,  lk_sts, lk_err);
+			//for (int i_v = 0; i_v < G_land_num; i_v++)
+			//	if (dis_cv_pt(landmarks_inv[i_v], landmarks_last[i_v]) > 5) landmarks_now[i_v] = landmarks_last[i_v];
+			cv::Point p_next = landmarks_now[i_v];
+			cv::Point p_inv = landmarks_inv[i_v];
+			printf("%d %.5f\n", lk_sts[i_v], lk_err[i_v]);
+			std::cout << p << "<-last  next->" << p_next << "  inv -> " << p_inv <<  "\n";
+#else
+			std::cout << landmarks_last[i_v] << " ldmk " << p << " <<< p\n";
+			cv::Point p_next = lk_get_pos_next(10, p, frame_last, rgb_image);
+			cv::Point p_inv = lk_get_pos_next(10, p_next, rgb_image, frame_last);
+			std::cout << p << "<-last  next->" << p_next << "  inv -> " << p_inv << "\n";
+			
+#endif // lk_opencv_def
+
+			
+
+
+			cv::circle(rgb_image, p, 1, cv::Scalar(255,0, 0), 2);
+			cv::circle(rgb_image, p_next, 1, cv::Scalar(0, 255, 0), 2);
+			cv::circle(rgb_image, p_inv, 1, cv::Scalar(0, 0, 255), 2);
+
+			
+			cv::imshow("res", rgb_image);
+			cv::waitKey();
+			landmarks_now[i_v] = p_next;
+		//}
+		//for (int i_v = 0; i_v < G_land_num; i_v++) {
+		//
+		//	cv::Point p=landmarks_last[i_v];
+		//	cv::Point p_next = lk_get_pos_next(G_lk_batch_size, p, frame_last, rgb_image);
+		//	cv::Point p_inv = lk_get_pos_next(G_lk_batch_size, p_next, rgb_image, frame_last);
+		//	std::cout << p << "<-last  next->" << p_next << "  inv:" << p_inv << "\n";
+		//	landmarks_now[i_v] = p_next;
+		//}
+		//
+		//show_image_0rect(rgb_image, landmarks_now);
+	
+		save_video(rgb_image, landmarks_now, output_video);
+		landmarks_last = landmarks_now;
+		frame_last = rgb_image.clone();
+	}
+
+}
+
 int main()
 {
+	test_lk();
+	return 0;
+
+	//test_sobel();
+	//test_cv_mat();
+	
 	//show_data_land();
 
 	//camera();
@@ -618,4 +963,35 @@ int main()
 
 grep -rl 'fopen_s(&fpr,' ./ | xargs sed -i 's/fopen_s(&fpr,/fpr=fopen(/g'
 grep -rl 'fopen_s(&fpw,' ./ | xargs sed -i 's/fopen_s(&fpw,/fpw=fopen(/g'
+*/
+
+/*
+		for (int j = 0; j < G_gs_window_size-1; j++) smooth_data[j] = smooth_data[j + 1];
+		smooth_data[G_gs_window_size-1] = data.shape;
+		for (int j = 0; j < G_gs_window_size-1; j++) smooth_rgb_image[j] = smooth_rgb_image[j + 1];
+		smooth_rgb_image[G_gs_window_size-1] = rgb_image.clone();
+
+
+		if (test_round > G_gs_window_size-1) {
+			DataPoint result=data;
+			result.shape= smooth_data[G_gs_window_size / 2];
+
+
+			result.shape.angle.setZero();
+			float sum = 0;
+			for (int j = 0; j < G_gs_window_size ; j++) {
+				result.shape.angle.array() += smooth_data[j].angle.array()*exp(-(j - G_gs_window_size/2)*(j - G_gs_window_size/2) / 2.0);
+				sum += exp(-(j - G_gs_window_size/2)*(j - G_gs_window_size/2) / 2.0);
+			}
+			result.shape.angle.array() /= sum;
+			cv::cvtColor(smooth_rgb_image[G_gs_window_size/2], result.image, cv::COLOR_BGR2GRAY);
+			puts("A");
+			dde_x.dde_onlyexpdis(smooth_rgb_image[G_gs_window_size/2], result, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
+
+			save_datapoint(result, gs_smooth_videolvsave + "_" + to_string(test_round-G_gs_window_size+1) + ".lv");
+			//print_datapoint(data);
+			//show_image_0rect(data.image, data.landmarks);
+				//save_video(data.image, data.landmarks, output_video);
+			save_video(smooth_rgb_image[G_gs_window_size/2], result.landmarks, gs_smooth_output_video);
+		}
 */

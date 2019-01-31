@@ -4,7 +4,7 @@
 #include <stdexcept>
 #define update_slt_def
 //#define no_nearest_me
-#define debug_init
+//#define debug_init
 #ifdef debug_init
 	cv::VideoWriter debug_init_output_video("debug_init.avi", CV_FOURCC_DEFAULT, 25.0, cv::Size(640, 480));
 #endif // debug_init
@@ -602,6 +602,50 @@ void DDEX::dde(
 #endif // update_slt_def
 	update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
 }
+
+void DDEX::dde_onlyexpdis(
+	cv::Mat debug_init_img, DataPoint &data, Eigen::MatrixXf &bldshps,
+	Eigen::MatrixX3i &tri_idx, std::vector<DataPoint> &train_data, Eigen::VectorXi &jaw_land_corr,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::MatrixXf &exp_r_t_all_matrix)const {
+
+
+	Target_type result_shape = data.shape;
+
+	std::vector<cv::Point2d> land_temp;
+
+	long long start_time = cv::getTickCount();
+
+	for (int j = 0; j < stage_regressors_dde_.size(); ++j)
+	{
+		//printf("outer regressor %d:\n", j);
+		//Transform t = Procrustes(init_shape, mean_shape_);
+		result_shape.exp(0) = 1;
+		Target_type offset =
+			stage_regressors_dde_[j].Apply_expdis(result_shape, tri_idx, data, bldshps, exp_r_t_all_matrix);
+		//t.Apply(&offset, false);
+		result_shape = shape_adjustment(result_shape, offset);
+		//printf("outer regressor == %d:\n", j);
+	}
+	std::cout << "Alignment time: "
+		<< (cv::getTickCount() - start_time) / cv::getTickFrequency()
+		<< "s" << endl;
+	//std::vector<cv::Point2d> land_temp;
+//-----------------------------------------------------------------------------------------------------------
+
+		//result_shape.exp(0) = 1;
+		//cal_2d_land_i_ang_0ide(land_temp, result_shape, exp_r_t_all_matrix,data);
+		//print_target(result_shape);
+		//show_image_0rect(data.image, land_temp);
+	data.shape = result_shape;
+
+#ifdef update_slt_def
+	update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+	update_slt(exp_r_t_all_matrix, slt_line, slt_point_rect, jaw_land_corr, data);
+#endif // update_slt_def
+	update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
+}
+
+
 
 void DDEX::visualize_feature_cddt(cv::Mat rbg_image, Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &landmarks)const {
 

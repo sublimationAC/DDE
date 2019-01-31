@@ -4,8 +4,10 @@
 #include <utility>
 #include <algorithm>
 #include <stdexcept>
-
-
+#define norm_fp_def
+//#define sort_fp_def
+//#define drct_fp_def
+#define batch_feature
 using namespace std;
 
 //void cal_2d_land_i_0ide(
@@ -28,6 +30,7 @@ void cal_2d_land_i_ang_0ide(
 	Eigen::RowVector2f T = data.tslt.block(0, 0, 1, 2);
 	Eigen::Matrix3f rot = get_r_from_angle_zyx(data.angle);
 	Eigen::VectorXf exp = data.exp;
+	exp(0) = 1;
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
@@ -35,6 +38,144 @@ void cal_2d_land_i_ang_0ide(
 		Eigen::RowVector2f temp = ((ini_data.s) * (rot * v)).transpose() + T + data.dis.row(i_v);
 		ans[i_v].x = temp(0); ans[i_v].y = ini_data.image.rows - temp(1);
 	}
+}
+
+void get_pixel_value(
+	int P, std::vector<cv::Point2d> &temp, Eigen::MatrixX3i &tri_idx,
+	const std::vector<std::pair<int, cv::Point2d>> &pixels_,
+	const DataPoint &data, double *p) {
+#ifdef norm_fp_def
+	vector<uchar> pixel_se(P);
+	float ave = 0;
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect)) {
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))) {
+#endif // small_rect_def
+#ifdef batch_feature
+			pixel_se[j] = get_batch_feature(G_pixel_batch_feature_size ,data.image, pixel_pos);
+#else
+			pixel_se[j] = data.image.at<uchar>(pixel_pos);
+#endif // batch_feature			
+			ave += pixel_se[j];
+		}
+		else
+			pixel_se[j] = 0;
+	}
+	ave /= P;
+	float sig = 0;
+	for (int i_p = 0; i_p < pixel_se.size(); i_p++)
+		sig += (pixel_se[i_p] - ave)*(pixel_se[i_p] - ave);
+	sig /= P;
+	sig = sqrt(sig);
+
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect))
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
+#endif // small_rect_def	
+			p[j] = ((data.image.at<uchar>(pixel_pos) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
+		else
+			p[j] = (-ave / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
+	}
+#endif
+#ifdef sort_fp_def
+	vector<uchar> pixel_se(P);
+	float ave = 0;
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect)) {
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))) {
+#endif // small_rect_def	
+#ifdef batch_feature
+			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+#else
+			pixel_se[j] = data.image.at<uchar>(pixel_pos);
+#endif // batch_feature	
+		}
+		else
+			pixel_se[j] = 0;
+		}
+	FILE *fp;
+	fopen_s(&fp, "sort_debug.txt", "w");
+	std::sort(pixel_se.begin(), pixel_se.end());
+	for (int j = 0; j < pixel_se.size(); j++)
+		fprintf(fp, "%d ", pixel_se[j]);
+	fprintf(fp, "\n");
+	std::vector<uchar>::iterator it = std::unique(pixel_se.begin(), pixel_se.end());
+	pixel_se.resize(std::distance(pixel_se.begin(), it));
+	vector<int> hash(260);
+	for (int j = 0; j < pixel_se.size(); j++)
+		hash[pixel_se[j]] = j;
+	for (int j = 0; j < pixel_se.size(); j++)
+		fprintf(fp, "%d ", pixel_se[j]);
+	fprintf(fp, "\n");
+	for (int j = 0; j < hash.size(); j++)
+		fprintf(fp, "%d ", hash[j]);
+	fprintf(fp, "\n");
+	fclose(fp);
+
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect))
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
+#endif // small_rect_def	
+			p[j] = hash[data.image.at<uchar>(pixel_pos)];
+		else
+			p[j] = hash[0];
+	}
+#endif // sort_fp_def
+#ifdef drct_fp_def
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect))
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
+#endif // small_rect_def		
+		{
+#ifdef batch_feature
+			p[j] = get_batch_feature(data.image, pixel_pos);
+#else
+			p[j] = data.image.at<uchar>(pixel_pos);
+#endif // batch_feature	
+		}
+		else
+			p[j] = 0;
+	}
+#endif // drct_fp_def
 }
 
 Target_type regressor_dde::Apply_ta(//const Transform &t,
@@ -60,64 +201,7 @@ Target_type regressor_dde::Apply_ta(//const Transform &t,
 	
 	double *p = pixels_val.ptr<double>(0);
 
-#ifdef norm_point_def
-	vector<uchar> pixel_se(pixels_dde_ta_.size());
-	float ave = 0;
-	for (int j = 0; j < pixels_dde_ta_.size(); ++j)
-	{
-		//cv::Point pixel_pos = init_shape[pixels_[j].first] + offsets[j];
-
-
-		cv::Point pixel_pos =
-			temp[tri_idx(pixels_dde_ta_[j].first, 0)] * pixels_dde_ta_[j].second.x +
-			temp[tri_idx(pixels_dde_ta_[j].first, 1)] * pixels_dde_ta_[j].second.y +
-			temp[tri_idx(pixels_dde_ta_[j].first, 2)] * (1 - pixels_dde_ta_[j].second.x - pixels_dde_ta_[j].second.y);
-		if (pixel_pos.inside(cv::Rect(0, 0, ini_data.image.cols, ini_data.image.rows))) {
-			pixel_se[j] = ini_data.image.at<uchar>(pixel_pos);
-			ave += pixel_se[j];
-		}
-		else
-			pixel_se[j] = 0;
-	}
-	ave /= pixels_dde_ta_.size();
-	float sig = 0;
-	for (int i_p = 0; i_p < pixel_se.size(); i_p++)
-		sig += (pixel_se[i_p] - ave)*(pixel_se[i_p] - ave);
-	sig /= pixels_dde_ta_.size();
-	sig = sqrt(sig);
-
-
-	for (int j = 0; j < pixels_dde_ta_.size(); ++j)
-	{
-		//cv::Point pixel_pos = init_shape[pixels_[j].first] + offsets[j];
-
-
-		cv::Point pixel_pos =
-			temp[tri_idx(pixels_dde_ta_[j].first, 0)] * pixels_dde_ta_[j].second.x +
-			temp[tri_idx(pixels_dde_ta_[j].first, 1)] * pixels_dde_ta_[j].second.y +
-			temp[tri_idx(pixels_dde_ta_[j].first, 2)] * (1 - pixels_dde_ta_[j].second.x - pixels_dde_ta_[j].second.y);
-		if (pixel_pos.inside(cv::Rect(0, 0, ini_data.image.cols, ini_data.image.rows)))
-			p[j] = ((ini_data.image.at<uchar>(pixel_pos) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-		else
-			p[j] = ( - ave / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-	}
-#else
-	//for (int j = 0; j < pixels_dde_ta_.size(); ++j)
-	//{
-	//	//cv::Point pixel_pos = init_shape[pixels_[j].first] + offsets[j];
-
-	//	
-	//	cv::Point pixel_pos =
-	//		temp[tri_idx(pixels_dde_ta_[j].first, 0)] * pixels_dde_ta_[j].second.x +
-	//		temp[tri_idx(pixels_dde_ta_[j].first, 1)] * pixels_dde_ta_[j].second.y +
-	//		temp[tri_idx(pixels_dde_ta_[j].first, 2)] * (1 - pixels_dde_ta_[j].second.x - pixels_dde_ta_[j].second.y);
-	//	if (pixel_pos.inside(cv::Rect(0, 0, ini_data.image.cols, ini_data.image.rows)))
-	//		p[j] = ini_data.image.at<uchar>(pixel_pos);
-	//	else
-	//		p[j] = 0;
-	//}
-
-#endif
+	get_pixel_value(pixels_dde_ta_.size(), temp, tri_idx, pixels_dde_ta_, ini_data, p);
 	
 
 	//cv::Mat coeffs = cv::Mat::zeros(base_.cols, 1, CV_64FC1);
@@ -214,10 +298,11 @@ Target_type regressor_dde::Apply_expdis(//const Transform &t,
 	std::vector<cv::Point2d> temp(G_land_num);
 	//cal_2d_land_i(temp, data, bldshps,ini_data);
 
-
 	cal_2d_land_i_ang_0ide(temp, exp_r_t_all_matrix, data, ini_data);
 
 	double *p = pixels_val.ptr<double>(0);
+
+
 	//for (int j = 0; j < pixels_dde_expdis_.size(); ++j)
 	//{
 	//	//cv::Point pixel_pos = init_shape[pixels_[j].first] + offsets[j];
@@ -232,64 +317,8 @@ Target_type regressor_dde::Apply_expdis(//const Transform &t,
 	//	else
 	//		p[j] = 0;
 	//}
-#ifdef norm_point_def
-	vector<uchar> pixel_se(pixels_dde_ta_.size());
-	float ave = 0;
-	for (int j = 0; j < pixels_dde_ta_.size(); ++j)
-	{
-		//cv::Point pixel_pos = init_shape[pixels_[j].first] + offsets[j];
+	get_pixel_value(pixels_dde_expdis_.size(), temp, tri_idx, pixels_dde_expdis_, ini_data, p);
 
-
-		cv::Point pixel_pos =
-			temp[tri_idx(pixels_dde_ta_[j].first, 0)] * pixels_dde_ta_[j].second.x +
-			temp[tri_idx(pixels_dde_ta_[j].first, 1)] * pixels_dde_ta_[j].second.y +
-			temp[tri_idx(pixels_dde_ta_[j].first, 2)] * (1 - pixels_dde_ta_[j].second.x - pixels_dde_ta_[j].second.y);
-		if (pixel_pos.inside(cv::Rect(0, 0, ini_data.image.cols, ini_data.image.rows))) {
-			pixel_se[j] = ini_data.image.at<uchar>(pixel_pos);
-			ave += pixel_se[j];
-		}
-		else
-			pixel_se[j] = 0;
-	}
-	ave /= pixels_dde_ta_.size();
-	float sig = 0;
-	for (int i_p = 0; i_p < pixel_se.size(); i_p++)
-		sig += (pixel_se[i_p] - ave)*(pixel_se[i_p] - ave);
-	sig /= pixels_dde_ta_.size();
-	sig = sqrt(sig);
-
-
-	for (int j = 0; j < pixels_dde_ta_.size(); ++j)
-	{
-		//cv::Point pixel_pos = init_shape[pixels_[j].first] + offsets[j];
-
-
-		cv::Point pixel_pos =
-			temp[tri_idx(pixels_dde_ta_[j].first, 0)] * pixels_dde_ta_[j].second.x +
-			temp[tri_idx(pixels_dde_ta_[j].first, 1)] * pixels_dde_ta_[j].second.y +
-			temp[tri_idx(pixels_dde_ta_[j].first, 2)] * (1 - pixels_dde_ta_[j].second.x - pixels_dde_ta_[j].second.y);
-		if (pixel_pos.inside(cv::Rect(0, 0, ini_data.image.cols, ini_data.image.rows)))
-			p[j] = ((ini_data.image.at<uchar>(pixel_pos) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-		else
-			p[j] = (-ave / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-	}
-#else
-	//for (int j = 0; j < pixels_dde_ta_.size(); ++j)
-	//{
-	//	//cv::Point pixel_pos = init_shape[pixels_[j].first] + offsets[j];
-
-	//	
-	//	cv::Point pixel_pos =
-	//		temp[tri_idx(pixels_dde_ta_[j].first, 0)] * pixels_dde_ta_[j].second.x +
-	//		temp[tri_idx(pixels_dde_ta_[j].first, 1)] * pixels_dde_ta_[j].second.y +
-	//		temp[tri_idx(pixels_dde_ta_[j].first, 2)] * (1 - pixels_dde_ta_[j].second.x - pixels_dde_ta_[j].second.y);
-	//	if (pixel_pos.inside(cv::Rect(0, 0, ini_data.image.cols, ini_data.image.rows)))
-	//		p[j] = ini_data.image.at<uchar>(pixel_pos);
-	//	else
-	//		p[j] = 0;
-	//}
-
-#endif
 
 	//cv::Mat coeffs = cv::Mat::zeros(base_.cols, 1, CV_64FC1);
 	//for (int i = 0; i < ferns_dde_.size(); ++i) {

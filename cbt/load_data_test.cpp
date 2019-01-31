@@ -22,7 +22,7 @@ void load_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &i
 		struct dirent *dp;
 		while (index < n)
 		{
-//			if (num > 50) break;
+			if (num > 50) break;
 			dp = namelist[index];
 
 			if (dp->d_name[0] == '.') {

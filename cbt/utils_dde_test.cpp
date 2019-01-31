@@ -551,7 +551,15 @@ void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter
 	//cv::resize(image, image, cv::Size(640, 480 * 3));
 	output_video << image;
 }
-
+void save_video(cv::Mat img, std::vector<cv::Point2f> landmarks, cv::VideoWriter &output_video) {
+	cv::Mat image = img.clone();
+	for (cv::Point2d landmark : landmarks)
+	{
+		cv::circle(image, landmark, 0.1, cv::Scalar(250, 250, 220), 2);
+	}
+	//cv::resize(image, image, cv::Size(640, 480 * 3));
+	output_video << image;
+}
 //void cal_2d_land_i_0dis(
 //	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data) {
 //	ans.resize(G_land_num);
@@ -888,8 +896,8 @@ void rect_scale(cv::Rect &rect, double scale) {
 void normalize_gauss_face_rect(cv::Mat image, cv::Rect &rect) {
 	float ave = 0;
 	puts("A");
-	int top = rect.y, bottom = rect.y + rect.height + 1;
-	int left = rect.x, right = rect.x + rect.width + 1;
+	int top = rect.y, bottom = rect.y + rect.height;
+	int left = rect.x, right = rect.x + rect.width;
 	for (int i_row = top; i_row < bottom; i_row++)
 		for (int i_col = left; i_col < right; i_col++) {
 			//std::cout << i_row << ' ' << i_col << "\n";
@@ -900,7 +908,7 @@ void normalize_gauss_face_rect(cv::Mat image, cv::Rect &rect) {
 
 			ave += image.at <uchar>(i_row, i_col);
 		}
-	ave /= (rect.height + 1)*(rect.width + 1);
+	ave /= (rect.height)*(rect.width);
 	puts("B");
 	float sig = 0;
 	for (int i_row = top; i_row < bottom; i_row++)
@@ -913,4 +921,135 @@ void normalize_gauss_face_rect(cv::Mat image, cv::Rect &rect) {
 		for (int i_col = left; i_col < right; i_col++)
 			image.at <uchar>(i_row, i_col) =
 			(uchar)(((image.at <uchar>(i_row, i_col) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave);
+}
+
+uchar get_batch_feature(int patch_size, cv::Mat img, cv::Point p) {
+	float ans = 0;
+	for (int i_x = p.x - patch_size; i_x <= p.x + patch_size; i_x++)
+		for (int i_y = p.y - patch_size; i_y <= p.y + patch_size; i_y++) {
+			cv::Point pos(i_x, i_y);
+			float r = dis_cv_pt(pos, p);
+
+			pos.x = std::max(std::min(i_x, img.cols - 1), 0);
+			pos.y = std::max(std::min(i_y, img.rows - 1), 0);
+
+			ans += exp(-r * r / 2)*img.at<uchar>(pos);
+		}
+	ans = std::max(ans, (float)0);
+	return (uchar)(ans);
+}
+
+void get_batch_feature_dvd(int patch_size, std::vector<cv::Mat> &channel, cv::Point p,Eigen::VectorXf &ans) {
+	int C = channel.size();
+	ans.resize((2 * patch_size + 1)*(2 * patch_size + 1) * C);
+	puts("get_batch_feature_dvd...");
+	//std::cout << p << " pp\n";
+	for (int i_x = p.x - patch_size; i_x <= p.x + patch_size; i_x++)
+		for (int i_y = p.y - patch_size; i_y <= p.y + patch_size; i_y++) {
+			cv::Point pos(i_x, i_y);
+			pos.x = std::max(std::min(pos.x, channel[0].cols - 1), 0);
+			pos.y = std::max(std::min(pos.y, channel[0].rows - 1), 0);
+
+			for (int ch = 0; ch < C; ch++) {				
+				int row_idx = ((i_x - (p.x - patch_size))*(2 * patch_size + 1)
+					+ i_y - (p.y - patch_size)) * C + ch;
+				ans(row_idx)= channel[ch].at<uchar>(pos);
+			}			
+		}
+}
+
+const float sobel_x_wndw[3][3] = { {-0.125,0,0.125} ,{-0.25,0,0.25} ,{-0.125,0,0.125} };
+const float sobel_y_wndw[3][3] = { {-0.125,-0.25,-0.125} ,{0,0,0} ,{0.125,0.25,0.125} };
+std::pair<float, float> cal_sobel(cv::Mat img, cv::Point p) {
+	//std::cout << p << " \n ";
+	//system("pause");
+	std::pair<float, float> ans;
+	ans.first = 0;
+	for (int i_x = -1; i_x < 2; i_x++)
+		for (int i_y = -1; i_y < 2; i_y++) {
+			cv::Point pos(p.x + i_x, p.y + i_y);
+			//if (p.x==480) std::cout << p << " + " << pos << "\n";
+			pos.x = std::max(std::min(pos.x, img.cols - 1), 0);
+			pos.y = std::max(std::min(pos.y, img.rows - 1), 0);
+			//if (p.x == 480) std::cout << p << " + " << pos << "\n";
+			ans.first += sobel_x_wndw[i_x + 1][i_y + 1] * img.at<uchar>(pos);
+		}
+	ans.second = 0;
+	for (int i_x = -1; i_x < 2; i_x++)
+		for (int i_y = -1; i_y < 2; i_y++) {
+			cv::Point pos(p.x + i_x, p.y + i_y);
+			//if (p.x == 480) std::cout << p << " - " << pos << "\n";
+			pos.x = std::max(std::min(pos.x, img.cols - 1), 0);
+			pos.y = std::max(std::min(pos.y, img.rows - 1), 0);
+			ans.second += sobel_y_wndw[i_x + 1][i_y + 1] * img.at<uchar>(pos);
+		}
+	//if (p.x == 480) std::cout << ans.first << " " << ans.second << "\n";
+	return ans;
+}
+
+cv::Point lk_get_pos_next(int batch_feature_size, cv::Point X, cv::Mat frame_last, cv::Mat frame_now) {
+	
+	std::vector<cv::Mat> channel_last;
+	cv::split(frame_last, channel_last);
+
+	int C = frame_last.channels();
+	assert(C == channel_last.size());
+
+	Eigen::MatrixX2f J, aJ;
+	J.resize((2 * batch_feature_size + 1)*(2 * batch_feature_size + 1) * C, 2);
+	aJ.resize((2 * batch_feature_size + 1)*(2 * batch_feature_size + 1) * C, 2);
+	
+	//puts("lk A");
+	for (int i_x = X.x - batch_feature_size; i_x <= X.x + batch_feature_size; i_x++)
+		for (int i_y = X.y - batch_feature_size; i_y <= X.y + batch_feature_size; i_y++) {
+			//printf("i_x_y %d %d\n", i_x, i_y);
+			cv::Point pos(i_x, i_y);
+			float r = dis_cv_pt(pos, X);
+			//puts("lk C");
+			pos.x = std::max(std::min(pos.x, frame_last.cols - 1), 0);
+			pos.y = std::max(std::min(pos.y, frame_last.rows - 1), 0);
+			for (int ch = 0; ch < C; ch++) {
+				//printf("ch %d\n", ch);
+				std::pair<float, float> temp = cal_sobel(channel_last[ch], pos);
+				int row_idx = ((i_x - (X.x - batch_feature_size))*(2 * batch_feature_size + 1)
+					+ i_y - (X.y - batch_feature_size)) * C + ch;
+				//printf("row_idx %d %d %d %d\n", row_idx, (i_x - ((int)X.x - batch_feature_size)), (i_x - (X.x - batch_feature_size)), (X.x - batch_feature_size));
+				//puts("lk D");
+				//printf("%d %d %d\n", J.rows(), J.cols(), batch_feature_size);
+				J(row_idx, 0) = temp.first;
+				//puts("lk E");
+				J(row_idx, 1) = temp.second;
+				//puts("lk F");
+				aJ.row(row_idx) = exp(-r * r / 2)*J.row(row_idx);
+			}
+			
+		}
+	//puts("lk B");
+	Eigen::Matrix2f H_inv = (J.transpose()*aJ).inverse();
+	std::cout << J << "\n";
+	std::cout << H_inv << "\n";
+
+	Eigen::VectorXf f_last;
+	
+	get_batch_feature_dvd(batch_feature_size, channel_last, X,f_last);
+
+	std::vector<cv::Mat> channel_now;
+	cv::split(frame_now, channel_now);
+	assert(C == channel_now.size());
+
+	cv::Point2d dp_x (0,0);
+	for (int ite = 0; ite < G_lk_step; ite++) {
+		Eigen::VectorXf f_now;
+		get_batch_feature_dvd(batch_feature_size, channel_now, (cv::Point2d)X+ dp_x, f_now);
+		Eigen::Vector2f dp = H_inv * aJ.transpose()*(f_now - f_last);
+		//std::cout << f_now.transpose() << "<--  f_now \n";
+		//std::cout << f_last.transpose() << "<--  f_last \n";
+		//std::cout << dp.transpose() << "<--  dp \n";
+		
+		dp_x.x -= dp(0); dp_x.y -= dp(1);
+		std::cout << dp_x << "<--    \n";
+		//system("pause");
+		if (dp.norm() < EPSILON) break;
+	}	
+	return X + (cv::Point)dp_x;
 }

@@ -14,8 +14,8 @@ void fit_solve(
 	ide[0].land_2d.resize(G_land_num, 2);
 	data.land_2d.resize(G_land_num, 2);
 	for (int i = 0; i < G_land_num; i++) {
-		ide[0].land_2d(i, 0) = landmarks[i].x, ide[0].land_2d(i, 1) = data.image.rows-landmarks[i].y;
-		data.land_2d(i, 0)= landmarks[i].x,data.land_2d(i,1)= data.image.rows- landmarks[i].y;
+		ide[0].land_2d(i, 0) = landmarks[i].x, ide[0].land_2d(i, 1) = data.image.rows - landmarks[i].y;
+		data.land_2d(i, 0) = landmarks[i].x, data.land_2d(i, 1) = data.image.rows - landmarks[i].y;
 	}
 	init_exp_ide_r_t_pq(ide, 1);
 	//data.land_2d = ide[0].land_2d;

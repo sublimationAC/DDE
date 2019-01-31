@@ -14,7 +14,7 @@
 #define normalization
 //#define posit
 #define EPSILON 1e-3
-#define norm_point_def
+//#define small_rect_def
 
 
 const int G_land_num = 74;
@@ -52,6 +52,11 @@ const float G_rand_angle_border = 15.0* pi / 180;
 
 const float G_norm_face_rect_ave = 120;
 const float G_norm_face_rect_sig = 60;
+
+const int G_pixel_batch_feature_size = 2;
+
+const int G_lk_batch_size = 3;
+const int G_lk_step = 20;
 
 struct Target_type {
 	Eigen::VectorXf exp;
@@ -134,6 +139,7 @@ void show_image_0rect(cv::Mat img, std::vector<cv::Point2d> landmarks);
 void show_image_land_2d(cv::Mat img, Eigen::MatrixX2f &land);
 
 void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter &output_video);
+void save_video(cv::Mat img, std::vector<cv::Point2f> landmarks, cv::VideoWriter &output_video);
 //void cal_2d_land_i_0dis(
 //	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data);
 void cal_2d_land_i_0dis_ang(
@@ -167,3 +173,9 @@ void update_training_data(DataPoint &data, std::vector<DataPoint> &training_data
 
 void rect_scale(cv::Rect &rect, double scale);
 void normalize_gauss_face_rect(cv::Mat image, cv::Rect &rect);
+
+uchar get_batch_feature(int patch_size, cv::Mat img, cv::Point p);
+
+std::pair<float, float> cal_sobel(cv::Mat img, cv::Point p);
+
+cv::Point lk_get_pos_next(int batch_feature_size, cv::Point p, cv::Mat frame_last, cv::Mat frame_now);
