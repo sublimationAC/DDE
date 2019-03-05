@@ -3,7 +3,6 @@
 #include "ofMain.h"
 #include "mesh.h"
 
-
 class ofApp : public ofBaseApp {
 
 public:

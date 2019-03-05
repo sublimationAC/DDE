@@ -1,12 +1,12 @@
 #include "mesh.h"
-void init(std:: string &name,Mesh_my &mesh,double scale) {
+void init(std:: string &name,Mesh_my &mesh,double scale, std::string &lv_name, Eigen :: VectorXi &land_cor) {
 	printf("Initiating mesh...\n");
 	igl::readOBJ(name, mesh.vtx, mesh.rect);	
 	mesh.num_rect = mesh.rect.rows();
 	mesh.num_vtx = mesh.vtx.rows();
 	mesh.vtx *= scale;
 	cal_norm(mesh);
-	
+	load_land_cor_from_lv(lv_name, land_cor);
 }
 
 void cal_norm(Mesh_my &mesh) {
@@ -110,3 +110,20 @@ void draw_mesh(Mesh_my &mesh) {
 	}
 }
 
+void draw_land(Mesh_my &mesh,Eigen::VectorXi &land_cor) {
+	float scale = 1.01;
+	glPointSize(8);
+	for (int i = 0; i < G_land_num; i++) {
+		glBegin(GL_POINTS);
+		glVertex3f(mesh.vtx(land_cor(i), 0)*scale, mesh.vtx(land_cor(i), 1)*scale, mesh.vtx(land_cor(i), 2)*scale);
+		glEnd();
+	}
+
+	glLineWidth(3);
+	for (int i = 1; i < 15; i++) {
+		glBegin(GL_LINES);
+		glVertex3f(mesh.vtx(land_cor(i), 0)*scale, mesh.vtx(land_cor(i), 1)*scale, mesh.vtx(land_cor(i), 2)*scale);
+		glVertex3f(mesh.vtx(land_cor(i - 1), 0)*scale, mesh.vtx(land_cor(i - 1), 1)*scale, mesh.vtx(land_cor(i - 1), 2)*scale);
+		glEnd();
+	}
+}

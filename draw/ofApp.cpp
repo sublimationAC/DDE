@@ -2,30 +2,30 @@
 
 
 //const int per_frame = 5;
-const int tot_obj = 1;
+const int tot_obj = 10;
 Mesh_my face[tot_obj+1];
 Mesh_my face_ref;
-std::string mesh_name = "D:\\sydney\\first\\code\\2017\\DDE\\FaceX\\photo_test\\video\\lv_mp4\\lv_file/lv_file/lv_mp4_1";
+std::string mesh_name = "G:/DDE/server_lv/lv_out_l1l2_lps_smth/lv_out_";
 
+Eigen::VectorXi land_cor[tot_obj + 1];
 
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-	string name;
+	string name,name_lv;
 	for (int i = 0; i < tot_obj; i++) {
-		printf("Loading %d now\n", i * 2 + 1);
+		printf("Loading %d now\n", i + 1);
 		name = mesh_name;
-		name = name + to_string(i*2+1) +"_0norm.obj";
-
+		name = name + to_string(i+1) +"_0norm.obj";
+		name_lv = mesh_name + to_string(i + 1) + ".lv";
 		//cout << name << '\n';
 		//system("pause");
-		init(name, face[i], 0.6);
+		init(name, face[i], 0.6, name_lv, land_cor[i]);
 	}
-	/*init(name_horse, cal_horse, 300);
-	init(name_camel, cal_camel, 1.5);*/
+	
 	idx = 0;// set the beginning of the obj
 	// lights setting 
-	lights.resize(3);
+	lights.resize(2);
 	float light_distance = 5000.;
 	lights[0].setPosition(2.0*light_distance, 1.0*light_distance, 0.);
 	lights[1].setPosition(-1.0*light_distance, -1.0*light_distance, -1.0* light_distance);
@@ -63,12 +63,17 @@ void ofApp::draw() {
 	
 	ofPushMatrix();
 //	ofTranslate(0, -100 );
-	ofScale(ofGetWidth() / 3);
+	ofScale(ofGetWidth() / 3.5);
 	ofSetColor(ofColor(133, 180, 250));
 	draw_mesh(face[idx]);
 	ofPopMatrix();
 
-
+	ofPushMatrix();
+	//	ofTranslate(0, -100 );
+	ofScale(ofGetWidth() / 3.5);
+	ofSetColor(ofColor(0, 250, 0));
+	draw_land(face[idx],land_cor[idx]);
+	ofPopMatrix();
 	//sleep(10);
 	//ofDrawCircle(10, 100, 10);
 	cam.end();
