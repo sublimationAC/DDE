@@ -1,6 +1,6 @@
 #include "calculate_coeff.h"
 //#define test_coef_ide_exp
-#define test_bldshps
+//#define test_bldshps
 //#define test_3d2dland
 //#define test_2dslt_def
 iden ide[G_train_pic_id_num];
@@ -12,12 +12,13 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 	std::string lfw_path = "D:/sydney/first/data_me/lfw_image";
 	std::string gtav_path = "D:/sydney/first/data_me/GTAV_image";
 	std::string test_path = "D:/sydney/first/data_me/test";
-	std::string test_path_one = "D:/sydney/first/data_me/test_only_one";
-	std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77_ite25_bound.lv";
+	std::string test_path_one = "D:/sydney/first/data_me/test_only_one_2d";
+	std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
 	std::string sg_vl_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_value_sqrt_77.txt";
 	std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/sillht.txt";
 	std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_point_rect.txt";
 	std::string save_coef_path = "./ide_fw_p1.lv";
+	std::string fwhs_path_p = "./data_me/fw_p1";
 
 #endif // win64
 #ifdef linux
@@ -64,7 +65,7 @@ int main() {
 #endif // test_3d2dland
 
 #ifdef test_2dslt_def
-	test_2dslt(imgs, ide, 0, 1);
+	test_2dslt(imgs, ide, 0, 0);
 #endif
 	
 
@@ -95,7 +96,7 @@ int main() {
 #endif // normalization
 	cal_dis(ide, bldshps, id_idx);
 	int id = 0;
-	save_fitting_coef_each(fwhs_path_p, ide, id);
+	//save_fitting_coef_each(test_path_one, ide, id);
 #endif
 #endif
 	system("pause");

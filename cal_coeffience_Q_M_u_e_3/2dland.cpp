@@ -110,7 +110,9 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 						ide[id_idx].land_2d(i, 1)=temp.rows- ide[id_idx].land_2d(i, 1);					
 #endif //  flap_2dland
 
-
+					ide[id_idx].img_size.conservativeResize(ide[id_idx].num + 1, 2);
+					ide[id_idx].img_size(ide[id_idx].num, 0) = temp.cols;
+					ide[id_idx].img_size(ide[id_idx].num, 1) = temp.rows;
 
 					ide[id_idx].num++;
 				}
@@ -279,13 +281,19 @@ void test_2dslt(
 #ifdef cal_land_num
 	//int mi = img_idx * G_land_num + 70;
 	CvFont font;
-	cvInitFont(&font, CV_FONT_HERSHEY_COMPLEX, 0.01, 0.5, 1, 0.5, 8);
-	IplImage *pImage = cvLoadImage("D:\\sydney\\first\\data_me\\FaceWarehouse\\Tester_6\\TrainingPose/pose_17.jpg");
+	cvInitFont(&font, CV_FONT_HERSHEY_COMPLEX, 0.05, 0.7, 1, 0.5, 8);
+	IplImage *pImage = cvLoadImage("D:\\sydney\\first\\data_me\\FaceWarehouse\\Tester_6\\TrainingPose/pose_0.jpg");
 	std::string si;
-	for (int i = img_idx * G_land_num + 46; i < img_idx * G_land_num + 53; i++) {
+	Eigen::RowVector2f center;
+	center.setZero();
+	for (int i = 0; i < G_land_num; i++)
+		center += ide[id_idx].land_2d.row(img_idx * G_land_num + i);
+	center.array() /= G_land_num;
+	for (int i = img_idx * G_land_num; i < img_idx * G_land_num + 74; i++) {
 		//27-35 66-74
 		si = std::to_string(i - img_idx * G_land_num), cvPutText(pImage, si.c_str()
-			, cv::Point2f(ide[id_idx].land_2d(i, 0), imgs[id_idx][img_idx].rows - ide[id_idx].land_2d(i, 1))
+			, cv::Point2f(ide[id_idx].land_2d(i, 0)*3- center(0)*2, 
+				(imgs[id_idx][img_idx].rows - ide[id_idx].land_2d(i, 1))*3-center(1) * 2)
 			, &font, cv::Scalar(255, 255, 255));
 		cv::circle(
 			imgs[id_idx][img_idx],
@@ -293,11 +301,15 @@ void test_2dslt(
 			3, cv::Scalar(244, 244, 244), -1, 8, 0);
 	}
 	cvShowImage("Original", pImage);
+	cv::waitKey(0);
 	/*rectangle(images[j], Point2d(bounding_box[j].start_x, bounding_box[j].start_y)
 	, Point2d(bounding_box[j].start_x + bounding_box[j].width, bounding_box[j].start_y + bounding_box[j].height)
 	, Scalar(255, 244, 244), 3, 4, 0);*/
 
 #endif // cal_land_num
+	cv::Mat_<uchar> image = cv::imread("D:\\sydney\\first\\code\\2017\\DDE\\FaceX\\photo_test\\test_samples\\22.png");
+	cv::imshow("test_image", image);// imgs[id_idx][img_idx]);
+	cv::waitKey(0);
 	FILE *fp;
 	fopen_s(&fp, "./test_slt_vtx.txt", "r");
 	int n;
@@ -306,7 +318,7 @@ void test_2dslt(
 		float x, y;
 		fscanf_s(fp, "%f%f", &x, &y);
 		cv::circle(
-			imgs[id_idx][img_idx],
+			image,//imgs[id_idx][img_idx],
 			cv::Point2f(x, y),
 			1, cv::Scalar(244, 244, 244), -1, 8, 0);
 		//if (i<=12) 
@@ -315,7 +327,7 @@ void test_2dslt(
 		//	cv::Point2f(x, y),
 		//	3, cv::Scalar(244, 244, 244), -1, 8, 0);
 	}
-	cv::imshow("test_image", imgs[id_idx][img_idx]);
+	cv::imshow("test_image", image);// imgs[id_idx][img_idx]);
 	cv::waitKey(0);
 	fclose(fp);
 	/*for (int j = 0; j < landmark_num; j++)
@@ -539,9 +551,9 @@ void save_fitting_coef_each(std::string path, iden *ide, int &id_idx) {
 			}
 			if (dp->d_type == DT_DIR) {
 				printf("save_fitting_coef %d...\n", id_idx);
-				int exp_idx = 0;
+				int exp_idx = 0, temp = ide[id_idx].num;
 				id_idx += save_fitting_coef_same_id(path + "/" + dp->d_name, ide, id_idx,exp_idx);
-				if (exp_idx != ide[id_idx].num) {
+				if (exp_idx!=0 && exp_idx != temp) {
 					std::cout << "error !!! \n";
 					perror("Not match .");
 					exit(1);

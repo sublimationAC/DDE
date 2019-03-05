@@ -9,6 +9,7 @@
 #include <cv.h>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/calib3d.hpp>
 #include <iostream>
 #include <cstring>
 #include <cstdio>
@@ -22,9 +23,11 @@
 	#include <dirent.h>
 #endif // linux
 
-//#define posit
-#define normalization
+#define posit
+//#define normalization
 #define deal_64
+#define solve_cvpnp
+
 
 #define EPSILON 1e-6
 
@@ -53,6 +56,8 @@ struct iden
 	Eigen::MatrixXi land_cor;
 	Eigen::MatrixX3f s;
 	Eigen::MatrixX2f dis;
+
+	Eigen::MatrixX2f img_size;
 	float fcs;
 };
 
