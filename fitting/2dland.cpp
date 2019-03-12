@@ -110,7 +110,9 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 						ide[id_idx].land_2d(i, 1)=temp.rows- ide[id_idx].land_2d(i, 1);					
 #endif //  flap_2dland
 
-
+					ide[id_idx].img_size.conservativeResize(ide[id_idx].num + 1, 2);
+					ide[id_idx].img_size(ide[id_idx].num, 0) = temp.cols;
+					ide[id_idx].img_size(ide[id_idx].num, 1) = temp.rows;
 
 					ide[id_idx].num++;
 				}
@@ -161,6 +163,9 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 					for (int i = G_land_num * (ide[id_idx].num); i < G_land_num*(ide[id_idx].num + 1); i++)
 						ide[id_idx].land_2d(i, 1) = temp.rows - ide[id_idx].land_2d(i, 1);
 #endif //  flap_2dland
+					ide[id_idx].img_size.conservativeResize(ide[id_idx].num + 1, 2);
+					ide[id_idx].img_size(ide[id_idx].num, 0) = temp.cols;
+					ide[id_idx].img_size(ide[id_idx].num, 1) = temp.rows;
 					ide[id_idx].num++;
 				}
 			}
@@ -341,12 +346,14 @@ void load_inner_land_corr(Eigen::VectorXi &cor) {
 	fclose(fp);
 }
 void load_jaw_land_corr(Eigen::VectorXi &jaw_cor) {
+	/*
 	puts("loading jaw landmarks correspondence...");
 	FILE *fp;
 	fopen_s(&fp, "./inner_jaw/jaw_vertex.txt", "r");
 	for (int i = 0; i < G_jaw_land_num; i++) fscanf_s(fp, "%d", &jaw_cor(i));
 	//std::cout << cor <<"------------------------------\n"<< '\n';
 	fclose(fp);
+	*/
 }
 
 void load_slt(
@@ -355,16 +362,19 @@ void load_slt(
 	puts("loading silhouette line&vertices...");
 	FILE *fp;
 	fopen_s(&fp, path_slt.c_str(), "r");
-	for (int i = 0; i < G_line_num; i++) {
-		int num;
-		fscanf_s(fp, "%d", &num);
+	int line_num;
+	fscanf_s(fp, "%d", &line_num);
+	for (int i = 0; i < line_num; i++) {
+		int x,num;
+
+		fscanf_s(fp, "%d%d",&x, &num);
 		slt_line[i].resize(num);
 		for (int j = 0; j < num; j++)
 			fscanf_s(fp, "%d", &slt_line[i][j]);
 	}
 	fclose(fp);
 	fopen_s(&fp, path_rect.c_str(), "r");
-	for (int i = 0; i < 496; i++) {
+	for (int i = 0; i < 1585; i++) {
 		int idx, num;
 		fscanf_s(fp, "%d%d", &idx, &num);
 		slt_point_rect[idx].resize(num);
@@ -423,9 +433,16 @@ void save_result(iden *ide, int tot_id, std ::string name) {
 
 			for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&ide[i_id].land_cor(exp_idx, i_v), sizeof(int), 1, fp);
 
+#ifdef posit			
+			fwrite(&ide[i_id].fcs, sizeof(float), 1, fp);
+#endif // posit
+#ifdef normalization
 			for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
 				fwrite(&ide[i_id].s(exp_idx * 2 + i, j), sizeof(float), 1, fp);
 
+#endif // normalization
+
+			
 			for (int i_v = 0; i_v < G_land_num; i_v++) {
 				fwrite(&ide[i_id].dis(exp_idx*G_land_num + i_v, 0), sizeof(float), 1, fp);
 				fwrite(&ide[i_id].dis(exp_idx*G_land_num + i_v, 1), sizeof(float), 1, fp);
@@ -461,21 +478,28 @@ void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot) {
 		Eigen::MatrixX2f land(G_land_num*ide[i_id].num,2);
 		for (int exp_idx = 0; exp_idx < ide[i_id].num; exp_idx++) {
 			Eigen::Matrix3f R = ide[i_id].rot.block(exp_idx * 3, 0, 3, 3);
+#ifdef normalization
 			Eigen::MatrixX3f s = ide[i_id].s.block(exp_idx * 2, 0, 2, 3);
 			Eigen::RowVector2f T = ide[i_id].tslt.block(exp_idx, 0, 1, 2);
+#endif
+
+			
 			for (int i_v = 0; i_v < G_land_num; i_v++) {
 				Eigen::Vector3f v;
 				for (int axis = 0; axis < 3; axis++)
 					v(axis) = cal_3d_vtx_(ide, bldshps, i_id, exp_idx, ide[i_id].land_cor(exp_idx, i_v), axis);
-				land.row(exp_idx*G_land_num + i_v) = (s*R*v).transpose() + T - ide[i_id].center.row(exp_idx);
+#ifdef posit
+				v = R * v + ide[i_id].tslt.row(exp_idx).transpose();
+
+				land(exp_idx*G_land_num + i_v, 0) = v(0)*(ide[i_id].fcs) / v(2) + ide[i_id].center(exp_idx, 0);
+				land(exp_idx*G_land_num + i_v, 1) = v(1)*(ide[i_id].fcs) / v(2) + ide[i_id].center(exp_idx, 1);
+#endif // posit				
 #ifdef normalization
-				land.row(exp_idx*G_land_num + i_v) -= ide[i_id].center.row(exp_idx);
+				land.row(exp_idx*G_land_num + i_v) = (s*R*v).transpose() + T;				
 #endif // normalization
 			}
 		}
 		ide[i_id].dis.array() = ide[i_id].land_2d.array() - land.array();
-
-
 	}
 }
 
@@ -507,8 +531,14 @@ void save_result_one(iden *ide, int i_id, int exp_idx, std::string name) {
 
 	for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&ide[i_id].land_cor(exp_idx, i_v), sizeof(int), 1, fp);
 
+#ifdef posit			
+	fwrite(&ide[i_id].fcs, sizeof(float), 1, fp);
+#endif // posit
+#ifdef normalization
 	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
 		fwrite(&ide[i_id].s(exp_idx * 2 + i, j), sizeof(float), 1, fp);
+
+#endif // normalization
 
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		fwrite(&ide[i_id].dis(exp_idx*G_land_num + i_v, 0), sizeof(float), 1, fp);
@@ -598,7 +628,7 @@ int save_fitting_coef_same_id(std::string path, iden *ide, int id_idx,int &exp_i
 					////	
 					flag = 1;
 					std::string p = path + "/" + dp->d_name;
-					save_result_one(ide, id_idx, exp_idx, p.substr(0, p.find(".land")) + ".lv");
+					save_result_one(ide, id_idx, exp_idx, p.substr(0, p.find(".land")) + ".psp_f");
 					exp_idx++;
 				}
 			}

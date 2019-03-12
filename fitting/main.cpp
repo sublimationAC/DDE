@@ -2,7 +2,7 @@
 //#define test_coef_ide_exp
 //#define test_bldshps
 //#define test_3d2dland
-#define test_2dslt_def
+//#define test_2dslt_def
 iden ide[G_train_pic_id_num];
 
 Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
@@ -12,11 +12,11 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 	std::string lfw_path = "D:/sydney/first/data_me/lfw_image";
 	std::string gtav_path = "D:/sydney/first/data_me/GTAV_image";
 	std::string test_path = "D:/sydney/first/data_me/test";
-	std::string test_path_one = "D:/sydney/first/data_me/test_only_one";
-	std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77_ite25_bound.lv";
+	std::string test_path_one = "D:/sydney/first/data_me/test_only_one_2d";
+	std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
 	std::string sg_vl_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_value_sqrt_77.txt";
-	std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/sillht.txt";
-	std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_point_rect.txt";
+	std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_line_new.txt";
+	std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_rect_new.txt";
 	std::string save_coef_path = "./ide_fw_p1.lv";
 	std::string fwhs_path_p = "./data_me/fw_p1";
 
@@ -32,8 +32,8 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 	std::string test_path_three = "./data_me/test_only_three";	
 	std::string bldshps_path = "./deal_data/blendshape_ide_svd_50_ite25_0bound.lv";
 	std::string sg_vl_path = "./deal_data/blendshape_ide_svd_value_sqrt_77.txt";
-	std::string slt_path = "./3d22d/sillht.txt";
-	std::string rect_path = "./3d22d/slt_point_rect.txt";
+	std::string slt_path = "./3d22d/slt_line_new.txt";
+	std::string rect_path = "./3d22d/slt_rect_new.txt";
 	std::string save_coef_path = "../fitting_coef/ide_fw_p1.lv";
 #endif // linux
 
@@ -41,7 +41,7 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 
 std::vector< std::vector<cv::Mat_<uchar> > > imgs;
 Eigen::VectorXi inner_land_corr(G_inner_land_num);
-Eigen::VectorXi jaw_land_corr(G_jaw_land_num);
+//Eigen::VectorXi jaw_land_corr(G_jaw_land_num);
 std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
 std::vector<int> slt_line[G_line_num];
 Eigen::VectorXf ide_sg_vl(G_iden_num);
@@ -73,7 +73,7 @@ int main() {
 	//9 17
 	
 	load_inner_land_corr(inner_land_corr);
-	load_jaw_land_corr(jaw_land_corr);
+	//load_jaw_land_corr(jaw_land_corr);
 	//std::cout << inner_land_corr << '\n';
 	load_slt(slt_line,slt_point_rect,slt_path,rect_path);
 	load_bldshps(bldshps,bldshps_path,ide_sg_vl, sg_vl_path);
@@ -89,14 +89,14 @@ int main() {
 
 	init_exp_ide_r_t_pq(ide, id_idx);
 #ifdef posit
-	cal_f(ide, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect,ide_sg_vl);
+	cal_f(ide, bldshps, inner_land_corr, slt_line, slt_point_rect,ide_sg_vl);
 #endif // posit
 #ifdef normalization
 	solve(ide, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl);
 #endif // normalization
 	cal_dis(ide, bldshps, id_idx);
 	int id = 0;
-	save_fitting_coef_each(fwhs_path_p, ide, id);
+	save_fitting_coef_each(test_path_one, ide, id);
 #endif
 #endif
 	system("pause");
