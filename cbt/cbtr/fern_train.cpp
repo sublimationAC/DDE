@@ -133,9 +133,9 @@ void FernTrain::Regress_ta(vector<Target_type> *targets,
 		for (int j = 0; j < G_tslt_num; j++)
 			Y_tslt.at<double>(i, j) = (*targets)[i].tslt(j);
 
-		for (int j=0;j< G_angle_num;j++)
+		for (int j = 0; j < G_angle_num; j++)
 			Y_angle.at<double>(i, j) = (*targets)[i].angle(j);
-					
+
 
 		//Eigen::VectorXf temp_v;
 		//target2vector((*targets)[i], temp_v);

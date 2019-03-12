@@ -46,33 +46,94 @@ float cal_3d_vtx_0ide(
 //
 //}
 
-void recal_dis_ang(DataPoint &data, Eigen::MatrixXf &bldshps) {
+void recal_dis_ang_sqz_optmz(DataPoint &data, Eigen::MatrixXf &bldshps) {
 	//puts("calculating displacement...");
 	Eigen::MatrixX2f land(G_land_num, 2);
+#ifdef perspective
+	Eigen::Vector3f T = data.shape.tslt;
+#endif // perspective
+
+#ifdef normalization
 	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
+
+	
 	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.shape.angle);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
-			v(axis) = cal_3d_vtx(bldshps, data.user, data.shape.exp, data.land_cor(i_v), axis);
+			v(axis) = cal_3d_vtx_optmz_last(bldshps, data.user, data.shape.exp, data.land_cor(i_v), axis);
 		//land.row(i_v) = ((data.s) * ((data.shape.rot) * v)).transpose() + T;
+
+#ifdef perspective
+		v = rot * v + T;
+		land(i_v, 0) = v(0)*data.fcs / v(2)+data.center(0);
+		land(i_v, 1) = v(1)*data.fcs / v(2) + data.center(1);
+#endif
+#ifdef normalization
 		land.row(i_v) = ((data.s) * (rot * v)).transpose() + T;
+#endif
 	}
 
 	data.shape.dis.array() = data.land_2d.array() - land.array();
 }
-
+//void recal_dis_ang(DataPoint &data, Eigen::MatrixXf &bldshps) {
+//	//puts("calculating displacement...");
+//	Eigen::MatrixX2f land(G_land_num, 2);
+//#ifdef perspective
+//	Eigen::Vector3f T = data.shape.tslt;
+//#endif // perspective
+//
+//#ifdef normalization
+//	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+//#endif // normalization
+//
+//
+//	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.shape.angle);
+//	for (int i_v = 0; i_v < G_land_num; i_v++) {
+//		Eigen::Vector3f v;
+//		for (int axis = 0; axis < 3; axis++)
+//			v(axis) = cal_3d_vtx(bldshps, data.user, data.shape.exp, data.land_cor(i_v), axis);
+//		//land.row(i_v) = ((data.s) * ((data.shape.rot) * v)).transpose() + T;
+//
+//#ifdef perspective
+//		v = rot * v + T;
+//		land(i_v, 0) = v(0)*data.fcs / v(2) + data.center(0);
+//		land(i_v, 1) = v(1)*data.fcs / v(2) + data.center(1);
+//#endif
+//#ifdef normalization
+//		land.row(i_v) = ((data.s) * (rot * v)).transpose() + T;
+//#endif
+//	}
+//
+//	data.shape.dis.array() = data.land_2d.array() - land.array();
+//}
 void recal_dis_ang_0ide(DataPoint &data, Eigen::MatrixXf &exp_matrix) {
 	//puts("calculating displacement...");
 	Eigen::MatrixX2f land(G_land_num, 2);
+
+#ifdef perspective
+	Eigen::Vector3f T = data.shape.tslt;
+#endif // perspective
+
+#ifdef normalization
 	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
+
 	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.shape.angle);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
 			v(axis) = cal_3d_vtx_0ide(exp_matrix, data.shape.exp, i_v, axis);
 		//land.row(i_v) = ((data.s) * ((data.shape.rot) * v)).transpose() + T;
+#ifdef perspective
+		v = rot * v + T;
+		land(i_v, 0) = v(0)*data.fcs / v(2) + data.center(0);
+		land(i_v, 1) = v(1)*data.fcs / v(2) + data.center(1);
+#endif // perspective
+#ifdef normalization
 		land.row(i_v) = ((data.s) * (rot * v)).transpose() + T;
+#endif
 	}
 
 	data.shape.dis.array() = data.land_2d.array() - land.array();
@@ -411,29 +472,83 @@ double cal_cv_area(cv::Point2d point0, cv::Point2d point1, cv::Point2d point2) {
 //
 //}
 
-void cal_init_2d_land_ang_i(std::vector<cv::Point2d> &ans, const DataPoint &data, Eigen::MatrixXf &bldshps) {
+void cal_init_2d_land_ang_i_sqz_optmz(std::vector<cv::Point2d> &ans, const DataPoint &data, Eigen::MatrixXf &bldshps) {
 	ans.resize(G_land_num);
-	Eigen::RowVector2f T = data.init_shape.tslt.block(0, 0, 1, 2);
+	
+#ifdef perspective
+	Eigen::Vector3f T = data.shape.tslt;
+#endif // perspective
+
+#ifdef normalization
+	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
+
+	
 	Eigen::VectorXf user = data.user;
 	Eigen::VectorXf init_exp = data.init_shape.exp;
 	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.init_shape.angle);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
-			v(axis) = cal_3d_vtx(bldshps, user, init_exp, data.land_cor(i_v), axis);
+			v(axis) = cal_3d_vtx_optmz_last(bldshps, user, init_exp, data.land_cor(i_v), axis);
 		//Eigen::RowVector2f temp = ((data.s) * ((data.init_shape.rot) * v)).transpose() + T + data.init_shape.dis.row(i_v);
-
+#ifdef perspective
+		v = rot * v + T;
+		ans[i_v].x = v(0)*data.fcs / v(2) + data.center(0) + data.init_shape.dis(i_v, 0);
+		ans[i_v].y = v(1)*data.fcs / v(2) + data.center(1) + data.init_shape.dis(i_v, 1);
+		ans[i_v].y = data.image.rows - ans[i_v].y;
+#endif // perspective
+#ifdef normalization
 		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T + data.init_shape.dis.row(i_v);
 		ans[i_v].x = temp(0); ans[i_v].y = data.image.rows - temp(1);
+#endif
 	}
 
 }
-
+//void cal_init_2d_land_ang_i(std::vector<cv::Point2d> &ans, const DataPoint &data, Eigen::MatrixXf &bldshps) {
+//	ans.resize(G_land_num);
+//
+//#ifdef perspective
+//	Eigen::Vector3f T = data.shape.tslt;
+//#endif // perspective
+//
+//#ifdef normalization
+//	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+//#endif // normalization
+//
+//
+//	Eigen::VectorXf user = data.user;
+//	Eigen::VectorXf init_exp = data.init_shape.exp;
+//	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.init_shape.angle);
+//	for (int i_v = 0; i_v < G_land_num; i_v++) {
+//		Eigen::Vector3f v;
+//		for (int axis = 0; axis < 3; axis++)
+//			v(axis) = cal_3d_vtx(bldshps, user, init_exp, data.land_cor(i_v), axis);
+//		//Eigen::RowVector2f temp = ((data.s) * ((data.init_shape.rot) * v)).transpose() + T + data.init_shape.dis.row(i_v);
+//#ifdef perspective
+//		v = rot * v + T;
+//		ans[i_v].x = v(0)*data.fcs / v(2) + data.center(0) + data.init_shape.dis(i_v, 0);
+//		ans[i_v].y = v(1)*data.fcs / v(2) + data.center(1) + data.init_shape.dis(i_v, 1);
+//		ans[i_v].y = data.image.rows - ans[i_v].y;
+//#endif // perspective
+//#ifdef normalization
+//		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T + data.init_shape.dis.row(i_v);
+//		ans[i_v].x = temp(0); ans[i_v].y = data.image.rows - temp(1);
+//#endif
+//	}
+//
+//}
 
 void cal_init_2d_land_ang_0ide_i(
 	std::vector<cv::Point2d> &ans, const DataPoint &data, Eigen::MatrixXf &exp_matrix) {
 	ans.resize(G_land_num);
-	Eigen::RowVector2f T = data.init_shape.tslt.block(0, 0, 1, 2);
+#ifdef perspective
+	Eigen::Vector3f T = data.shape.tslt;
+#endif // perspective
+
+#ifdef normalization
+	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
 	Eigen::VectorXf init_exp = data.init_shape.exp;
 	Eigen::MatrixX3f rot = get_r_from_angle_zyx(data.init_shape.angle);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
@@ -442,20 +557,28 @@ void cal_init_2d_land_ang_0ide_i(
 			v(axis) = cal_3d_vtx_0ide(exp_matrix, init_exp, i_v, axis);
 		//Eigen::RowVector2f temp = ((data.s) * ((data.init_shape.rot) * v)).transpose() + T + data.init_shape.dis.row(i_v);
 
+#ifdef perspective
+		v = rot * v + T;
+		ans[i_v].x = v(0)*data.fcs / v(2)+data.center(0) + data.init_shape.dis(i_v, 0);
+		ans[i_v].y = v(1)*data.fcs / v(2) + data.center(1) + data.init_shape.dis(i_v, 1);
+		ans[i_v].y = data.image.rows - ans[i_v].y;
+#endif // perspective
+#ifdef normalization
 		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T + data.init_shape.dis.row(i_v);
 		ans[i_v].x = temp(0); ans[i_v].y = data.image.rows - temp(1);
+#endif
+		
 	}
-
 }
 
 void get_init_land_ang_0ide_i(
 	std::vector<cv::Point2d> &ans, const DataPoint &data,
-	Eigen::MatrixXf &bldshps, std::vector<Eigen::MatrixXf> &arg_exp_land_matrix) {
+	Eigen::MatrixXf &bldshps) {
 
-	if (data.ide_idx == -1)
-		cal_init_2d_land_ang_i(ans, data, bldshps);
-	else
-		cal_init_2d_land_ang_0ide_i(ans, data, arg_exp_land_matrix[data.ide_idx]);
+//	if (data.ide_idx == -1)
+		cal_init_2d_land_ang_i_sqz_optmz(ans, data, bldshps);
+	//else
+	//	cal_init_2d_land_ang_0ide_i(ans, data, arg_exp_land_matrix[data.ide_idx]);
 }
 
 
@@ -574,8 +697,8 @@ void print_target(Target_type &data) {
 void print_target_file(Target_type &data,FILE* fp) {
 
 	fprintf(fp, "\n exp:\n");
-	for (int i=0;i<G_nShape;i++)
-		fprintf(fp, "%.10f ",data.exp(i));
+	for (int i = 0; i < G_nShape; i++)
+		fprintf(fp, "%.10f ", data.exp(i));
 	fprintf(fp, "\n dis:\n");
 	for (int i = 0; i < G_land_num; i++)
 		fprintf(fp, "%.10f %.10f , ", data.dis(i,0),data.dis(i, 1));
@@ -849,4 +972,317 @@ uchar get_sobel_batch_feature(cv::Mat img, cv::Point p) {
 		}
 	ans = max(ans, (float)0);
 	return (uchar)(ans);
+}
+void load_slt(
+	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	std::string path_slt, std::string path_rect) {
+	puts("loading silhouette line&vertices...");
+	FILE *fp;
+	fopen_s(&fp, path_slt.c_str(), "r");
+	int line_num;
+	fscanf_s(fp, "%d", &line_num);
+	for (int i = 0; i < line_num; i++) {
+		int x, num;
+
+		fscanf_s(fp, "%d%d", &x, &num);
+		slt_line[i].resize(num);
+		for (int j = 0; j < num; j++)
+			fscanf_s(fp, "%d", &slt_line[i][j]);
+	}
+	fclose(fp);
+	fopen_s(&fp, path_rect.c_str(), "r");
+	for (int i = 0; i < 1585; i++) {
+		int idx, num;
+		fscanf_s(fp, "%d%d", &idx, &num);
+		slt_point_rect[idx].resize(num);
+		for (int j = 0; j < num; j++) fscanf_s(fp, "%d%d", &slt_point_rect[idx][j].first, &slt_point_rect[idx][j].second);
+	}
+	fclose(fp);
+}
+
+
+void update_slt_init_shape(
+	Eigen::MatrixXf &bldshps, std::vector<int> *slt_line,
+	std::vector<std::pair<int, int> > *slt_point_rect, DataPoint &data) {
+	////////////////////////////////project
+
+	puts("updating silhouette...");
+	//Eigen::Matrix3f R = data.shape.rot;
+	Eigen::Matrix3f R = get_r_from_angle_zyx(data.init_shape.angle);
+#ifdef perspective
+	Eigen::Vector3f T = data.init_shape.tslt;
+#endif // perspective
+#ifdef normalization
+	Eigen::Vector3f T = data.init_shape.tslt.transpose();
+#endif // normalization
+
+
+	//puts("A");
+	Eigen::VectorXi slt_cddt(G_line_num);
+	Eigen::MatrixX3f slt_cddt_cdnt(G_line_num, 3);
+
+	//puts("B");
+	//FILE *fp;
+	//fopen_s(&fp, "test_slt.txt", "w");
+	for (int i = 0; i < G_line_num; i++) {
+		//printf("i %d\n", i);
+		float min_v_n = 10000;
+		int min_idx = 0;
+		Eigen::Vector3f cdnt;
+#ifdef perspective
+		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
+			//printf("j %d\n", j);
+			int x = slt_line[i][j];
+			//printf("x %d\n", x);
+			Eigen::Vector3f nor;
+			nor.setZero();
+			Eigen::Vector3f V[2], point[3];
+			for (int axis = 0; axis < 3; axis++)
+				point[0](axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, data.shape.exp, x, axis);
+
+			point[0] = R * point[0] + T;
+			//test															//////////////////////////////////debug
+			//puts("A");
+			//fprintf(fp, "%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			//printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			//puts("B");
+
+
+			////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+			for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
+				//printf("k %d\n", k);
+				for (int axis = 0; axis < 3; axis++) {
+					point[1](axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, data.shape.exp, slt_point_rect[x][k].first, axis);
+					point[2](axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, data.shape.exp, slt_point_rect[x][k].second, axis);
+				}
+				for (int i = 1; i < 3; i++) point[i] = R * point[i] + T;
+				V[0] = point[1] - point[0];
+				V[1] = point[2] - point[0];
+				//puts("C");
+				V[0] = V[0].cross(V[1]);
+				//puts("D");
+				V[0].normalize();
+				nor = nor + V[0];
+				//printf("__ %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			}
+			//printf("== %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			//puts("F");
+			nor.normalize();
+			//std::cout << "nor++\n\n" << nor << "\n";
+			//std::cout << "point--\n\n" << point[0].normalized() << "\n";
+			//std::cout << "rltv--\n\n"<<x << ' ' << nor.dot(point[0].normalized()) << "\n";
+			if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+
+
+			/*point[0].normalize();
+			if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[0];*/
+		}
+		//puts("H");
+		//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
+		slt_cddt(i) = min_idx;
+		cdnt(0) = cdnt(0)*data.fcs / cdnt(2) + data.center(0);
+		cdnt(1) = cdnt(1)*data.fcs / cdnt(2) + data.center(1);
+		slt_cddt_cdnt.row(i) = cdnt.transpose();
+#endif // perspective
+#ifdef normalization
+		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
+			//			printf("j %d\n", j);
+			int x = slt_line[i][j];
+			//			printf("j %d x %d ",j, x);
+			Eigen::Vector3f nor;
+			nor.setZero();
+			Eigen::Vector3f V[2], point[3];
+			for (int axis = 0; axis < 3; axis++)
+				point[0](axis) = cal_3d_vtx_optmz_last(bldshps,data.user, data.init_shape.exp, x, axis);
+			std::cout << "p0 : " << point[0] << "\n";
+				//cal_3d_vtx_0ide(exp_r_t_all_matrix, data.shape.exp, x, axis);
+			
+			point[0] = R * point[0];
+			//test															//////////////////////////////////debug
+			//puts("A");
+			//fprintf(fp, "%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			//printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			//puts("B");
+
+
+			////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+			for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
+				//printf("k %d\n", k);
+				for (int axis = 0; axis < 3; axis++) {
+					point[1](axis) = 
+						cal_3d_vtx_optmz_last(bldshps, data.user, data.init_shape.exp, slt_point_rect[x][k].first, axis);
+					point[2](axis) = 
+						cal_3d_vtx_optmz_last(bldshps, data.user, data.init_shape.exp, slt_point_rect[x][k].second, axis);
+				}
+				for (int i = 1; i < 3; i++) point[i] = R * point[i];
+				V[0] = point[1] - point[0];
+				V[1] = point[2] - point[0];
+				//puts("C");
+				V[0] = V[0].cross(V[1]);
+				//puts("D");
+				V[0].normalize();
+				nor = nor + V[0];
+				//printf("__ %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			}
+			//printf("== %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			//puts("F");
+			nor.normalize();
+			//std::cout << "nor++\n\n" << nor << "\n";
+			//std::cout << "point--\n\n" << point[0].normalized() << "\n";
+			//std::cout << "rltv--\n\n"<<x << ' ' << nor.dot(point[0].normalized()) << "\n";
+			if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+
+
+			/*point[0].normalize();
+			if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[0];*/
+		}
+		//puts("H");
+		//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
+		slt_cddt(i) = min_idx;
+		cdnt.block(0, 0, 2, 1) = data.s*cdnt + T.block(0, 0, 2, 1);
+		slt_cddt_cdnt.row(i) = cdnt.transpose();
+		//		printf("\n=-= + %d %d %.5f %.5f\n",i,min_idx,cdnt(0),cdnt(1));
+		/*		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
+					//printf("j %d\n", j);
+					int x = slt_line[i][j];
+					//printf("x %d\n", x);
+					Eigen::Vector3f point, temp;
+					for (int axis = 0; axis < 3; axis++)
+						point(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix,data.shape.exp, x, axis);
+					point = R * point;
+					temp = point;
+					point.normalize();
+					if (fabs(point(2)) < min_v_n) min_v_n = fabs(point(2)), min_idx = x, cdnt = temp;// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				}
+				slt_cddt(i) = min_idx;
+				cdnt.block(0, 0, 2, 1) = data.s*cdnt + T.block(0, 0, 2, 1);
+				/*cdnt(0) = cdnt(0)*ide[id_idx].s(exp_idx, 0) + T(0);
+				cdnt(1) = cdnt(1)*ide[id_idx].s(exp_idx, 1) + T(1);
+				slt_cddt_cdnt.row(i) = cdnt.transpose();*/
+#endif
+
+	}
+	//fclose(fp);
+	//puts("C");
+	for (int i = 0; i < 15; i++) {
+		//printf("C i %d\n", i);
+		float min_dis = 10000;
+		int min_idx = 0;
+		for (int j = 0; j < G_line_num; j++) {
+#ifdef perspective
+			float temp =
+				fabs(slt_cddt_cdnt(j, 0) - data.land_2d(i, 0)) +
+				fabs(slt_cddt_cdnt(j, 1) - data.land_2d(i, 1));
+#endif // perspective
+#ifdef normalization
+			float temp =
+				fabs(slt_cddt_cdnt(j, 0) - data.land_2d(i, 0) + data.init_shape.dis(i, 0)) + //data.shape.dis(i, 0)) +
+				fabs(slt_cddt_cdnt(j, 1) - data.land_2d(i, 1) + data.init_shape.dis(i, 1));// +data.shape.dis(i, 1));
+#endif // normalization
+
+
+			if (temp < min_dis) min_dis = temp, min_idx = j;
+		}
+		//		printf("%d %d %d %.10f\n", i, min_idx, slt_cddt(min_idx),min_dis);
+		data.land_cor(i) = slt_cddt(min_idx);
+
+	}
+	std :: cout << "slt_cddt_cdnt\n" << slt_cddt_cdnt.block(0,0, slt_cddt_cdnt.rows(),2) << "\n";
+	std::cout << "out land\n" << data.land_2d.block(0, 0,15,2) << "\n";
+	std::cout << "land correlation\n" << data.land_cor.transpose() << "\n";
+	system("pause");
+}
+
+int map_vtxidx_sqz[G_nVerts];
+int map_vtxidx_sqz_inv[3000];
+int map_vtxidx_sqz_inv_num = 0;
+void get_index_slt_point_rect(
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	const DataPoint &data) {
+
+	puts("calculating get_index_slt_point_rect!");
+	memset(map_vtxidx_sqz, -1, sizeof(map_vtxidx_sqz));
+	int now = 0;
+	for (int i_v=0; i_v<G_line_num;i_v++)
+		for (int j=0;j<slt_line[i_v].size();j++)
+			if (map_vtxidx_sqz[slt_line[i_v][j]] == -1) {
+				map_vtxidx_sqz[slt_line[i_v][j]] = now;
+				map_vtxidx_sqz_inv[now] = slt_line[i_v][j];
+				now++;
+			}
+	for (int i_v = 0; i_v < G_nVerts; i_v++)
+		for (int j = 0; j < slt_point_rect[i_v].size(); j++) {
+			if (map_vtxidx_sqz[slt_point_rect[i_v][j].first] == -1) {
+				map_vtxidx_sqz[slt_point_rect[i_v][j].first] = now;
+				map_vtxidx_sqz_inv[now] = slt_point_rect[i_v][j].first;
+				now++;
+			}
+			if (map_vtxidx_sqz[slt_point_rect[i_v][j].second] == -1) {
+				map_vtxidx_sqz[slt_point_rect[i_v][j].second] = now;
+				map_vtxidx_sqz_inv[now] = slt_point_rect[i_v][j].second;
+				now++;
+			}
+		}
+	for (int i_v = 0; i_v < G_land_num; i_v++)
+		if (map_vtxidx_sqz[data.land_cor(i_v)] == -1) {
+			map_vtxidx_sqz[data.land_cor(i_v)] = now;
+			map_vtxidx_sqz_inv[now] = data.land_cor(i_v);
+			now++;
+		}
+	//printf("%d\n", now);
+	map_vtxidx_sqz_inv_num = now;
+	//system("pause");
+}
+
+Eigen::VectorXf optmz_last_user;
+Eigen::MatrixXf optmz_last_sqz_bldshps;
+int vtx_optmz_last_fl = 0;
+float cal_3d_vtx_optmz_last(
+	Eigen::MatrixXf &bldshps, Eigen::VectorXf &user, Eigen::VectorXf &exp, int vtx_idx, int axis) {
+
+	//if (vtx_optmz_last_fl == 0) {
+	//	for (int i_v = 0; i_v < G_nVerts; i_v++)
+	//		if (map_vtxidx_sqz[i_v] != -1) {
+	//			map_vtxidx_sqz_inv[map_vtxidx_sqz[i_v]] = i_v;
+	//			map_vtxidx_sqz_inv_num = max(map_vtxidx_sqz_inv_num, map_vtxidx_sqz[i_v]);
+	//		}
+	//	map_vtxidx_sqz_inv_num++;
+	//}
+	//printf("cal_3d_vtx_optmz_last  %d %d\n", vtx_idx, axis);
+	if ((vtx_optmz_last_fl == 0) || ((user - optmz_last_user).norm() > EPSILON)) {
+		optmz_last_sqz_bldshps.resize(G_nShape, map_vtxidx_sqz_inv_num*3);
+		for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+			for (int i_v = 0; i_v < map_vtxidx_sqz_inv_num; i_v++) {
+				Eigen::Vector3f V;
+				V.setZero();
+		//		printf("%d %d %d %d\n", i_shape, i_v, map_vtxidx_sqz_inv[i_v], map_vtxidx_sqz[map_vtxidx_sqz_inv[i_v]]);
+				if (map_vtxidx_sqz[map_vtxidx_sqz_inv[i_v]] != i_v) system("pause");
+				for (int j = 0; j < 3; j++)
+					for (int i_id = 0; i_id < G_iden_num; i_id++)
+						if (i_shape == 0)
+							V(j) += user(i_id)*bldshps(i_id, map_vtxidx_sqz_inv[i_v] * 3 + j);
+						else
+							V(j) += user(i_id)*
+							(bldshps(i_id, i_shape*G_nVerts * 3 + map_vtxidx_sqz_inv[i_v] * 3 + j) 
+								- bldshps(i_id, map_vtxidx_sqz_inv[i_v] * 3 + j));
+	//			std::cout << V << "\n";
+				//system("pause");
+				for (int j = 0; j < 3; j++)
+					optmz_last_sqz_bldshps(i_shape, i_v * 3 + j) = V(j);
+			}
+		optmz_last_user = user;
+//		printf("%d %d\n", optmz_last_sqz_bldshps.rows(), optmz_last_sqz_bldshps.cols());
+	}
+	vtx_optmz_last_fl = 1;
+	float ans = 0;
+	//printf("-- %d %d\n", vtx_idx, axis);
+	//printf("-- %d %d\n", map_vtxidx_sqz[vtx_idx], map_vtxidx_sqz_inv[map_vtxidx_sqz[vtx_idx]]);
+
+	for (int i_shape = 0; i_shape < G_nShape; i_shape++) {
+		//printf("%d %d %d %d\n", i_shape, map_vtxidx_sqz[vtx_idx] * 3 + axis, optmz_last_sqz_bldshps.rows(), optmz_last_sqz_bldshps.cols());
+		ans += exp(i_shape)*optmz_last_sqz_bldshps(i_shape, map_vtxidx_sqz[vtx_idx] * 3 + axis);
+	}
+	return ans;
 }

@@ -56,14 +56,24 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 					for (int i = 0; i < temp.landmarks.size(); i++)
 						temp.landmarks[i].y = temp.image.rows - temp.landmarks[i].y;
 #endif //  flap_2dland
-					cal_rect(temp);
+					//cal_rect(temp);
 					//system("pause");
-					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
+#ifdef  normalization
 					if (_access((p.substr(0, p.find(".land")) + ".lv").c_str(), 0) == -1) {
 						puts("No lv !!!! error !");
 						exit(1);
 
 					}
+					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
+#endif //  normalization
+
+#ifdef perspective
+					if (_access((p.substr(0, p.find(".land")) + ".psp_f").c_str(), 0) == -1) {
+						puts("No psp_f !!!! error !");
+						exit(1);
+					}
+					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".psp_f", temp);
+#endif // perspective
 
 
 					img.push_back(temp);
@@ -255,9 +265,17 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	temp.land_cor.resize(G_land_num);
 	for (int i_v = 0; i_v < G_land_num; i_v++) fread(&temp.land_cor(i_v), sizeof(int), 1, fp);
 
+
+#ifdef normalization
 	temp.s.resize(2, 3);
 	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
 		fread(&temp.s(i, j), sizeof(float), 1, fp);
+#endif // normalization
+
+#ifdef perspective
+	fread(&temp.fcs, sizeof(float), 1, fp);
+#endif // perspective
+
 
 	temp.shape.dis.resize(G_land_num, 2);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
@@ -266,8 +284,9 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	}
 
 	fclose(fp);
-
+#ifdef normalization
 	temp.land_2d.rowwise() += temp.center;
+#endif // normalization	
 	puts("load successful!");
 }
 

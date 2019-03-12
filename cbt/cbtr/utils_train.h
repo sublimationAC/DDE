@@ -1,3 +1,10 @@
+#define normalization
+//#define perspective
+
+#define EPSILON 1e-3
+
+#define rand_exp_from_set_def
+#define mxini_def
 
 const int G_land_num = 74;
 const int G_train_pic_id_num = 3300;
@@ -7,12 +14,20 @@ const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 77;
 const int G_inner_land_num = 59;
-const int G_line_num = 50;
-const int G_jaw_land_num = 20;
+const int G_line_num = 85;
+//const int G_jaw_land_num = 20;
+
 
 const float G_rand_rot_border = 0.1;
 
+#ifdef normalization
 const float G_rand_tslt_border = 20;
+#endif // normalization
+#ifdef perspective
+const float G_rand_tslt_border = 1;
+#endif // perspective
+
+
 const float G_rand_s_border = 10;
 const float G_rand_f_border = 100;
 const float G_rand_exp_border = 0.6;
@@ -22,23 +37,31 @@ const int G_rnd_tslt = 5;
 const int G_rnd_exp = 15;
 const int G_rnd_user = 5;
 const int G_rnd_camr = 5;
+#ifdef mxini_def
+const int G_trn_factor = 35 + G_rnd_rot + G_rnd_tslt;
+#else
 const int G_trn_factor = 35;
+#endif // mxini_def
+
+
 
 
 //const int G_target_type_size= G_nShape + 3 + 3 * 3 + 2 * G_land_num;
 const int G_target_type_size = G_nShape-1 + 2 + 3 + 2 * G_land_num;
 const int G_ta_size = 2 + 3;
 const int G_disexp_size = 2 * G_land_num + G_nShape - 1;
-const int G_tslt_num = 2;
+#ifdef normalization
+	const int G_tslt_num = 2;
+#endif
+#ifdef perspective
+	const int G_tslt_num = 3;
+#endif
 const int G_angle_num = 3;
 
 const float G_norm_face_rect_ave = 120;
 const float G_norm_face_rect_sig = 60;
 
 const int G_pixel_batch_feature_size = 2;
-
-#define normalization
-#define EPSILON 1e-3
 
 
 //#define small_rect_def
@@ -58,7 +81,7 @@ const int G_pixel_batch_feature_size = 2;
 #include<math.h>
 
 const float pi = acos(-1);
-const float G_rand_angle_border = 15.0* pi / 180 ;
+const float G_rand_angle_border = 1.0* pi / 180 ;
 
 
 struct TrainingParameters
@@ -87,7 +110,12 @@ struct TrainingParameters
 
 struct Target_type {
 	Eigen::VectorXf exp;
+#ifdef perspective
+	Eigen::Vector3f tslt;
+#endif
+#ifdef normalization
 	Eigen::RowVector3f tslt;
+#endif
 	//Eigen::Matrix3f rot;
 	Eigen::MatrixX2f dis;
 	Eigen::RowVector3f angle;
@@ -105,14 +133,15 @@ struct DataPoint
 	Eigen::RowVector2f center;
 	Eigen::MatrixX2f land_2d;
 	int ide_idx = 0;
-#ifdef posit
-		float f;
-#endif // posit
+#ifdef perspective
+		float fcs;
+#endif // perspective
 #ifdef normalization
 	Eigen::MatrixX3f s;
 #endif
 	
 	Eigen::VectorXi land_cor;
+	int train_init_user_idx = 0;
 };
 
 
