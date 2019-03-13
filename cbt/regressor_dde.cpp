@@ -27,7 +27,14 @@ using namespace std;
 void cal_2d_land_i_ang_0ide(
 	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &exp_r_t_all_matrix, const Target_type &data, DataPoint &ini_data) {
 	ans.resize(G_land_num);
-	Eigen::RowVector2f T = data.tslt.block(0, 0, 1, 2);
+#ifdef perspective
+	Eigen::Vector3f T = data.tslt;
+#endif // perspective
+
+#ifdef normalization
+	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
+
 	Eigen::Matrix3f rot = get_r_from_angle_zyx(data.angle);
 	Eigen::VectorXf exp = data.exp;
 	exp(0) = 1;
@@ -35,9 +42,19 @@ void cal_2d_land_i_ang_0ide(
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
 			v(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, exp, ini_data.land_cor(i_v), axis);
+#ifdef perspective
+		v = rot * v + T;
+		ans[i_v].x = ini_data.fcs*v(0) / v(2) + ini_data.center(0) + data.dis(i_v, 0);
+		ans[i_v].y = ini_data.fcs*v(1) / v(2) + ini_data.center(1) + data.dis(i_v, 1);
+		ans[i_v].y = ini_data.image.rows - ans[i_v].y;
+#endif // perspective
+
+#ifdef normalization
 		Eigen::RowVector2f temp = ((ini_data.s) * (rot * v)).transpose() + T + data.dis.row(i_v);
 		ans[i_v].x = temp(0); ans[i_v].y = ini_data.image.rows - temp(1);
+#endif // normalization
 	}
+
 }
 
 void get_pixel_value(

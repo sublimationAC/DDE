@@ -5,12 +5,13 @@
 
 #include <opencv2/opencv.hpp>
 
-#include "face_x.h"
+#include "image_process.hpp"
 #include "calculate_coeff_dde.hpp"
 #define debug_def
 #define from_video
 //#define norm_lk_face
-//#define gs_filter
+#define gs_filter
+#define usefilter
 //#define md_filter
 //#define show_feature_def
 #define lk_rgb_def
@@ -18,23 +19,43 @@
 
 const int G_gs_window_size = 6;
 const float G_gs_angle_sig = 3;
+const float G_mix_smooth_lps = 0.7;
 using namespace std;
 
+
 const string kModelFileName = "model_r/model_all_5_face.xml.gz";
+const string kModelFileName_facex_5 = "model_r/model_small.xml.gz";
 const string kModelFileName_dde = "model_r/model_dde_ta_ed_enh_norm_gauss.xml.gz";
+
 const string kAlt2 = "model_r/haarcascade_frontalface_alt2.xml";
 const string kTestImage = "./photo_test/test_samples//005_04_03_051_05.png";//video/lv_mp4/images/frame0.jpg";// /test_samples/005_04_03_051_05.png";
 const string videoImage = "./photo_test/video/lv_mp4/images/frame";
 
 const string videolvsave = "./photo_test/video/rubbish/r_";
+
+#ifdef perspective
+const string gs_smooth_video_psp_f_save = "./photo_test/video/lv_out_npmxini_pp204_gs_smooth/lv_out_npmxini_pp204_gs_smooth";
+const string lps_smooth_video_psp_f_save = "./photo_test/video/lv_out_npmxini_pp204_lps_smooth/lv_out_npmxini_pp204_lps_smooth";
+const string cmblpsgs_smooth_video_psp_f_save = "./photo_test/video/lv_out_npmxini_pp204_lps_smooth/lv_out_npmxini_pp204_cmblpsgs_smooth";
+
+const std::string test_debug_psp_f_path = "./psp_f_file/lv_easy_pre.psp_f";// fitting_result_t66_pose_0.lv";
+#endif
+
+#ifdef normalization
 const string gs_smooth_videolvsave = "./photo_test/video/lv_out_npmxini_pp204_gs_smooth/lv_out_npmxini_pp204_gs_smooth";
+const string lps_smooth_videolvsave = "./photo_test/video/lv_out_npmxini_pp204_lps_smooth/lv_out_npmxini_pp204_lps_smooth";
+const string cmblpsgs_smooth_videolvsave = "./photo_test/video/lv_out_npmxini_pp204_lps_smooth/lv_out_npmxini_pp204_cmblpsgs_smooth";
 
 const std::string test_debug_lv_path = "./lv_file/lv_easy_pre.lv";// fitting_result_t66_pose_0.lv";
+#endif
+
 const string video_path = "./photo_test/video/lv_easy.avi";
 
-string land_video_save_path = "./photo_test/video/lv_easy_npmxini_pp204.avi";
-string land_gs_smooth_video_save_path = "./photo_test/video/lv_easy_mxini_pp204_gs_smooth.avi";
-
+const std::string video_save_path_suffix = "_npmxini_ppg_3_3_f4.avi";
+string land_video_save_path = "./photo_test/video/lv_easy"+video_save_path_suffix;
+string land_gs_smooth_video_save_path = "./photo_test/video/lv_easy_gs_smooth" + video_save_path_suffix;
+string land_lps_smooth_video_save_path = "./photo_test/video/lv_easy_lps_smooth" + video_save_path_suffix;
+string land_cmblpsgs_smooth_video_save_path = "./photo_test/video/lv_easy_cmblpsgs_smooth" + video_save_path_suffix;
 
 string lk_video_save_path = "./lv_easy_lk.avi";
 #ifdef win64
@@ -47,7 +68,7 @@ std::string sg_vl_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/
 std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/sillht.txt";
 std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_point_rect.txt";
 std::string inner_cor_path = "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3/cal_coeffience_Q_M_u_e_3/inner_jaw/inner_vertex_corr.txt";
-std::string jaw_land_path = "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3/cal_coeffience_Q_M_u_e_3/inner_jaw/jaw_vertex.txt";
+//std::string jaw_land_path = "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3/cal_coeffience_Q_M_u_e_3/inner_jaw/jaw_vertex.txt";
 ///std::string save_coef_path = "./ide_fw_p1.lv";
 ///std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
 ///std::string fwhs_path_p1 = "D:/sydney/first/data_me/test_lv";
@@ -72,7 +93,7 @@ std::string bldshps_path = "/home/weiliu/fitting_dde/cal/deal_data/blendshape_id
 #include <algorithm>
 DataPoint pre_process(
 	const FaceX & face_x, const DDEX &dde_x, Eigen::MatrixXf &bldshps,
-	Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	Eigen::VectorXi &inner_land_corr,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXf &ide_sg_vl, vector<DataPoint> &train_data, Eigen::MatrixX3i &tri_idx)
 {
@@ -128,13 +149,20 @@ DataPoint pre_process(
 	DataPoint data;
 	data.image = gray_image;
 
-	fit_solve(landmarks, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, data);
+	fit_solve(landmarks, bldshps, inner_land_corr, slt_line, slt_point_rect, ide_sg_vl, data);
 
 	//testing the result of fitting
 	cal_2d_land_i_0dis_ang(landmarks, bldshps, data);
 #ifdef debug_def
+#ifdef perspective
+	save_for_debug(data, test_debug_psp_f_path);
+#endif // perspective
+
+#ifdef normalization
 	data.land_2d.rowwise() -= data.center;
 	save_for_debug(data, test_debug_lv_path);
+#endif
+
 #endif
 
 #ifdef win64
@@ -214,7 +242,7 @@ void Tracking_face(const FaceX & face_x)
 
 void DDE_run_test(
 	DataPoint &data, const DDEX &dde_x, Eigen::MatrixXf &bldshps,
-	Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	Eigen::VectorXi &inner_land_corr,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXf &ide_sg_vl, vector<DataPoint> &train_data, Eigen::MatrixX3i &tri_idx) {
 
@@ -225,7 +253,7 @@ void DDE_run_test(
 	Target_type last_data[3];
 	for (int test_round = 0; test_round < 500; test_round++) {
 		printf("dde_round %d: \n", test_round);
-		dde_x.dde(data.image,data, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
+		dde_x.dde(data.image,data, bldshps, tri_idx, train_data,  slt_line, slt_point_rect, exp_r_t_all_matrix);
 		printf("dde_round %d: \n", test_round);
 		puts("---------------------------------------------------");
 		print_datapoint(data);
@@ -235,8 +263,12 @@ void DDE_run_test(
 
 		if (test_round % 10 == 0) {
 			//show_image_0rect(data.image, data.landmarks);
-			
+#ifdef perspective
+			save_datapoint(data, kTestImage + "_" + to_string(test_round) + ".psp_f");
+#endif // perspective
+#ifdef normalization
 			save_datapoint(data, kTestImage + "_" + to_string(test_round) + ".lv");
+#endif // normalization
 			puts("been saven");
 			system("pause");
 		}
@@ -256,7 +288,7 @@ void DDE_run_test(
 
 void DDE_video_test(
 	DataPoint &data, const DDEX &dde_x, Eigen::MatrixXf &bldshps,
-	Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	Eigen::VectorXi &inner_land_corr, 
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXf &ide_sg_vl, vector<DataPoint> &train_data, Eigen::MatrixX3i &tri_idx) {
 
@@ -312,25 +344,31 @@ void DDE_video_test(
 	Target_type smooth_data[G_gs_window_size+1];
 	//cv::Mat smooth_rgb_image[G_gs_window_size];
 	cv::VideoWriter gs_smooth_output_video(land_gs_smooth_video_save_path, CV_FOURCC_DEFAULT, 25.0, cv::Size(data.image.cols, data.image.rows));
+	cv::VideoWriter lps_smooth_output_video(land_lps_smooth_video_save_path, CV_FOURCC_DEFAULT, 25.0, cv::Size(data.image.cols, data.image.rows));
+	cv::VideoWriter cmblpsgs_smooth_output_video(land_cmblpsgs_smooth_video_save_path, CV_FOURCC_DEFAULT, 25.0, cv::Size(data.image.cols, data.image.rows));
+
 	cv::Mat lk_frame_last;
 	DataPoint lk_data_last;
+
+	const FaceX facex_5(kModelFileName_facex_5);
 	for (int test_round = 1;/* test_round < 30*/; test_round++) {
 		cap >> rgb_image;
 		if (rgb_image.empty()) break;
+		run_align_image(facex_5, rgb_image, faces[0]);
 		cv::cvtColor(rgb_image, data.image, cv::COLOR_BGR2GRAY);
-		normalize_gauss_face_rect(data.image, faces[0]);
+		//normalize_gauss_face_rect(data.image, faces[0]);
 		/*cv::imshow("nm_gs", data.image);
 		cv::waitKey(0);*/
 		printf("dde_round %d: \n", test_round);
 		//data.image = cv::imread(videoImage+ to_string(test_round) + ".jpg", cv::IMREAD_GRAYSCALE);
-		dde_x.dde(rgb_image, data, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
+		dde_x.dde(rgb_image, data, bldshps, tri_idx, train_data, slt_line, slt_point_rect, exp_r_t_all_matrix);
 		printf("dde_round %d: \n", test_round);
 		puts("---------------------------------------------------");
 
 		//show_image_0rect(data.image, data.landmarks);
 
 		//--------------------------------------post_processing
-
+		DataPoint lps_data = data;
 		last_data[0] = last_data[1]; last_data[1] = last_data[2]; last_data[2] = data.shape;
 		if (test_round > 3) {
 			Eigen::MatrixXf exp_r_t_matrix;
@@ -346,6 +384,27 @@ void DDE_video_test(
 			data.shape.exp(0) = 1;
 			update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
 			system("pause");
+
+
+			
+			lps_data.shape.angle.array() = 3 * last_data[1].angle.array() - last_data[0].angle.array() - last_data[2].angle.array();
+			lps_data.shape.tslt.array() = 3 * last_data[1].tslt.array() - last_data[0].tslt.array() - last_data[2].tslt.array();
+			lps_data.shape.exp.array() = 3 * last_data[1].exp.array() - last_data[0].exp.array() - last_data[2].exp.array();
+			lps_data.shape.dis.array() = 3 * last_data[1].dis.array() - last_data[0].dis.array() - last_data[2].dis.array();
+
+			update_2d_land_ang_0ide(lps_data, exp_r_t_all_matrix);
+
+#ifdef perspective
+			save_datapoint(lps_data, lps_smooth_video_psp_f_save + "_" + to_string(test_round - 3) + ".lv");
+#endif // perspective
+
+#ifdef normalization
+			save_datapoint(lps_data, lps_smooth_videolvsave + "_" + to_string(test_round - 3) + ".lv");
+#endif // normalization
+
+			save_video(rgb_image, lps_data.landmarks, lps_smooth_output_video);
+
+			
 			//update_slt(
 		}
 		lk_frame_last = rgb_image.clone();
@@ -380,8 +439,9 @@ void DDE_video_test(
 
 
 		for (int j = G_gs_window_size; j >0; j--) smooth_data[j] = smooth_data[j - 1];
-		smooth_data[0] = data.shape;
-		if (test_round > G_gs_window_size ) {
+		//smooth_data[0] = data.shape;
+		smooth_data[0] = lps_data.shape;
+		if (test_round > G_gs_window_size+3 ) {
 			DataPoint result=data;			
 			result.shape.angle.setZero();
 			result.shape.tslt.setZero();
@@ -414,7 +474,7 @@ void DDE_video_test(
 #endif // md_filter
 
 			
-			dde_x.dde_onlyexpdis(rgb_image, result, bldshps, tri_idx, train_data, jaw_land_corr, slt_line, slt_point_rect, exp_r_t_all_matrix);
+			dde_x.dde_onlyexpdis(rgb_image, result, bldshps, tri_idx, train_data, slt_line, slt_point_rect, exp_r_t_all_matrix);
 
 
 			smooth_data[0].dis = result.shape.dis;
@@ -459,11 +519,28 @@ void DDE_video_test(
 			data.shape.exp(0) = 1;
 			update_2d_land_ang_0ide(data, exp_r_t_all_matrix);
 			
-			save_datapoint(data, gs_smooth_videolvsave + "_" + to_string(test_round-G_gs_window_size) + ".lv");
-			//print_datapoint(data);
-			//show_image_0rect(data.image, data.landmarks);
-				//save_video(data.image, data.landmarks, output_video);
-			save_video(rgb_image, data.landmarks, gs_smooth_output_video);
+			//save_datapoint(data, gs_smooth_videolvsave + "_" + to_string(test_round-G_gs_window_size) + ".lv");
+			////print_datapoint(data);
+			////show_image_0rect(data.image, data.landmarks);
+			//	//save_video(data.image, data.landmarks, output_video);
+			//save_video(rgb_image, data.landmarks, gs_smooth_output_video);
+
+			//data.shape.angle.array() = (1 - G_mix_smooth_lps) * data.shape.angle.array() + G_mix_smooth_lps * lps_data.shape.angle.array();
+			//data.shape.tslt.array() = (1 - G_mix_smooth_lps) * data.shape.tslt.array() + G_mix_smooth_lps * lps_data.shape.tslt.array();
+			//data.shape.exp.array() = (1 - G_mix_smooth_lps) * data.shape.exp.array() + G_mix_smooth_lps * lps_data.shape.exp.array();
+			//data.shape.dis.array() = (1 - G_mix_smooth_lps) * data.shape.dis.array() + G_mix_smooth_lps * lps_data.shape.dis.array();
+#ifdef perspective
+			save_datapoint(data, cmblpsgs_smooth_video_psp_f_save + "_" + to_string(test_round - G_gs_window_size) + ".lv");
+#endif // perspective
+
+#ifdef normalization
+			save_datapoint(data, cmblpsgs_smooth_videolvsave + "_" + to_string(test_round - G_gs_window_size) + ".lv");
+			
+#endif // normalization
+
+			save_video(rgb_image, data.landmarks, cmblpsgs_smooth_output_video);
+
+			data.shape = smooth_data[0];
 		}
 		
 #endif // usefilter
@@ -482,12 +559,7 @@ void DDE_video_test(
 
 
 
-Eigen::MatrixXf bldshps(G_iden_num, G_nShape * 3 * G_nVerts);
-Eigen::VectorXf ide_sg_vl(G_iden_num);
-Eigen::VectorXi inner_land_corr(G_inner_land_num);
-Eigen::VectorXi jaw_land_corr(G_jaw_land_num);
-std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
-std::vector<int> slt_line[G_line_num];
+
 
 void camera() {
 	cv::Mat frame;
@@ -568,7 +640,7 @@ void draw_land_train_pic(cv::Mat image,DataPoint &data, DataPoint &training_data
 	loss = sqrt(temp(0)*temp(0) + temp(1)*temp(1));
 	printf("++loss %.10f loss_norm %.10f\n", loss, loss_norm);
 }
-void show_data_land() {
+void show_data_land(Eigen :: MatrixXf &bldshps, Eigen::VectorXf &ide_sg_vl) {
 
 	cv::VideoCapture cap(video_path);
 	if (!cap.isOpened()) exit(2);//如果视频不能正常打开则返回
@@ -579,8 +651,15 @@ void show_data_land() {
 #ifndef from_video
 	data.image = cv::imread(kTestImage, cv::IMREAD_GRAYSCALE);
 #endif // !from_video
+#ifdef perspective
+	load_fitting_coef_one(test_debug_psp_f_path, data);
+#endif // perspective
 
+#ifdef normalization
 	load_fitting_coef_one(test_debug_lv_path, data);
+#endif // normalization
+
+	
 	data.landmarks.resize(G_land_num);
 
 	vector<DataPoint> train_data;
@@ -702,7 +781,14 @@ void test_sobel() {
 }
 
 void test_lk() {
+#ifdef perspective
+	DataPoint data = debug_preprocess(test_debug_psp_f_path);
+#endif // perspective
+
+#ifdef normalization
 	DataPoint data = debug_preprocess(test_debug_lv_path);
+#endif // normalization
+	
 	puts("testing LK...");
 
 	cv::VideoCapture cap(video_path);
@@ -827,6 +913,12 @@ void test_lk() {
 
 }
 
+Eigen::MatrixXf bldshps(G_iden_num, G_nShape * 3 * G_nVerts);
+Eigen::VectorXf ide_sg_vl(G_iden_num);
+Eigen::VectorXi inner_land_corr(G_inner_land_num);
+std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
+std::vector<int> slt_line[G_line_num];
+
 int main()
 {
 	test_lk();
@@ -872,7 +964,7 @@ int main()
 		puts("initializing dde...");
 		DDEX dde_x(kModelFileName_dde);
 		load_inner_land_corr(inner_land_corr,inner_cor_path);
-		load_jaw_land_corr(jaw_land_corr,jaw_land_path);
+		//load_jaw_land_corr(jaw_land_corr,jaw_land_path);
 		//std::cout << inner_land_corr << '\n';
 		load_slt(slt_line, slt_point_rect, slt_path, rect_path);
 		load_bldshps(bldshps, bldshps_path, ide_sg_vl, sg_vl_path);
@@ -912,7 +1004,13 @@ int main()
 		//{
 		//case 1:
 #ifdef debug_def
+#ifdef perspective
+		DataPoint init_data = debug_preprocess(test_debug_psp_f_path);
+#endif // perspective
+
+#ifdef normalization
 		DataPoint init_data = debug_preprocess(test_debug_lv_path);
+#endif // normalization
 
 		/*DataPoint init_data = pre_process(face_x, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
 		save_datapoint(init_data, test_debug_lv_path);
@@ -932,13 +1030,13 @@ int main()
 		//show_image_0rect(init_data.image, ref_shape);
 		//puts("asd");
 #else
-		DataPoint init_data = pre_process(face_x, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
+		DataPoint init_data = pre_process(face_x, dde_x, bldshps, inner_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
 #endif // debug_def
 
 #ifdef from_video
-		DDE_video_test(init_data, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
+		DDE_video_test(init_data, dde_x, bldshps, inner_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
 #else
-		DDE_run_test(init_data, dde_x, bldshps, inner_land_corr, jaw_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
+		DDE_run_test(init_data, dde_x, bldshps, inner_land_corr, slt_line, slt_point_rect, ide_sg_vl, training_data, tri_idx);
 #endif
 		//	break;
 		//case 2:

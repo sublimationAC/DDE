@@ -57,7 +57,18 @@ void load_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &i
 #endif //  flap_2dland
 					//cal_rect(temp);
 					//system("pause");
+
+#ifdef perspective
+					if (_access((p.substr(0, p.find(".land")) + ".psp_f").c_str(), 0) == -1) {
+						puts("No psp_f !!!! error !");
+						exit(1);
+					}
+					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".psp_f", temp);
+#endif // perspective
+#ifdef normalization
 					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
+#endif // normalization
+
 
 
 					img.push_back(temp);
@@ -221,9 +232,14 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	temp.land_cor.resize(G_land_num);
 	for (int i_v = 0; i_v < G_land_num; i_v++) fread(&temp.land_cor(i_v), sizeof(int), 1, fp);
 
+#ifdef perspective
+	fread(&temp.fcs, sizeof(float), 1, fp);
+#endif // perspective
+#ifdef normalization
 	temp.s.resize(2, 3);
 	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
 		fread(&temp.s(i, j), sizeof(float), 1, fp);
+#endif // normalization
 
 	temp.shape.dis.resize(G_land_num, 2);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
@@ -232,8 +248,9 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	}
 
 	fclose(fp);
-
+#ifdef normalization
 	temp.land_2d.rowwise() += temp.center;
+#endif // normalization	
 	puts("load successful!");
 }
 
@@ -263,6 +280,7 @@ void load_inner_land_corr(Eigen::VectorXi &cor,std::string &name) {
 	//std::cout << cor <<"------------------------------\n"<< '\n';
 	fclose(fp);
 }
+/*
 void load_jaw_land_corr(Eigen::VectorXi &jaw_cor,const std::string &name) {
 	puts("loading jaw landmarks correspondence...");
 	FILE *fp;
@@ -271,14 +289,16 @@ void load_jaw_land_corr(Eigen::VectorXi &jaw_cor,const std::string &name) {
 	//std::cout << cor <<"------------------------------\n"<< '\n';
 	fclose(fp);
 }
-
+*/
 void load_slt(
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	std::string path_slt, std::string path_rect) {
 	puts("loading silhouette line&vertices...");
 	FILE *fp;
 	fopen_s(&fp, path_slt.c_str(), "r");
-	for (int i = 0; i < G_line_num; i++) {
+	int line_num;
+	fscanf_s(fp, "%d", &line_num);
+	for (int i = 0; i < line_num; i++) {
 		int num;
 		fscanf_s(fp, "%d", &num);
 		slt_line[i].resize(num);
@@ -287,7 +307,7 @@ void load_slt(
 	}
 	fclose(fp);
 	fopen_s(&fp, path_rect.c_str(), "r");
-	for (int i = 0; i < 496; i++) {
+	for (int i = 0; i < 1585; i++) {
 		int idx, num;
 		fscanf_s(fp, "%d%d", &idx, &num);
 		slt_point_rect[idx].resize(num);

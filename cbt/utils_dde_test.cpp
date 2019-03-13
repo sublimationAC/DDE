@@ -37,12 +37,27 @@ void recal_dis_ang(DataPoint &data, Eigen::MatrixXf &bldshps) {
 	puts("calculating displacement...");
 	Eigen::MatrixX2f land(G_land_num, 2);
 	Eigen::Matrix3f rot = get_r_from_angle_zyx(data.shape.angle);
+#ifdef perspective
+	Eigen::Vector3f T = data.shape.tslt;
+#endif // perspective
+
+#ifdef normalization
 	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
 			v(axis) = cal_3d_vtx(bldshps, data.user, data.shape.exp, data.land_cor(i_v), axis);
+#ifdef perspective
+		v = rot * v + T;
+
+		land(i_v, 0) = v(0)*(data.fcs) / v(2) + data.center(0);
+		land(i_v, 1) = v(1)*(data.fcs) / v(2) + data.center(1);
+#endif // perspective
+#ifdef normalization
 		land.row(i_v) = ((data.s) * (rot * v)).transpose() + T;
+#endif // normalization
+		
 	}
 
 	data.shape.dis.array() = data.land_2d.array() - land.array();
@@ -423,35 +438,70 @@ double cal_cv_area(cv::Point2d point0, cv::Point2d point1, cv::Point2d point2) {
 
 void update_2d_land_ang_0ide(DataPoint &data, Eigen::MatrixXf &exp_r_t_all_matrix) {
 	data.landmarks.resize(G_land_num);
+#ifdef perspective
+	Eigen::Vector3f T = data.shape.tslt;
+#endif // perspective
+
+#ifdef normalization
 	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
+
 	Eigen::Matrix3f rot = get_r_from_angle_zyx(data.shape.angle);
-	Eigen::VectorXf init_exp = data.shape.exp;
-	data.center.setZero();
+	Eigen::VectorXf exp = data.shape.exp;
+	data.centeroid.setZero();
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
-			v(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, init_exp, data.land_cor(i_v), axis);
+			v(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, exp, data.land_cor(i_v), axis);
+#ifdef perspective
+		v = rot * v + T;
+		data.landmarks[i_v].x=data.land_2d(i_v,0)= v(0)*data.fcs / v(2) + data.center(0);
+		data.land_2d(i_v, 1) = v(1)*data.fcs / v(2) + data.center(1);
+		data.landmarks[i_v].y = data.image.rows - data.land_2d(i_v,1);
+		data.centeroid += data.land_2d.row(i_v);
+#endif // perspective
+#ifdef normalization		
+		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T;
+		ans[i_v].x = temp(0); ans[i_v].y = data.image.rows - temp(1);
 		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T + data.shape.dis.row(i_v);
 		data.landmarks[i_v].x = temp(0); data.landmarks[i_v].y = data.image.rows - temp(1);
 		data.land_2d.row(i_v) = temp;
-		data.center += temp;
+		data.centeroid += temp;
+		
+#endif	
 	}
-	data.center /= G_land_num;
+	data.centeroid /= G_land_num;
 }
 
 void cal_2d_land_i_ang_0ide(
 	std::vector<cv::Point2d> &ans, const Target_type &data, Eigen::MatrixXf &exp_r_t_all_matrix,
 	const DataPoint &data_dp) {
 	ans.resize(G_land_num);
-	Eigen::RowVector2f T = data.tslt.block(0, 0, 1, 2);
+#ifdef perspective
+	Eigen::Vector3f T = data.tslt;
+#endif // perspective
+
+#ifdef normalization
+	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
 	Eigen::Matrix3f rot = get_r_from_angle_zyx(data.angle);
 	Eigen::VectorXf exp = data.exp;
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
 			v(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, exp, data_dp.land_cor(i_v), axis);
+
+#ifdef perspective
+		v = rot * v + T;		
+		ans[i_v].x = data_dp.fcs*v(0) / v(2) + data_dp.center(0)+ data.dis(i_v,0);
+		ans[i_v].y = data_dp.fcs*v(1) / v(2) + data_dp.center(1) + data.dis(i_v, 1);
+		ans[i_v].y = data_dp.image.rows - ans[i_v].y;
+#endif // perspective
+
+#ifdef normalization
 		Eigen::RowVector2f temp = ((data_dp.s) * (rot * v)).transpose() + T + data.dis.row(i_v);
 		ans[i_v].x = temp(0); ans[i_v].y = data_dp.image.rows - temp(1);
+#endif // normalization
 	}
 }
 
@@ -542,21 +592,44 @@ void show_image_land_2d(cv::Mat img, Eigen::MatrixX2f &land) {
 	//system("pause");
 }
 
+//void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter &output_video) {
+//	cv::Mat image = img.clone();
+//	for (cv::Point2d landmark : landmarks)
+//	{
+//		cv::circle(image, landmark, 0.1, cv::Scalar(250, 250, 220), 2);
+//	}
+//	//cv::resize(image, image, cv::Size(640, 480 * 3));
+//	output_video << image;
+//}
 void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter &output_video) {
 	cv::Mat image = img.clone();
+	for (int i = 0; i < 15; i++)
+		cv::circle(image, landmarks[i], 1, cv::Scalar(0, 250, 0), 2);
+	for (int i = 1; i < 15; i++)
+		cv::line(image, landmarks[i], landmarks[i - 1], cv::Scalar(255, 0, 0));
+
 	for (cv::Point2d landmark : landmarks)
 	{
-		cv::circle(image, landmark, 0.1, cv::Scalar(250, 250, 220), 2);
+		cv::circle(image, landmark, 0.1, cv::Scalar(0, 250, 0), 2);
 	}
+	//for (int i = 1; i < 15; i++)
+	//	cv::line(image, landmarks[i], landmarks[i - 1], cv::Scalar(255, 0, 0));
 	//cv::resize(image, image, cv::Size(640, 480 * 3));
 	output_video << image;
 }
 void save_video(cv::Mat img, std::vector<cv::Point2f> landmarks, cv::VideoWriter &output_video) {
 	cv::Mat image = img.clone();
-	for (cv::Point2d landmark : landmarks)
+	//for (int i = 0; i < 15; i++)
+	//	cv::circle(image, landmarks[i], 1, cv::Scalar(0, 250, 0), 2);
+	//for (int i = 1; i < 15; i++)
+	//	cv::line(image, landmarks[i], landmarks[i - 1], cv::Scalar(255, 0, 0));
+
+	for (cv::Point2f landmark : landmarks)
 	{
-		cv::circle(image, landmark, 0.1, cv::Scalar(250, 250, 220), 2);
+		cv::circle(image, landmark, 0.1, cv::Scalar(0, 250, 0), 2);
 	}
+	//for (int i = 1; i < 15; i++)
+	//	cv::line(image, landmarks[i], landmarks[i - 1], cv::Scalar(255, 0, 0));
 	//cv::resize(image, image, cv::Size(640, 480 * 3));
 	output_video << image;
 }
@@ -578,7 +651,14 @@ void save_video(cv::Mat img, std::vector<cv::Point2f> landmarks, cv::VideoWriter
 void cal_2d_land_i_0dis_ang(
 	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &bldshps, DataPoint &data) {
 	ans.resize(G_land_num);
+#ifdef perspective
+	Eigen::Vector3f T = data.shape.tslt;
+#endif // perspective
+
+#ifdef normalization
 	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
+	
 	Eigen::VectorXf user = data.user;
 	Eigen::VectorXf exp = data.shape.exp;
 	Eigen::Matrix3f rot = get_r_from_angle_zyx(data.shape.angle);
@@ -586,8 +666,16 @@ void cal_2d_land_i_0dis_ang(
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
 			v(axis) = cal_3d_vtx(bldshps, user, exp, data.land_cor(i_v), axis);
+#ifdef perspective
+		v = rot * v + T;
+		ans[i_v].x = v(0)*data.fcs / v(2)+data.center(0);
+		ans[i_v].y = v(1)*data.fcs / v(2) + data.center(1);
+		ans[i_v].y = data.image.rows - ans[i_v].y;
+#endif // perspective
+#ifdef normalization		
 		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T;
 		ans[i_v].x = temp(0); ans[i_v].y = data.image.rows - temp(1);
+#endif	
 	}
 }
 
@@ -623,8 +711,13 @@ void save_for_debug(DataPoint &temp,std::string name) {
 
 	for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&temp.land_cor(i_v), sizeof(int), 1, fp);
 
+#ifdef perspective
+	fwrite(&temp.fcs, sizeof(float), 1, fp);
+#endif // perspective
+#ifdef normalization
 	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
 		fwrite(&temp.s(i, j), sizeof(float), 1, fp);
+#endif // normalization
 
 	//temp.shape.dis.rowwise() += temp.center;
 
@@ -696,8 +789,14 @@ void save_datapoint(DataPoint &temp, std::string save_name) {
 
 	for (int i_v = 0; i_v < G_land_num; i_v++) fwrite(&temp.land_cor(i_v), sizeof(int), 1, fp);
 
+#ifdef perspective
+	fwrite(&temp.fcs, sizeof(float), 1, fp);
+#endif // perspective
+
+#ifdef normalization
 	for (int i = 0; i < 2; i++) for (int j = 0; j < 3; j++)
 		fwrite(&temp.s(i, j), sizeof(float), 1, fp);
+#endif // normalization
 
 	//temp.shape.dis.rowwise() += temp.center;
 
@@ -880,7 +979,14 @@ Eigen::Matrix3f get_r_from_angle_zyx(const Eigen::Vector3f &angle) {
 void update_training_data(DataPoint &data, std::vector<DataPoint> &training_data, Eigen::MatrixXf &exp_r_t_all_matrix) {
 	puts("updating train data.....");
 	for (int i_train = 0; i_train < training_data.size(); i_train++) {
+#ifdef perspective
+		training_data[i_train].fcs = data.fcs;
+		training_data[i_train].center = data.center;
+#endif // perspective
+
+#ifdef normalization
 		training_data[i_train].s = data.s;
+#endif // normalization
 		update_2d_land_ang_0ide(training_data[i_train], exp_r_t_all_matrix);
 	}
 

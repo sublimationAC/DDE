@@ -11,8 +11,8 @@
 //#include <opencv2/videoio.hpp>
 #define win64
 //#define linux
-#define normalization
-//#define posit
+//#define normalization
+#define perspective
 #define EPSILON 1e-3
 //#define small_rect_def
 
@@ -25,8 +25,8 @@ const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 77;
 const int G_inner_land_num = 59;
-const int G_line_num = 50;
-const int G_jaw_land_num = 20;
+const int G_line_num = 85;
+//const int G_jaw_land_num = 20;
 
 const float G_rand_rot_border = 0.1;
 const float G_rand_tslt_border = 10;
@@ -40,7 +40,7 @@ const int G_rnd_user = 5;
 const int G_rnd_camr = 5;
 const int G_trn_factor = 35;
 
-const int G_tslt_num = 2;
+const int G_tslt_num = 3;
 const int G_angle_num = 3;
 const int G_target_type_size = G_nShape - 1 + G_tslt_num + G_angle_num + 2 * G_land_num;
 
@@ -60,7 +60,13 @@ const int G_lk_step = 20;
 
 struct Target_type {
 	Eigen::VectorXf exp;
+
+#ifdef perspective
+	Eigen::Vector3f tslt;
+#endif // perspective
+#ifdef normalization
 	Eigen::RowVector3f tslt;
+#endif
 	//Eigen::Matrix3f rot;
 	Eigen::Vector3f angle;
 	Eigen::MatrixX2f dis;
@@ -76,10 +82,11 @@ struct DataPoint
 	Target_type shape;
 	Eigen::VectorXf user;
 	Eigen::RowVector2f center;
+	Eigen::RowVector2f centeroid;
 	Eigen::MatrixX2f land_2d;
-#ifdef posit
-	float f;
-#endif // posit
+#ifdef perspective
+	float fcs;
+#endif // perspective
 #ifdef normalization
 	Eigen::MatrixX3f s;
 #endif

@@ -1,33 +1,3 @@
-// Ceres Solver - A fast non-linear least squares minimizer
-// Copyright 2015 Google Inc. All rights reserved.
-// http://ceres-solver.org/
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// * Redistributions of source code must retain the above copyright notice,
-//   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright notice,
-//   this list of conditions and the following disclaimer in the documentation
-//   and/or other materials provided with the distribution.
-// * Neither the name of Google Inc. nor the names of its contributors may be
-//   used to endorse or promote products derived from this software without
-//   specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-//
-// Author: sameeragarwal@google.com (Sameer Agarwal)
-
 #include "ceres/ceres.h"
 #include "glog/logging.h"
 #include "calculate_coeff_dde.hpp"
@@ -38,7 +8,10 @@ using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
 
-float beta_sum_user = 0;
+float beta_sum_user = 200;
+float beta_l1_sum_exp = 30;
+float beta_l2_exp = 30;
+
 
 struct ceres_cal_exp {
 	ceres_cal_exp(
@@ -59,25 +32,26 @@ struct ceres_cal_exp {
 		//T ans = (T)0;
 		for (int i_v = 0; i_v < G_land_num; i_v++) {
 			T V[3];
-			for (int j = 0; j < 3; j++) V[j] = (T)(0);
+			//for (int j = 0; j < 3; j++) V[j] = (T)(0);
+			for (int j = 0; j < 3; j++) V[j] = (T)(exp_point(0, i_v * 3 + j));
 			//printf("%d\n", i_v);
 			//V.setZero();
 
 			//puts("QAQ");
 
 			for (int axis = 0; axis < 3; axis++)
-				for (int i_shape = 0; i_shape < G_nShape; i_shape++)
-					V[axis] = V[axis] + ((double)(exp_point(i_shape, i_v * 3 + axis)))*x_exp[i_shape];
+				for (int i_shape = 0; i_shape < G_nShape - 1; i_shape++)
+					V[axis] = V[axis] + ((double)(exp_point(i_shape + 1, i_v * 3 + axis)))*x_exp[i_shape];
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
-			for (int j = 0; j<3; j++)
+			for (int j = 0; j < 3; j++)
 				V[j] = V[j] + tslt[j];
 
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
-#ifdef posit
-			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
-			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
+#ifdef perspective
+			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - ide[id_idx].center(0) - V[0] * (double)f / V[2];
+			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - ide[id_idx].center(1) - V[1] * (double)f / V[2];
 #endif
 #ifdef normalization
 			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) + ide[id_idx].center(exp_idx, 0) - V[0];
@@ -89,6 +63,13 @@ struct ceres_cal_exp {
 			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
 			V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
 		}
+
+		residual[G_land_num * 2] = T(0);
+		for (int i = 0; i < G_nShape - 1; i++) {
+			residual[G_land_num * 2] += x_exp[i] * (T)beta_l1_sum_exp;
+			residual[G_land_num * 2 + 1 + i] = x_exp[i] * (T)beta_l2_exp;
+		}
+
 		//residual[G_land_num * 2] = (T)0;
 		//printf("- - %.6f\n", ans);
 		//fprintf(fp, "%.6f\n", ans);
@@ -108,15 +89,15 @@ float ceres_exp_one(
 
 	puts("optimizing expression coeffients only by ceres");
 	//google::InitGoogleLogging(argv[0]);
-	double x_exp[G_nShape];
-	for (int i = 0; i < G_nShape; i++) x_exp[i] = exp(i);
+	double x_exp[G_nShape - 1];
+	for (int i = 0; i < G_nShape - 1; i++) x_exp[i] = exp(i + 1);
 
 	Problem problem;
 	problem.AddResidualBlock(
-		new AutoDiffCostFunction<ceres_cal_exp, G_land_num * 2, G_nShape>(
+		new AutoDiffCostFunction<ceres_cal_exp, G_land_num * 2 + 1 + G_nShape - 1, G_nShape - 1>(
 			new ceres_cal_exp(focus, ide, id_idx, exp_idx, exp_point)),
 		NULL, x_exp);
-	for (int i = 0; i < G_nShape; i++) {
+	for (int i = 0; i < G_nShape - 1; i++) {
 		problem.SetParameterLowerBound(x_exp, i, 0.0);
 		problem.SetParameterUpperBound(x_exp, i, 1.0);
 	}
@@ -130,7 +111,8 @@ float ceres_exp_one(
 	Solve(options, &problem, &summary);
 	/*std::cout << summary.BriefReport() << "\n";
 	std::cout << "Initial : " << exp.transpose() << "\n";*/
-	for (int i = 0; i < G_nShape; i++)  exp(i) = (float)x_exp[i];
+	for (int i = 0; i < G_nShape - 1; i++)  exp(i + 1) = (float)x_exp[i];
+	exp(0) = 1;
 	//std::cout << "Final   : " << exp.transpose() << "\n";
 
 	//system("pause");
@@ -155,7 +137,7 @@ struct ceres_cal_user {
 
 		/*std::cout << rot << '\n';
 		std::cout << tslt << '\n';*/
-			
+
 		for (int i_v = 0; i_v < G_land_num; i_v++) {
 			T V[3];
 			for (int j = 0; j < 3; j++) V[j] = (T)(0);
@@ -169,13 +151,13 @@ struct ceres_cal_user {
 					V[axis] = V[axis] + ((double)(id_point(i_id, i_v * 3 + axis)))*x_user[i_id];
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
-			for (int j = 0; j<3; j++)
+			for (int j = 0; j < 3; j++)
 				V[j] = V[j] + tslt[j];
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2]);
 			//ans += ((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2])*((double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2]);
-#ifdef posit
-			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
-			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
+#ifdef perspective
+			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - ide[id_idx].center(0) - (V[0] * (double)f / V[2]);
+			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - ide[id_idx].center(1) - (V[1] * (double)f / V[2]);
 #endif
 #ifdef normalization
 			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) + ide[id_idx].center(exp_idx, 0) - V[0];
@@ -216,7 +198,7 @@ float ceres_user_one(
 	//puts("A");
 	Problem problem;
 	problem.AddResidualBlock(
-		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2+1, G_iden_num>(
+		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2 + 1, G_iden_num>(
 			new ceres_cal_user(focus, ide, id_idx, exp_idx, id_point, ide_sg_vl)),
 		NULL, x_user);
 	//puts("B");

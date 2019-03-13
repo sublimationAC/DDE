@@ -14,12 +14,13 @@ struct iden
 	Eigen::MatrixXi land_cor;
 	Eigen::MatrixX3f s;
 	Eigen::MatrixX2f dis;
+	Eigen::MatrixX2f img_size;
 	float fcs;
 };
 
 void fit_solve(
 	std::vector<cv::Point2d> &landmarks, Eigen::MatrixXf &bldshps,
-	Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	Eigen::VectorXi &inner_land_corr,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXf &ide_sg_vl, DataPoint &data);
 
@@ -28,20 +29,25 @@ void init_exp_ide_r_t_pq(iden *ide, int ide_num);
 
 
 void cal_f(
-	iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_corr,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXf &ide_sg_vl);
 void solve(
-	iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_corr, Eigen::VectorXi &jaw_land_corr,
+	iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_corr,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXf &ide_sg_vl);
 
 
 float pre_cal_exp_ide_R_t(
-	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor, Eigen::VectorXi &jaw_land_corr,
+	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx,
 	Eigen::VectorXf &ide_sg_vl);
-void init_exp_ide(iden *ide, int train_id_num ,int id_idx);
+void init_exp_ide(iden *ide, int id_idx);
+
+
+void cal_rt_pnp(
+	float f, iden *ide, Eigen::MatrixXf &bldshps,
+	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx);
 
 void cal_rt_posit(
 	float f, iden *ide, Eigen::MatrixXf &bldshps,
@@ -68,8 +74,7 @@ float cal_3d_vtx(
 
 void update_slt(
 	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
-	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::VectorXi &out_land_cor,
-	Eigen::VectorXi &jaw_land_corr);
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::VectorXi &out_land_cor);
 
 void test_slt(float f ,iden *ide, Eigen::MatrixXf &bldshps,
 	Eigen::VectorXi &land_cor, int id_idx, int exp_idx);

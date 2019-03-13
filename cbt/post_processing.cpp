@@ -67,21 +67,22 @@ struct ceres_cal_tslt {
 				for (int j = 0; j < 3; j++)
 					P[axis] += R[axis][j] * V[j];
 			}
-
+#ifdef normalization
 			for (int axis = 0; axis < 2; axis++) {
 				V[axis] = (T)0;
 				for (int j = 0; j < 3; j++)
 					V[axis] += ((double)G_data.s(axis, j)) * P[j];
 			}
+#endif // normalization
 
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
-			for (int j = 0; j < 3; j++)
+			for (int j = 0; j < G_tslt_num; j++)
 				V[j] = V[j] + tslt[j];
 
-#ifdef posit
-			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
-			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
+#ifdef perspective
+			residual[i_v * 2] = (double)G_data.land_2d(i_v, 0) - V[0] * (double)f / V[2]- (double)G_data.center(0);
+			residual[i_v * 2 + 1] = (double)G_data.land_2d(i_v, 1) - V[1] * (double)f / V[2] - (double)G_data.center(0);
 #endif
 #ifdef normalization
 			residual[i_v * 2] = (double)G_data.land_2d(i_v, 0) - V[0];
@@ -167,21 +168,21 @@ struct ceres_cal_angle {
 				for (int j = 0; j < 3; j++)
 					P[axis] += R[axis][j] * V[j];
 			}
-
+#ifdef normalization
 			for (int axis = 0; axis < 2; axis++) {
 				V[axis] = (T)0;
 				for (int j = 0; j < 3; j++)
 					V[axis] += ((double)G_data.s(axis, j)) * P[j];
 			}
-
+#endif
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
-			for (int j = 0; j < 3; j++)
+			for (int j = 0; j < G_tslt_num; j++)
 				V[j] = V[j] + tslt[j];
 
-#ifdef posit
-			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
-			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
+#ifdef perspective
+			residual[i_v * 2] = (double)G_data.land_2d(i_v, 0) - V[0] * (double)f / V[2] - (double)G_data.center(0);
+			residual[i_v * 2 + 1] = (double)G_data.land_2d(i_v, 1) - V[1] * (double)f / V[2] - (double)G_data.center(1);
 #endif
 #ifdef normalization
 			residual[i_v * 2] = (double)G_data.land_2d(i_v, 0) - V[0];
@@ -272,21 +273,21 @@ struct ceres_cal_exp {
 				for (int j = 0; j < 3; j++)
 					P[axis] += R[axis][j] * V[j];
 			}
-
+#ifdef normalization
 			for (int axis = 0; axis < 2; axis++) {
 				V[axis] = (T)0;
 				for (int j = 0; j < 3; j++)
 					V[axis] += ((double)G_data.s(axis, j)) * P[j];
 			}
-
+#endif
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
-			for (int j = 0; j < 2; j++)
+			for (int j = 0; j < G_tslt_num; j++)
 				V[j] = V[j] + tslt[j];
 
-#ifdef posit
-			residual[i_v * 2] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0) - V[0] * (double)f / V[2];
-			residual[i_v * 2 + 1] = (double)ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1) - V[1] * (double)f / V[2];
+#ifdef perspective
+			residual[i_v * 2] = (double)G_data.land_2d(i_v, 0) - V[0] * (double)f / V[2] - (double)G_data.center(0);
+			residual[i_v * 2 + 1] = (double)G_data.land_2d(i_v, 1) - V[1] * (double)f / V[2] - (double)G_data.center(1);
 #endif
 #ifdef normalization
 			printf("%d %.5f %.5f\n", i_v, G_data.land_2d(i_v, 0), G_data.land_2d(i_v, 1));
@@ -358,15 +359,15 @@ double ceres_post_processing(
 
 	problem_tslt.AddResidualBlock(
 			new AutoDiffCostFunction<ceres_cal_tslt, G_land_num * 2 + 2* G_tslt_num, G_tslt_num>(
-				new ceres_cal_tslt(0,last_2.tslt,last_1.tslt,now.tslt,exp_r_t_point_matrix)),
+				new ceres_cal_tslt(data.fcs,last_2.tslt,last_1.tslt,now.tslt,exp_r_t_point_matrix)),
 			NULL, x_tslt);
 	problem_angle.AddResidualBlock(
 		new AutoDiffCostFunction<ceres_cal_angle, G_land_num * 2 + 2 * G_angle_num, G_angle_num>(
-			new ceres_cal_angle(0, last_2.angle, last_1.angle, now.angle, exp_r_t_point_matrix)),
+			new ceres_cal_angle(data.fcs, last_2.angle, last_1.angle, now.angle, exp_r_t_point_matrix)),
 		NULL, x_angle);
 	problem_exp.AddResidualBlock(
 		new AutoDiffCostFunction<ceres_cal_exp, G_land_num * 2 + 2 * G_nShape-2,G_nShape-1>(
-			new ceres_cal_exp(0, last_2.exp, last_1.exp, now.exp, exp_r_t_point_matrix)),
+			new ceres_cal_exp(data.fcs, last_2.exp, last_1.exp, now.exp, exp_r_t_point_matrix)),
 		NULL, x_exp);
 	//problem_dis.AddResidualBlock(
 	//	new AutoDiffCostFunction<ceres_cal_dis, 4 * G_land_num, 2 * G_land_num>(
@@ -421,7 +422,15 @@ double ceres_post_processing(
 	puts("calculating displacement...");
 	Eigen::MatrixX2f land(G_land_num, 2);
 	Eigen::Matrix3f rot = get_r_from_angle_zyx(now.angle);
-	Eigen::RowVector2f T = now.tslt.block(0, 0, 1, 2);
+
+#ifdef perspective
+	Eigen::Vector3f T = data.shape.tslt;
+#endif // perspective
+
+#ifdef normalization
+	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+#endif // normalization
+
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		
@@ -429,8 +438,14 @@ double ceres_post_processing(
 		for (int axis = 0; axis < 3; axis++)
 			for (int i_exp = 1; i_exp < G_nShape; i_exp++)
 				v(axis) = v(axis) + ((double)(exp_r_t_point_matrix(i_exp, i_v * 3 + axis)))*now.exp(i_exp);
-		
+#ifdef perspective
+		v = rot * v + T;
+		land(i_v,0) = data.fcs * v(0)/v(2) + data.center(0);
+		land(i_v, 1) = data.fcs * v(1) / v(2) + data.center(0);
+#endif // perspective
+#ifdef normalization
 		land.row(i_v) = ((data.s) * (rot * v)).transpose() + T;
+#endif // normalization
 	}
 
 	now.dis.array() = data.land_2d.array() - land.array();
