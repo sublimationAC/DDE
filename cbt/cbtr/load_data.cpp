@@ -22,7 +22,7 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 		struct dirent *dp;
 		while (index < n)
 		{
-			if (num > 20) break;
+			if (num > 5) break;
 			printf("load_img_land_coef idx:%d n:%d\n", index, n);
 			dp = namelist[index];
 
@@ -70,7 +70,7 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 #ifdef perspective
 					if (_access((p.substr(0, p.find(".land")) + ".psp_f").c_str(), 0) == -1) {
 						puts("No psp_f !!!! error !");
-						exit(1);
+						exit(-1);
 					}
 					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".psp_f", temp);
 #endif // perspective
@@ -109,6 +109,7 @@ void load_land(std::string p, DataPoint &temp) {
 }
 void load_img(std::string p, DataPoint &temp) {	
 	temp.image = cv::imread(p, CV_LOAD_IMAGE_GRAYSCALE);
+	//temp.image = cv::imread(p);
 }
 const std::string kAlt2 = "haarcascade_frontalface_alt2.xml";
 #include<algorithm>
@@ -275,7 +276,7 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 #ifdef perspective
 	fread(&temp.fcs, sizeof(float), 1, fp);
 #endif // perspective
-
+	std::cout << "f/tslt_z: " << temp.fcs / temp.shape.tslt(2) << " " << temp.shape.tslt(2)/ temp.fcs << "\n";
 
 	temp.shape.dis.resize(G_land_num, 2);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {

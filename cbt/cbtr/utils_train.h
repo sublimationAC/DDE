@@ -1,10 +1,10 @@
-#define normalization
-//#define perspective
+//#define normalization
+#define perspective
 
 #define EPSILON 1e-3
 
-#define rand_exp_from_set_def
-#define mxini_def
+#define ignore_64_train
+//#define mxini_def
 
 const int G_land_num = 74;
 const int G_train_pic_id_num = 3300;
@@ -14,7 +14,8 @@ const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 77;
 const int G_inner_land_num = 59;
-const int G_line_num = 85;
+const int G_line_num = 84;
+const int G_outer_land_num = 15;
 //const int G_jaw_land_num = 20;
 
 
@@ -25,12 +26,15 @@ const float G_rand_tslt_border = 20;
 #endif // normalization
 #ifdef perspective
 const float G_rand_tslt_border = 1;
+//#define div_tslt_z_def
 #endif // perspective
 
 
 const float G_rand_s_border = 10;
 const float G_rand_f_border = 100;
+
 const float G_rand_exp_border = 0.6;
+#define rand_exp_from_set_def
 
 const int G_rnd_rot = 5;
 const int G_rnd_tslt = 5;
@@ -129,6 +133,7 @@ struct DataPoint
 	std::vector<cv::Point2d> landmarks;
 	//std::vector<cv::Point2d> init_shape;
 	Target_type shape, init_shape;
+	Eigen::MatrixXf spf_sqz_bldshp;
 	Eigen:: VectorXf user;
 	Eigen::RowVector2f center;
 	Eigen::MatrixX2f land_2d;
@@ -141,7 +146,6 @@ struct DataPoint
 #endif
 	
 	Eigen::VectorXi land_cor;
-	int train_init_user_idx = 0;
 };
 
 

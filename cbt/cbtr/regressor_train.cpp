@@ -14,6 +14,7 @@
 //#define sort_fp_def
 //#define drct_fp_def
 #define batch_feature
+#define sb_batch_feature
 
 using namespace std;
 
@@ -192,7 +193,11 @@ void get_pixel_value(
 		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))){
 #endif // small_rect_def
 #ifdef batch_feature
+#ifdef sb_batch_feature
+			pixel_se[j] = get_sobel_batch_feature(data.image, pixel_pos);
+#else
 			pixel_se[j] = get_batch_feature(data.image,pixel_pos);
+#endif // get_batch_feature
 #else
 			pixel_se[j] = data.image.at<uchar>(pixel_pos);
 #endif // batch_feature			
@@ -241,7 +246,11 @@ void get_pixel_value(
 		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))) {
 #endif // small_rect_def	
 #ifdef batch_feature
+#ifdef sb_batch_feature
+			pixel_se[j] = get_sobel_batch_feature(data.image, pixel_pos);
+#else
 			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+#endif // get_batch_feature
 #else
 			pixel_se[j] = data.image.at<uchar>(pixel_pos);
 #endif // batch_feature	
@@ -299,7 +308,11 @@ void get_pixel_value(
 #endif // small_rect_def		
 		{
 #ifdef batch_feature
-			p[j] = get_batch_feature(data.image, pixel_pos);
+#ifdef sb_batch_feature
+			pixel_se[j] = get_sobel_batch_feature(data.image, pixel_pos);
+#else
+			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+#endif // get_batch_feature
 #else
 			p[j] = data.image.at<uchar>(pixel_pos);
 #endif // batch_feature	
@@ -313,7 +326,7 @@ void get_pixel_value(
 void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect,
 	cv::Rect &left_eye_rect, cv::Rect &right_eye_rect, cv::Rect &mouse_rect,
 	Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
-	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps)
+	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps, std::vector<Eigen::MatrixXf> &arg_inner_bldshp_matrix)
 {
 	puts("regressing");
 	std::vector<cv::Point2f> tri_center;
@@ -355,7 +368,7 @@ void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &
 		std::vector<cv::Point2d> temp(G_land_num);
 		//cal_init_2d_land_ang_0ide_i(temp, training_data[i],arg_exp_land_matrix[training_data[i].ide_idx]);
 
-		get_init_land_ang_0ide_i(temp, training_data[i], bldshps);
+		get_init_land_ang_0ide_i(temp, training_data[i], bldshps, arg_inner_bldshp_matrix);
 
 		/*for (int p = 0; p < G_land_num; p++)
 			printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
@@ -426,7 +439,7 @@ void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &
 void RegressorTrain::Regress_expdis(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect,
 	cv::Rect &left_eye_rect, cv::Rect &right_eye_rect, cv::Rect &mouse_rect,
 	Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
-	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps)
+	const std::vector <DataPoint> &training_data, Eigen::MatrixXf &bldshps, std::vector<Eigen::MatrixXf> &arg_inner_bldshp_matrix)
 {
 	puts("regressing");
 	std::vector<cv::Point2f> tri_center;
@@ -463,7 +476,7 @@ void RegressorTrain::Regress_expdis(std::vector<cv::Vec6f> &triangleList, cv::Re
 		std::vector<cv::Point2d> temp(G_land_num);
 		//cal_init_2d_land_ang_0ide_i(temp, training_data[i],arg_exp_land_matrix[training_data[i].ide_idx]);
 
-		get_init_land_ang_0ide_i(temp, training_data[i], bldshps);
+		get_init_land_ang_0ide_i(temp, training_data[i], bldshps, arg_inner_bldshp_matrix);
 
 		/*for (int p = 0; p < G_land_num; p++)
 			printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
@@ -599,7 +612,7 @@ void RegressorTrain::CompressFerns()
 }
 
 Target_type RegressorTrain::Apply_ta(//const vector<cv::Point2d> &mean_shape, 
-	const DataPoint &data, Eigen::MatrixXf &bldshps,Eigen::MatrixX3i &tri_idx) const
+	const DataPoint &data, Eigen::MatrixXf &bldshps,Eigen::MatrixX3i &tri_idx, std::vector<Eigen::MatrixXf> &arg_inner_bldshp_matrix) const
 {
 	cv::Mat pixels_val(1, training_parameters_.P, CV_64FC1);
 	//Transform t = Procrustes(data.init_shape, mean_shape);
@@ -615,7 +628,7 @@ Target_type RegressorTrain::Apply_ta(//const vector<cv::Point2d> &mean_shape,
 	//std::vector<cv::Point2d> temp___(G_land_num);
 	//cal_init_2d_land_ang_0ide_i(temp___, data, exp_matrix);
 	
-	get_init_land_ang_0ide_i(temp, data, bldshps);
+	get_init_land_ang_0ide_i(temp, data, bldshps, arg_inner_bldshp_matrix);
 
 	/*for (int p = 0; p < G_land_num; p++)
 		printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/
@@ -678,7 +691,7 @@ Target_type RegressorTrain::Apply_ta(//const vector<cv::Point2d> &mean_shape,
 }
 
 Target_type RegressorTrain::Apply_expdis(//const vector<cv::Point2d> &mean_shape, 
-	const DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3i &tri_idx) const
+	const DataPoint &data, Eigen::MatrixXf &bldshps, Eigen::MatrixX3i &tri_idx, std::vector<Eigen::MatrixXf> &arg_inner_bldshp_matrix) const
 {
 	cv::Mat pixels_val(1, training_parameters_.P, CV_64FC1);
 	//Transform t = Procrustes(data.init_shape, mean_shape);
@@ -694,7 +707,7 @@ Target_type RegressorTrain::Apply_expdis(//const vector<cv::Point2d> &mean_shape
 	//std::vector<cv::Point2d> temp___(G_land_num);
 	//cal_init_2d_land_ang_0ide_i(temp___, data, exp_matrix);
 
-	get_init_land_ang_0ide_i(temp, data, bldshps);
+	get_init_land_ang_0ide_i(temp, data, bldshps, arg_inner_bldshp_matrix);
 
 	/*for (int p = 0; p < G_land_num; p++)
 		printf("check exp matrix %.10f %.10f \n", temp[p].x - temp___[p].x, temp[p].y - temp___[p].y);*/

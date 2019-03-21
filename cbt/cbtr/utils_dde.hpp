@@ -47,7 +47,7 @@ void cal_init_2d_land_ang_0ide_i(
 
 void get_init_land_ang_0ide_i(
 	std::vector<cv::Point2d> &ans, const DataPoint &data,
-	Eigen::MatrixXf &bldshps);
+	Eigen::MatrixXf &bldshps, std::vector<Eigen::MatrixXf> &arg_inner_bldshp_matrix);
 
 Target_type shape_difference(const Target_type &s1, const Target_type &s2);
 Target_type shape_adjustment(Target_type &shape, Target_type &offset);
@@ -96,3 +96,8 @@ void get_index_slt_point_rect(
 
 float cal_3d_vtx_optmz_last(
 	Eigen::MatrixXf &bldshps, Eigen::VectorXf &user, Eigen::VectorXf &exp, int vtx_idx, int axis);
+
+void cal_slt_bldshps(DataPoint &data, Eigen::MatrixXf &bldshps);
+void draw_image_land_2d(cv::Mat img, std::vector<cv::Point2d> &landmarks, cv::Scalar color);
+void cal_2d_land_i_ang_tg(
+	std::vector<cv::Point2d> &ans, const Target_type &tgtp, Eigen::MatrixXf &bldshps, DataPoint &data);

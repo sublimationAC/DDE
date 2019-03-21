@@ -15,7 +15,8 @@
 
 #define win64
 //#define linux
-#define changed
+
+
 
 #ifdef win64
 
@@ -29,9 +30,9 @@ std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_dat
 
 #endif // win64
 #ifdef linux
-std::string fwhs_path = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/fw";
-std::string lfw_path = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/lfw_image";
-std::string gtav_path = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/GTAV_image";
+std::string fwhs_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/fw";
+std::string lfw_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/lfw_image";
+std::string gtav_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/GTAV_image";
 std::string test_path = "./test";
 std::string test_path_one = "/home/weiliu/DDE/cal_coeff/data_me/test_only_one";
 //std::string fwhs_path_p1 = "/home/weiliu/fitting_dde/1cal/data_me/fw_p1";
@@ -184,12 +185,28 @@ void aug_rand_rot(
 		data[idx].ide_idx = train_idx;
 		//for (int j=0;j<3;j++)
 		//	data[idx].init_shape.angle(j)+= cv::theRNG().uniform(-G_rand_angle_border, G_rand_angle_border);
-		data[idx].init_shape.angle(0) += cv::theRNG().uniform(-G_rand_angle_border * 15, G_rand_angle_border * 15);
+		
 		data[idx].init_shape.angle(1) += cv::theRNG().uniform(-G_rand_angle_border * 10, G_rand_angle_border * 10);
+		/*cv::Mat image_save = data[idx].image.clone();
+		draw_image_land_2d(image_save, data[idx].landmarks, cv::Scalar(0, 255, 0));
+
+		std::vector<cv::Point2d> land_temp(G_land_num);
+		cal_2d_land_i_ang_tg(land_temp, data[idx].init_shape, bldshps, data[idx]);
+		draw_image_land_2d(image_save, data[idx].landmarks, cv::Scalar(0, 0, 255));*/
+
+		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		data[idx].init_shape.angle(0) += cv::theRNG().uniform(-G_rand_angle_border * 15, G_rand_angle_border * 15);
 		data[idx].init_shape.angle(2) += cv::theRNG().uniform(-G_rand_angle_border * 5, G_rand_angle_border * 5);
 
-		update_slt_init_shape(bldshps,slt_line,slt_point_rect, data[idx]);
+		
+		/*cal_2d_land_i_ang_tg(land_temp, data[idx].init_shape, bldshps, data[idx]);
+		draw_image_land_2d(image_save, data[idx].landmarks, cv::Scalar(0, 0, 255));
+
+		cal_2d_land_i_ang_tg(land_temp, data[idx].init_shape, bldshps, data[idx]);
+		draw_image_land_2d(image_save, data[idx].landmarks, cv::Scalar(255, 255, 255));*/
 		recal_dis_ang_sqz_optmz(data[idx], bldshps);
+
+		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 	}
 #ifdef mxini_def
@@ -209,12 +226,15 @@ void aug_rand_rot(
 		data[idx].ide_idx = train_idx;
 		//for (int j=0;j<3;j++)
 		//	data[idx].init_shape.angle(j)+= cv::theRNG().uniform(-G_rand_angle_border, G_rand_angle_border);
-		data[idx].init_shape.angle(0) += cv::theRNG().uniform(-G_rand_angle_border * 15, G_rand_angle_border * 15);
 		data[idx].init_shape.angle(1) += cv::theRNG().uniform(-G_rand_angle_border * 10, G_rand_angle_border * 10);
+		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		data[idx].init_shape.angle(0) += cv::theRNG().uniform(-G_rand_angle_border * 15, G_rand_angle_border * 15);
+		
 		data[idx].init_shape.angle(2) += cv::theRNG().uniform(-G_rand_angle_border * 5, G_rand_angle_border * 5);
 		
-		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		
 		recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 	}
 #endif // mxini_def
@@ -227,6 +247,7 @@ void aug_rand_tslt(
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_tslt);
 	auto it = temp.cbegin();
+
 	for (int i = 0; i < G_rnd_tslt; i++, it++) {
 		data[idx] = traindata[train_idx];
 		data[idx].init_shape.dis = traindata[*it].shape.dis;
@@ -237,11 +258,25 @@ void aug_rand_tslt(
 		data[idx].ide_idx = train_idx;
 		for (int j = 0; j < G_tslt_num; j++)
 			data[idx].init_shape.tslt(j) = traindata[train_idx].shape.tslt(j) + cv::theRNG().uniform(-G_rand_tslt_border, G_rand_tslt_border);
+#ifdef perspective
+#ifdef div_tslt_z_def
+		if (i <= G_rnd_tslt / 2)
+			data[idx].init_shape.tslt(2) = traindata[train_idx].shape.tslt(2);
+		else
+			data[idx].init_shape.tslt(2) = traindata[train_idx].shape.tslt(2)
+				+ cv::theRNG().uniform(-traindata[train_idx].shape.tslt(2)*0.1, traindata[train_idx].shape.tslt(2)*0.1);
+#else
+		data[idx].init_shape.tslt(2) = traindata[train_idx].shape.tslt(2) 
+			+ cv::theRNG().uniform(-traindata[train_idx].shape.tslt(2)*0.1, traindata[train_idx].shape.tslt(2)*0.1);
+#endif // div_tslt_z_def
+#endif // perspective
+
 #ifdef normalization
 		data[idx].init_shape.tslt(2) = 0;
 #endif // normalization		
-		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
-		recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		//recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 	}
 #ifdef mxini_def
@@ -261,11 +296,17 @@ void aug_rand_tslt(
 		data[idx].ide_idx = train_idx;
 		for (int j = 0; j < G_tslt_num; j++)
 			data[idx].init_shape.tslt(j) = traindata[train_idx].shape.tslt(j) + cv::theRNG().uniform(-G_rand_tslt_border, G_rand_tslt_border);
+#ifdef perspective
+		data[idx].init_shape.tslt(2) = traindata[train_idx].shape.tslt(2)
+			+ cv::theRNG().uniform(-traindata[train_idx].shape.tslt(2)*0.1, traindata[train_idx].shape.tslt(2)*0.1);
+#endif // perspective
+
 #ifdef normalization
 		data[idx].init_shape.tslt(2) = 0;
 #endif // normalization	
-		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
-		recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		//recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 
 	}
@@ -299,8 +340,9 @@ void aug_rand_exp(
 		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
 		data[idx].ide_idx = train_idx;
 		//		update_slt();
-		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
-		recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		//recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 	}
 }
@@ -322,10 +364,11 @@ void aug_rand_user(
 		//data[idx].init_shape.rot = traindata[train_idx].shape.rot;
 		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].user = traindata[*it_u].user;
-		data[idx].ide_idx = -1;
+		data[idx].ide_idx = *it_u;
 		//recal_dis_ang_0ide(data[idx],arg_exp_land_matrix[*it_u]);
-		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
 		recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 	}
 }
@@ -354,8 +397,9 @@ void aug_rand_f(
 		data[idx].s(1, 1) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
 #endif
 		//recal_dis_ang_0ide(data[idx], arg_exp_land_matrix[train_idx]);
-		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
 		recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 	}
 }
@@ -369,6 +413,7 @@ vector<DataPoint> ArgumentData(
 	int idx = 0;
 	for (int i = 0; i < training_data.size(); ++i)
 	{
+		printf("ArgumentData i: %d\n", i);
 		aug_rand_rot(training_data,result,idx,i, slt_line, slt_point_rect, bldshps);
 		aug_rand_tslt(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
 		aug_rand_exp(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
@@ -396,21 +441,21 @@ vector<Target_type> ComputeTargets(const vector<DataPoint> &data)
 	return result;
 }
 
-void cal_exp_land_matrix(std::vector<Eigen::MatrixXf> &arg_exp_land_matrix, Eigen::MatrixXf &bldshps, const vector<DataPoint> &training_data) {
+void cal_inner_bldshp_matrix(std::vector<Eigen::MatrixXf> &arg_exp_land_matrix, Eigen::MatrixXf &bldshps, const vector<DataPoint> &training_data) {
 	for (int idx = 0; idx < training_data.size(); idx++) {
-		arg_exp_land_matrix[idx].resize(G_nShape, 3 * G_land_num);
+		arg_exp_land_matrix[idx].resize(G_nShape, 3 * G_inner_land_num);
 		for (int i_shape = 0; i_shape < G_nShape; i_shape++)
-			for (int i_v = 0; i_v < G_land_num; i_v++) {
+			for (int i_v = 0; i_v < G_inner_land_num; i_v++) {
 				Eigen::Vector3f V;
 				V.setZero();
 				for (int j = 0; j < 3; j++)
 					for (int i_id = 0; i_id < G_iden_num; i_id++)
 						if (i_shape == 0)
-							V(j) += training_data[idx].user(i_id)*bldshps(i_id, training_data[idx].land_cor(i_v) * 3 + j);
+							V(j) += training_data[idx].user(i_id)*bldshps(i_id, training_data[idx].land_cor(i_v + G_outer_land_num) * 3 + j);
 						else
 							V(j) += training_data[idx].user(i_id)*
-							(bldshps(i_id, i_shape*G_nVerts * 3 + training_data[idx].land_cor(i_v) * 3 + j)
-								- bldshps(i_id, training_data[idx].land_cor(i_v) * 3 + j));
+							(bldshps(i_id, i_shape*G_nVerts * 3 + training_data[idx].land_cor(i_v + G_outer_land_num) * 3 + j)
+								- bldshps(i_id, training_data[idx].land_cor(i_v + G_outer_land_num) * 3 + j));
 
 				for (int j = 0; j < 3; j++)
 					arg_exp_land_matrix[idx](i_shape, i_v * 3 + j) = V(j);
@@ -418,12 +463,12 @@ void cal_exp_land_matrix(std::vector<Eigen::MatrixXf> &arg_exp_land_matrix, Eige
 	}
 }
 #ifdef win64
-std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_line_new.txt";
-std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_rect_new.txt";
+std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_line_new_short_ans.txt";
+std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_rect_new_short_ans.txt";
 #endif // win64
 #ifdef linux
-std::string slt_path = "./3d22d/slt_line_new.txt";
-std::string rect_path = "./3d22d/slt_rect_new.txt";
+std::string slt_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_line_new_short_ans.txt";
+std::string rect_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_rect_new_short_ans.txt";
 #endif // linux
 
 std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
@@ -445,9 +490,9 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	get_index_slt_point_rect(slt_line,slt_point_rect, training_data[0]);
 
 
-	//vector<Eigen::MatrixXf> arg_exp_land_matrix(training_data.size());
+	vector<Eigen::MatrixXf> arg_inner_bldshp_matrix(training_data.size());
 
-	//cal_exp_land_matrix(arg_exp_land_matrix,bldshps,training_data);
+	cal_inner_bldshp_matrix(arg_inner_bldshp_matrix,bldshps,training_data);
 
 	
 	vector<DataPoint> argumented_training_data =
@@ -461,6 +506,11 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	cv::Rect rect;
 	puts("D");
 	cal_del_tri(ref_shape, rect, triangleList, tri_idx);
+
+	std::vector<cv::Point3i> tri_idx_save(tri_idx.rows());
+	for (int i = 0; i < tri_idx.rows(); i++)
+		tri_idx_save[i].x = tri_idx(i, 0), tri_idx_save[i].y = tri_idx(i, 1), tri_idx_save[i].z = tri_idx(i, 2);
+
 
 	cv::Rect left_eye_rect, right_eye_rect, mouse_rect;
 	cal_left_eye_rect(ref_shape, left_eye_rect);
@@ -486,13 +536,13 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 		stage_regressors[i].Regress_ta(
 			triangleList,rect, left_eye_rect, right_eye_rect, mouse_rect,tri_idx,ref_shape, &targets,
-			argumented_training_data, bldshps);
+			argumented_training_data, bldshps, arg_inner_bldshp_matrix);
 
 
 		for (DataPoint &dp : argumented_training_data)
 		{
 			Target_type offset = 
-				stage_regressors[i].Apply_ta(dp,bldshps,tri_idx);
+				stage_regressors[i].Apply_ta(dp,bldshps,tri_idx, arg_inner_bldshp_matrix);
 			/*Transform t = Procrustes(dp.init_shape, mean_shape);
 			t.Apply(&offset, false);*/
 			dp.init_shape = shape_adjustment(dp.init_shape, offset);
@@ -519,13 +569,13 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 		stage_regressors[i].Regress_expdis(
 			triangleList, rect, left_eye_rect, right_eye_rect, mouse_rect, tri_idx, ref_shape, &targets,
-			argumented_training_data, bldshps);
+			argumented_training_data, bldshps, arg_inner_bldshp_matrix);
 
 
 		for (DataPoint &dp : argumented_training_data)
 		{
 			Target_type offset =
-				stage_regressors[i].Apply_expdis(dp, bldshps, tri_idx);
+				stage_regressors[i].Apply_expdis(dp, bldshps, tri_idx, arg_inner_bldshp_matrix);
 			/*Transform t = Procrustes(dp.init_shape, mean_shape);
 			t.Apply(&offset, false);*/
 			dp.init_shape = shape_adjustment(dp.init_shape, offset);
@@ -544,6 +594,9 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	cv::FileStorage model_file;
 	model_file.open(tp.output_model_pathname, cv::FileStorage::WRITE);
 	model_file << "ref_shape" << ref_shape;
+	model_file << "tri_idx_save" << tri_idx_save;
+
+	
 	//model_file << "test_init_shapes" << "[";
 	//for (auto it = test_init_shapes.begin(); it != test_init_shapes.end(); ++it)
 	//{
