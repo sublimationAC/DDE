@@ -1,7 +1,7 @@
 #include "2dland.h"
 //#define flap_2dland
 
-#define cal_land_num
+//#define cal_land_num
 void load_img_land(std::string path, std::string sfx, iden *ide, int &id_idx, std::vector< std::vector<cv::Mat_<uchar> > > &imgs) {
 #ifdef win64
 	int hFile = 0;
@@ -226,6 +226,8 @@ void load_land(std::string p, iden *ide, int id_idx) {
 
 void load_img(std::string p, cv::Mat_<uchar> &temp) {
 	temp = cv::imread(p , 0);
+	//cv::imshow("a", temp);
+	//cv::waitKey(0);
 }
 
 void test_data_2dland(
@@ -364,6 +366,10 @@ void load_slt(
 	fopen_s(&fp, path_slt.c_str(), "r");
 	int line_num;
 	fscanf_s(fp, "%d", &line_num);
+	if (line_num != G_line_num) {
+		puts("Line num error!!!");
+		exit(-1);
+	}
 	for (int i = 0; i < line_num; i++) {
 		int x,num;
 
@@ -374,7 +380,9 @@ void load_slt(
 	}
 	fclose(fp);
 	fopen_s(&fp, path_rect.c_str(), "r");
-	for (int i = 0; i < 1585; i++) {
+	int vtx_num;
+	fscanf_s(fp, "%d", &vtx_num);
+	for (int i = 0; i < vtx_num; i++) {
 		int idx, num;
 		fscanf_s(fp, "%d%d", &idx, &num);
 		slt_point_rect[idx].resize(num);
@@ -397,6 +405,38 @@ void test_3d22dland(cv::Mat_<uchar> img, std::string path,iden *ide,int id_idx,i
 			cv::circle(
 				temp, cv::Point2f(x, y),
 				1, cv::Scalar(244, 244, 244), -1, 8, 0);
+		}
+		cv::imshow("test_image", temp);
+		cv::waitKey(0);
+	}
+	fclose(fp);
+}
+
+void test_slt_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx) {
+	
+	FILE *fp;
+	fopen_s(&fp, path.c_str(), "r");
+	int num = 0;
+	fscanf_s(fp, "%d", &num);
+	for (int i = 0; i < num; i++) {
+		cv::Mat temp;
+		temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d/t_1/lv_small_first_frame.jpg");
+		for (int j = 0; j < G_line_num; j++) {
+			float x, y;
+			fscanf_s(fp, "%f%f", &x, &y);
+			y = temp.rows - y;
+			cv::circle(
+				temp, cv::Point2f(x, y),
+				1, cv::Scalar(244, 244, 244), -1, 8, 0);
+		}
+		for (int j = 0; j < G_land_num; j++) {
+			float x, y;
+			x = ide[id_idx].land_2d(exp_idx*G_land_num + j, 0);
+			y = ide[id_idx].land_2d(exp_idx*G_land_num + j, 1);
+			y = temp.rows - y;
+			cv::circle(
+				temp, cv::Point2f(x, y),
+				2, cv::Scalar(0, 244, 0), -1, 8, 0);
 		}
 		cv::imshow("test_image", temp);
 		cv::waitKey(0);
@@ -544,7 +584,7 @@ void save_result_one(iden *ide, int i_id, int exp_idx, std::string name) {
 		fwrite(&ide[i_id].dis(exp_idx*G_land_num + i_v, 0), sizeof(float), 1, fp);
 		fwrite(&ide[i_id].dis(exp_idx*G_land_num + i_v, 1), sizeof(float), 1, fp);
 	}
-
+	// std::cout << "dis : \n" << ide[i_id].dis << "\n";
 	fclose(fp);
 
 	puts("save successful!");

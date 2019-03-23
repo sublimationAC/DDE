@@ -22,8 +22,8 @@
 	#include <dirent.h>
 #endif // linux
 
-#define posit
-//#define normalization
+//#define posit
+#define normalization
 #define deal_64
 //#define solve_cvpnp_optimization
 
@@ -39,7 +39,7 @@ const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 10;
 const int G_inner_land_num = 59;
-const int G_line_num = 85;
+const int G_line_num = 84;
 const int G_jaw_land_num = 20;
 
 struct iden
@@ -83,6 +83,7 @@ void load_slt(
 	std::string path_slt, std::string path_rect);
 
 void test_3d22dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
+void test_slt_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
 
 void save_result(iden *ide, int tot_id, std::string name);
 

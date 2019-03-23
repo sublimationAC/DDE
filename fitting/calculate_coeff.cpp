@@ -1,9 +1,9 @@
 #include "calculate_coeff.h"
-//#define test_coef
+#define test_coef
 #define test_coef_save_mesh
 //#define test_posit_by2dland
 //#define revise_rot_tslt
-
+#define test_updt_slt
 void init_exp_ide_r_t_pq(iden *ide, int ide_num) {
 
 	puts("initializing coeffients(R,t,pq)...");
@@ -102,7 +102,7 @@ void cal_f(
 	for (int i_id = 0; i_id < G_train_pic_id_num; i_id++) {
 		if (ide[i_id].num == 0)continue;
 #ifndef test_coef
-		float L = 100, R = 1000, er_L, er_R;
+		/*float L = 100, R = 1000, er_L, er_R;
 		er_L = pre_cal_exp_ide_R_t(L, ide, bldshps, inner_land_corr,
 			slt_line, slt_point_rect, i_id,ide_sg_vl);
 		er_R = pre_cal_exp_ide_R_t(R, ide, bldshps, inner_land_corr,
@@ -121,7 +121,21 @@ void cal_f(
 			if (er_mid_l < er_mid_r) R = mid_r, er_R = er_mid_r;
 			else L = mid_l, er_L = er_mid_l;
 		}
-		ide[i_id].fcs = (L+R)/2;
+		ide[i_id].fcs = (L+R)/2;*/
+		float f2 = 2500, er_f2;
+		er_f2 = pre_cal_exp_ide_R_t(f2, ide, bldshps, inner_land_corr,
+			slt_line, slt_point_rect, i_id, ide_sg_vl);
+		float f1 = 800, er_f1;
+		er_f1 = pre_cal_exp_ide_R_t(f1, ide, bldshps, inner_land_corr,
+			slt_line, slt_point_rect, i_id, ide_sg_vl);
+
+		if (er_f1 > er_f2*1.2) {
+			ide[i_id].fcs = f2;
+			er_f2 = pre_cal_exp_ide_R_t(f2, ide, bldshps, inner_land_corr,
+				slt_line, slt_point_rect, i_id, ide_sg_vl);
+		}
+		else
+			ide[i_id].fcs = f1;
 #endif // !test_coef
 		
 		/*FILE *fp;
@@ -130,14 +144,17 @@ void cal_f(
 #ifdef test_coef
 		int st = 300, en = 310, step = 25;
 		Eigen::VectorXf temp((en-st)/step+1);
+		Eigen::Matrix3f temp_tslt((en - st) / step + 1,3);
 
-		for (int i = st; i < en; i += step) temp((i-st)/step) = 
-			pre_cal_exp_ide_R_t(i, ide, bldshps, inner_land_corr,
-				slt_line, slt_point_rect, i_id, ide_sg_vl);
-
+		for (int i = st; i < en; i += step) {
+			temp((i - st) / step) =
+				pre_cal_exp_ide_R_t(i, ide, bldshps, inner_land_corr,
+					slt_line, slt_point_rect, i_id, ide_sg_vl);
+			temp_tslt.row((i - st) / step) = ide[0].tslt.row(0);
+		}
 		for (int i = 0; i < (en - st) / step + 1; i++) {
 			printf("test cal f %d %.6f\n", st + i * step, temp(i));
-			fprintf(fp, "%d %.6f\n", st + i * step, temp(i));
+			fprintf(fp, "%d %.6f %.6f %.6f %.6f\n", st + i * step, temp(i), temp_tslt(i,0), temp_tslt(i, 1), temp_tslt(i, 2));
 		}
 #endif
 
@@ -230,7 +247,14 @@ float pre_cal_exp_ide_R_t(
 	fprintf(fp, "%d\n", tot_r*3);
 	fclose(fp);
 #endif // test_posit_by2dland
-
+#ifdef test_updt_slt
+	fopen_s(&fp, "test_updt_slt.txt", "w");
+	fprintf(fp, "%d\n", tot_r);
+	fclose(fp);
+	fopen_s(&fp, "test_updt_slt_2d_point.txt", "w");
+	fprintf(fp, "%d\n", tot_r);
+	fclose(fp);
+#endif // test_updt_slt
 	//float error_last=0;
 	for (int rounds = 0; rounds < tot_r; rounds++) {
 		///////////////////////////////////////////////paper's solution
@@ -259,6 +283,10 @@ float pre_cal_exp_ide_R_t(
 			
 			Eigen::VectorXi out_land_cor(15);
 			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
+#ifdef test_updt_slt
+			save_result_one(ide, 0, 0, "./slt_test_obj/Tester_88_pose1_"+ std::to_string(rounds) + ".psp_f");
+#endif // test_updt_slt
+
 			//std::cout << inner_land_cor << '\n';
 			//std::cout <<"--------------\n"<< out_land_cor << '\n';
 			Eigen::VectorXi land_cor(G_land_num);
@@ -731,10 +759,10 @@ void update_slt(
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, 
 	Eigen::VectorXi &out_land_cor) {
 	////////////////////////////////project
-
 	puts("updating silhouette...");
 	Eigen::Matrix3f R=ide[id_idx].rot.block(3 * exp_idx,0,3,3);
 
+	Eigen::VectorXf angle = get_uler_angle_zyx(R);
 	Eigen::Vector3f T = ide[id_idx].tslt.row(exp_idx).transpose();
 
 	//puts("A");
@@ -748,8 +776,14 @@ void update_slt(
 		float min_v_n = 10000;
 		int min_idx=0;
 		Eigen::Vector3f cdnt;
+		int en = slt_line[i].size();
+		if (angle(1) < -0.1 && i < 34) en /= 3;
+		if (angle(1) < -0.1 && i >= 34 && i < 41) en /= 2;
+		if (angle(1) > 0.1 && i >= 49 && i < 84) en /= 3;
+		if (angle(1) > 0.1 && i >= 42 && i < 49) en /= 2;
 #ifdef posit
-		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
+
+		for (int j = 0; j < en; j++) {
 			//printf("j %d\n", j);
 			int x = slt_line[i][j];
 			//printf("x %d\n", x);
@@ -805,7 +839,8 @@ void update_slt(
 #endif // posit
 
 #ifdef normalization
-		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
+		for (int j = 0; j < en; j++) {
+			
 			//printf("j %d\n", j);
 			int x = slt_line[i][j];
 			//printf("x %d\n", x);
@@ -879,6 +914,22 @@ void update_slt(
 #endif
 		
 	}
+#ifdef test_updt_slt
+	FILE *fp;
+	fopen_s(&fp, "test_updt_slt.txt", "a");
+	fprintf(fp, "%.5f %.5f %.5f  ", angle(0)*180/acos(-1), angle(1) * 180 / acos(-1), angle(2) * 180 / acos(-1));
+	for (int j = 0; j < G_line_num; j++)
+		fprintf(fp, " %d", slt_cddt(j));
+	fprintf(fp, "\n");
+	fclose(fp);
+	fopen_s(&fp, "test_updt_slt_2d_point.txt", "a");
+	for (int j = 0; j < G_line_num; j++)
+		fprintf(fp, "%.5f %.5f\n", slt_cddt_cdnt(j, 0), slt_cddt_cdnt(j, 1));
+	fprintf(fp, "\n");
+	fclose(fp);
+	
+	
+#endif // test_updt_slt
 	//fclose(fp);
 	//puts("C");
 //	for (int i_jaw = 0; i_jaw < G_jaw_land_num; i_jaw++) {
@@ -900,8 +951,11 @@ void update_slt(
 //	}
 	for (int i = 0; i < 15; i++) {
 		float min_dis = 10000;
-		int min_idx = 0;;
-		for (int j = 0; j < G_line_num; j++) {
+		int min_idx = 0;
+		int be = 0, en = G_land_num;
+		if (i < 7) be = 41, en = 84;
+		if (i > 7) be = 0, en = 42;
+		for (int j = be; j < en; j++) {
 #ifdef posit
 			float temp =
 				fabs(slt_cddt_cdnt(j, 0) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 0) ) +
