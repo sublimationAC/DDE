@@ -74,6 +74,10 @@ struct ceres_cal_tslt {
 					V[axis] += ((double)G_data.s(axis, j)) * P[j];
 			}
 #endif // normalization
+#ifdef perspective
+			for (int axis = 0; axis < 3; axis++) V[axis] = P[axis];
+#endif // perspective
+
 
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
@@ -175,6 +179,9 @@ struct ceres_cal_angle {
 					V[axis] += ((double)G_data.s(axis, j)) * P[j];
 			}
 #endif
+#ifdef perspective
+			for (int axis = 0; axis < 3; axis++) V[axis] = P[axis];
+#endif // perspective
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
 			for (int j = 0; j < G_tslt_num; j++)
@@ -218,8 +225,8 @@ private:
 	//const Eigen::VectorXf ide_sg_vl;
 };
 
-struct ceres_cal_exp {
-	ceres_cal_exp(
+struct ceres_postp_exp {
+	ceres_postp_exp(
 		const float f_, const Eigen::VectorXf last_2_exp_, const Eigen::VectorXf last_1_exp_,
 		const Eigen::VectorXf now_exp_, const Eigen::MatrixXf exp_r_t_point_matrix_) :
 		f(f_), last_2_exp(last_2_exp_), last_1_exp(last_1_exp_), now_exp(now_exp_), exp_r_t_point_matrix(exp_r_t_point_matrix_) {}
@@ -266,7 +273,7 @@ struct ceres_cal_exp {
 			for (int j = 0; j < 3; j++) V[j] = (T)(exp_r_t_point_matrix(0, i_v * 3 + j));
 			for (int axis = 0; axis < 3; axis++)
 				for (int i_exp = 1; i_exp < G_nShape; i_exp++)
-					V[axis] = V[axis] + /*((double)(exp_r_t_point_matrix(i_exp, i_v * 3 + axis)))*/x_exp[i_exp-1];
+					V[axis] = V[axis] + ((double)(exp_r_t_point_matrix(i_exp, i_v * 3 + axis)))*x_exp[i_exp-1];
 
 			for (int axis = 0; axis < 3; axis++) {
 				P[axis] = (T)0;
@@ -280,6 +287,9 @@ struct ceres_cal_exp {
 					V[axis] += ((double)G_data.s(axis, j)) * P[j];
 			}
 #endif
+#ifdef perspective
+			for (int axis = 0; axis < 3; axis++) V[axis] = P[axis];
+#endif // perspective
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
 			for (int j = 0; j < G_tslt_num; j++)
@@ -308,13 +318,13 @@ struct ceres_cal_exp {
 		printf("%d %d %d %d %d %d\n", last_1_exp.rows(), last_1_exp.cols(), last_2_exp.rows(), last_2_exp.cols()
 			, now_exp.rows(), now_exp.cols());
 		for (int i = 0; i < G_nShape-1; i++) {
-			residual[G_land_num * 2 + i] = (T)0;//((T)omg_reg_exp)*(x_exp[i] - (T)now_exp(i+1));
+			residual[G_land_num * 2 + i] = ((T)omg_reg_exp)*(x_exp[i] - (T)now_exp(i+1));
 			ans_reg += residual[G_land_num * 2 + i] * residual[G_land_num * 2 + i];
 		}
 		puts("D");
 		for (int i = 0; i < G_nShape - 1; i++) {
 			printf("%d %.5f\n", i, last_2_exp(i + 1));
-			residual[G_land_num * 2 + G_nShape - 1 + i] = ((T)omg_tm_exp) * (x_exp[i] + (T)last_2_exp(i + 1));// -(T)(2 * last_1_exp(i + 1)));
+			residual[G_land_num * 2 + G_nShape - 1 + i] = ((T)omg_tm_exp) * ((x_exp[i] + (T)last_2_exp(i + 1)) -(T)(2 * last_1_exp(i + 1)));
 			ans_tm += residual[G_land_num * 2 + G_nShape - 1 + i] * residual[G_land_num * 2 + G_nShape - 1 + i];
 		}
 		printf("exp reg %.5f tem %.5f\n", ans_reg, ans_tm);
@@ -366,8 +376,8 @@ double ceres_post_processing(
 			new ceres_cal_angle(data.fcs, last_2.angle, last_1.angle, now.angle, exp_r_t_point_matrix)),
 		NULL, x_angle);
 	problem_exp.AddResidualBlock(
-		new AutoDiffCostFunction<ceres_cal_exp, G_land_num * 2 + 2 * G_nShape-2,G_nShape-1>(
-			new ceres_cal_exp(data.fcs, last_2.exp, last_1.exp, now.exp, exp_r_t_point_matrix)),
+		new AutoDiffCostFunction<ceres_postp_exp, G_land_num * 2 + 2 * G_nShape-2,G_nShape-1>(
+			new ceres_postp_exp(data.fcs, last_2.exp, last_1.exp, now.exp, exp_r_t_point_matrix)),
 		NULL, x_exp);
 	//problem_dis.AddResidualBlock(
 	//	new AutoDiffCostFunction<ceres_cal_dis, 4 * G_land_num, 2 * G_land_num>(
@@ -389,27 +399,29 @@ double ceres_post_processing(
 	options.minimizer_progress_to_stdout = true;
 
 	Solver::Summary summary;
-	Solve(options, &problem_exp, &summary);
+	//Solve(options, &problem_exp, &summary);
 	puts("ADDDDout");
 	//puts("D");
-	//for (int ite = 0; ite < 3; ite++) {
-	//	Solve(options, &problem_exp, &summary);
-	//	puts("ADDDDout");
-	//	for (int i = 0; i < G_nShape - 1; i++) G_data.shape.exp(i + 1) = x_exp[i];
-	//	system("pause");
-	//	printf("+++ %.5f %.5f\n",x_tslt[0],x_tslt[1]);
-	//	Solve(options, &problem_tslt , &summary);
-	//	for (int i = 0; i < G_tslt_num; i++) G_data.shape.tslt(i) = x_tslt[i];
-	//	printf("+++ %.5f %.5f\n", x_tslt[0], x_tslt[1]);
-	//	system("pause");
-	//	printf("+++ %.5f %.5f %.5f\n", x_angle[0], x_angle[1],x_angle[2]);
-	//	Solve(options, &problem_angle, &summary);
-	//	for (int i = 0; i < G_angle_num; i++) G_data.shape.angle(i) = x_angle[i];
-	//	printf("+++ %.5f %.5f %.5f\n", x_angle[0], x_angle[1], x_angle[2]);
-	//	system("pause");
-	//	
-	////	Solve(options, &problem_dis, &summary);
-	//}
+	for (int ite = 0; ite < 3; ite++) {
+		puts("optmz exp:");
+		Solve(options, &problem_exp, &summary);
+		
+		for (int i = 0; i < G_nShape - 1; i++) G_data.shape.exp(i + 1) = x_exp[i];
+		system("pause");
+		
+		printf("tslt optmz :\n +++ %.5f %.5f %.5f\n",x_tslt[0],x_tslt[1], x_tslt[2]);
+		Solve(options, &problem_tslt , &summary);
+		for (int i = 0; i < G_tslt_num; i++) G_data.shape.tslt(i) = x_tslt[i];
+		printf("+++ %.5f %.5f %.5f\n", x_tslt[0], x_tslt[1], x_tslt[2]);
+		system("pause");
+		printf("+++ %.5f %.5f %.5f\n", x_angle[0], x_angle[1],x_angle[2]);
+		Solve(options, &problem_angle, &summary);
+		for (int i = 0; i < G_angle_num; i++) G_data.shape.angle(i) = x_angle[i];
+		printf("+++ %.5f %.5f %.5f\n", x_angle[0], x_angle[1], x_angle[2]);
+		system("pause");
+		
+	//	Solve(options, &problem_dis, &summary);
+	}
 
 	/*std::cout << summary.BriefReport() << "\n";
 	std::cout << "Initial : " << user.transpose() << "\n";*/
@@ -437,7 +449,7 @@ double ceres_post_processing(
 		for (int j = 0; j < 3; j++) v(j) = exp_r_t_point_matrix(0, i_v * 3 + j);
 		for (int axis = 0; axis < 3; axis++)
 			for (int i_exp = 1; i_exp < G_nShape; i_exp++)
-				v(axis) = v(axis) + ((double)(exp_r_t_point_matrix(i_exp, i_v * 3 + axis)))*now.exp(i_exp);
+				v(axis) = v(axis) + ((exp_r_t_point_matrix(i_exp, i_v * 3 + axis)))*now.exp(i_exp);
 #ifdef perspective
 		v = rot * v + T;
 		land(i_v,0) = data.fcs * v(0)/v(2) + data.center(0);
