@@ -6,10 +6,9 @@
 
 #include <vector>
 #include <utility>
-#include <cv.h>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include <opencv2/calib3d.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 #include <iostream>
 #include <cstring>
 #include <cstdio>
@@ -25,22 +24,22 @@
 
 #define posit
 //#define normalization
-#define deal_64
-#define solve_cvpnp
+
+//#define solve_cvpnp_optimization
 
 
 #define EPSILON 1e-6
 
 
-const int G_land_num = 74;
-const int G_train_pic_id_num = 3300;
+const int G_land_num = 73;
+const int G_train_pic_id_num = 6000;
 const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 10;
-const int G_inner_land_num = 59;
-const int G_line_num = 50;
+const int G_inner_land_num = 58;
+const int G_line_num = 84;
 const int G_jaw_land_num = 20;
 
 struct iden
@@ -54,7 +53,9 @@ struct iden
 	Eigen::MatrixX3f rot;
 	Eigen::MatrixX3f tslt;
 	Eigen::MatrixXi land_cor;
+#ifdef normalization
 	Eigen::MatrixX3f s;
+#endif // normalization	
 	Eigen::MatrixX2f dis;
 
 	Eigen::MatrixX2f img_size;
@@ -83,12 +84,20 @@ void load_slt(
 
 void test_3d22dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
 
+void test_slt_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
+void test_slt_me_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
+void test_inner_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
+
 void save_result(iden *ide, int tot_id, std::string name);
 
 float cal_3d_vtx_(
 	iden *ide, Eigen::MatrixXf &bldshps,
 	int id_idx, int exp_idx, int vtx_idx, int axis);
 void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot);
+
+float print_error(float fcs, iden *ide, Eigen::MatrixXf &bldshps, int i_id, int exp_idx);
+void cal_2dland_fidexp(float fcs, iden *ide, Eigen::MatrixXf &bldshps, Eigen::MatrixX2f &land, int i_id, int exp_idx);
+
 
 void save_result_one(iden *ide, int i_id, int exp_idx, std::string name);
 void save_fitting_coef_each(std::string path, iden *ide, int &id_idx);
