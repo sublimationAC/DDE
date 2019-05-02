@@ -1,12 +1,20 @@
 #include "mesh.h"
-void init(std:: string &name,Mesh_my &mesh,double scale, std::string &lv_name, Eigen :: VectorXi &land_cor) {
+void init(std:: string &name,Mesh_my &mesh,double scale, std::string &lv_psp_f_name, Eigen :: VectorXi &land_cor) {
 	printf("Initiating mesh...\n");
 	igl::readOBJ(name, mesh.vtx, mesh.rect);	
 	mesh.num_rect = mesh.rect.rows();
 	mesh.num_vtx = mesh.vtx.rows();
 	mesh.vtx *= scale;
 	cal_norm(mesh);
-	load_land_cor_from_lv(lv_name, land_cor);
+#ifdef perspective
+	load_land_cor_from_psp_f(lv_psp_f_name, land_cor);
+#endif // perspective
+
+#ifdef normalization
+
+	load_land_cor_from_lv(lv_psp_f_name, land_cor);
+#endif // normalization
+
 }
 
 void cal_norm(Mesh_my &mesh) {
@@ -126,4 +134,21 @@ void draw_land(Mesh_my &mesh,Eigen::VectorXi &land_cor) {
 		glVertex3f(mesh.vtx(land_cor(i - 1), 0)*scale, mesh.vtx(land_cor(i - 1), 1)*scale, mesh.vtx(land_cor(i - 1), 2)*scale);
 		glEnd();
 	}
+}
+
+void draw_tst_slt_pts(Eigen::MatrixXi &slt_pts, int idx, Mesh_my mesh) {
+	float scale = 1.01;
+	glPointSize(5);
+	for (int i = 0; i < G_line_num; i++) {
+		//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+		glBegin(GL_POINTS);
+		glVertex3f(mesh.vtx(slt_pts(idx, i), 0)*scale, mesh.vtx(slt_pts(idx, i), 1)*scale, mesh.vtx(slt_pts(idx, i), 2)*scale);
+		glEnd();
+	}
+	//for (int i = 82; i < G_line_num; i++) {
+	//	//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+	//	glBegin(GL_POINTS);
+	//	glVertex3f(mesh.vtx(slt_pts(idx,i), 0)*scale, mesh.vtx(slt_pts(idx, i), 1)*scale, mesh.vtx(slt_pts(idx, i), 2)*scale);
+	//	glEnd();
+	//}
 }

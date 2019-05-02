@@ -5,12 +5,13 @@
 #include <Eigen/LU>
 #include <Eigen/Geometry>
 
-#define normalization
-
+//#define normalization
+#define perspective
 
 const int G_iden_num = 77;
-const int G_land_num = 74;
+const int G_land_num = 73;
 const int G_nShape = 47;
+const int G_line_num = 84;
 
 struct Target_type {
 	Eigen::VectorXf exp;
@@ -27,7 +28,7 @@ struct DataPoint
 	Eigen::VectorXf user;
 	Eigen::RowVector2f center;
 	Eigen::MatrixX2f land_2d;
-#ifdef posit
+#ifdef perspective
 	float f;
 #endif // posit
 #ifdef normalization
@@ -38,3 +39,6 @@ struct DataPoint
 };
 
 void load_land_cor_from_lv(std::string name, Eigen::VectorXi &land_cor);
+void load_land_cor_from_psp_f(std::string name, Eigen::VectorXi &land_cor);
+
+void get_tst_slt_pts(Eigen::MatrixXi &slt_pts);

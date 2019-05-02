@@ -16,3 +16,5 @@ void itplt(Mesh_my *pre_mesh, Mesh_my *nex_mesh, Mesh_my &mesh, int num, int per
 void draw_mesh(Mesh_my &mesh);
 
 void draw_land(Mesh_my &mesh, Eigen::VectorXi &land_cor);
+
+void draw_tst_slt_pts(Eigen::MatrixXi &slt_pts, int idx, Mesh_my mesh);
