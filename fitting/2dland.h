@@ -22,23 +22,23 @@
 	#include <dirent.h>
 #endif // linux
 
-//#define posit
-#define normalization
-#define deal_64
+#define posit
+//#define normalization
+
 //#define solve_cvpnp_optimization
 
 
 #define EPSILON 1e-6
 
 
-const int G_land_num = 74;
+const int G_land_num = 73;
 const int G_train_pic_id_num = 6000;
 const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 10;
-const int G_inner_land_num = 59;
+const int G_inner_land_num = 58;
 const int G_line_num = 84;
 const int G_jaw_land_num = 20;
 
@@ -83,7 +83,10 @@ void load_slt(
 	std::string path_slt, std::string path_rect);
 
 void test_3d22dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
+
 void test_slt_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
+void test_slt_me_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
+void test_inner_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx);
 
 void save_result(iden *ide, int tot_id, std::string name);
 
@@ -91,6 +94,10 @@ float cal_3d_vtx_(
 	iden *ide, Eigen::MatrixXf &bldshps,
 	int id_idx, int exp_idx, int vtx_idx, int axis);
 void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot);
+
+float print_error(float fcs, iden *ide, Eigen::MatrixXf &bldshps, int i_id, int exp_idx);
+void cal_2dland_fidexp(float fcs, iden *ide, Eigen::MatrixXf &bldshps, Eigen::MatrixX2f &land, int i_id, int exp_idx);
+
 
 void save_result_one(iden *ide, int i_id, int exp_idx, std::string name);
 void save_fitting_coef_each(std::string path, iden *ide, int &id_idx);

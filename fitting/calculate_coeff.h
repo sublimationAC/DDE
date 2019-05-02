@@ -1,5 +1,5 @@
 #pragma once
-#include "2dland.h"
+#include "admm_optimize.h"
 
 void init_exp_ide_r_t_pq(iden *ide, int ide_num);
 
@@ -20,8 +20,18 @@ void solve(
 float pre_cal_exp_ide_R_t(
 	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx,
+	Eigen::VectorXf &ide_sg_vl, float init_exp);
+void init_exp_ide(iden *ide, int id_idx, float init_exp);
+
+float pre_cal_exp_ide_R_t_dvd(
+	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
+	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx,
 	Eigen::VectorXf &ide_sg_vl);
-void init_exp_ide(iden *ide, int id_idx);
+
+float admm_cal_exp_ide_R_t(
+	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
+	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx,
+	Eigen::VectorXf &ide_sg_vl);
 
 void cal_rt_posit(
 	float f, iden *ide, Eigen::MatrixXf &bldshps,
@@ -57,6 +67,11 @@ void update_slt(
 	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::VectorXi &out_land_cor);
 
+void update_slt_me(
+	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXi &out_land_cor);
+
 void test_slt(float f ,iden *ide, Eigen::MatrixXf &bldshps,
 	Eigen::VectorXi &land_cor, int id_idx, int exp_idx);
 
@@ -76,6 +91,11 @@ float cal_3dpaper_ide(
 void cal_id_point_matrix(
 	iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx, Eigen::VectorXi &land_cor,
 	Eigen::MatrixXf &result);
+
+float cal_3dpaper_ide_admm(
+	float f, iden* ide, Eigen::MatrixXf &bldshps,
+	int id_idx, int exp_idx, Eigen::VectorXi &land_cor,
+	Eigen::VectorXf &ide_sg_vl, float lmd);
 
 float cal_fixed_exp_same_ide(
 	float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx,
@@ -109,3 +129,5 @@ void test_coef_mesh(iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx
 void test_2dland(float f, iden *ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
 void cal_mesh_land(Eigen::MatrixXf &bldshps);
 void cal_mesh_land_exp_only(Eigen::MatrixXf &bldshps);
+
+void update_inner_land_cor(float f, iden *ide, int id_idx, int exp_idx, Eigen::VectorXi &inner_cor, Eigen::MatrixXf &bldshps);
