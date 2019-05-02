@@ -13,7 +13,8 @@ FernTrain::FernTrain(const TrainingParameters &tp) : training_parameters(tp)
 
 void cal_Y_pixels_cov_proj_cov(cv::Mat Y,cv::Mat pixels_val, vector<double> &Y_pixels_cov, double &Y_proj_cov) {
 	cv::Mat projection(Y.cols, 1, CV_64FC1);
-	cv::theRNG().fill(projection, cv::RNG::NORMAL, cv::Scalar(0), cv::Scalar(1));
+	cv::theRNG().fill(projection, cv::RNG::NORMAL, cv::Scalar(0), cv::Scalar(1));	
+	//cv::theRNG().fill(projection, cv::RNG::UNIFORM, cv::Scalar(-2), cv::Scalar(2));
 	unique_ptr<double[]> Y_proj_data(new double[Y.rows + 3]);
 	cv::Mat Y_proj(Y.rows, 1, CV_64FC1, cv::alignPtr(Y_proj_data.get(), 32));
 	static_cast<cv::Mat>(Y * projection).copyTo(Y_proj);
@@ -67,8 +68,8 @@ void get_feature_idx_thresthod(
 		threshold_min = min(threshold_min, val);
 	}
 	thresholds[i] = (threshold_max + threshold_min) / 2
-		+ cv::theRNG().uniform(-(threshold_max - threshold_min) * 0.1,
-		(threshold_max - threshold_min) * 0.1);
+		+ cv::theRNG().uniform(
+			-(threshold_max - threshold_min) * 0.1,(threshold_max - threshold_min) * 0.1);
 	FILE *fp;
 	fopen_s(&fp, "cnt_fern.txt", "a");
 	fprintf(fp, "i %d f_idx_fi %d f_idx_se %d thsld_min %.10f thsld_max %.10f thsld %.10f\n", i, features_index[i].first, features_index[i].second, threshold_min, threshold_max, thresholds[i]);
@@ -170,8 +171,10 @@ void FernTrain::Regress_ta(vector<Target_type> *targets,
 		cal_Y_pixels_cov_proj_cov(Y_tslt, pixels_val, Y_tslt_pixels_cov, Y_tslt_proj_cov);
 		cal_Y_pixels_cov_proj_cov(Y_angle, pixels_val, Y_angle_pixels_cov, Y_angle_proj_cov);
 
-		get_feature_idx_thresthod(pixels_val, Y_tslt_pixels_cov, Y_tslt_proj_cov, pixels_cov, features_index_tslt, thresholds_tslt, i);
-		get_feature_idx_thresthod(pixels_val, Y_angle_pixels_cov, Y_angle_proj_cov, pixels_cov, features_index_angle, thresholds_angle, i);
+		get_feature_idx_thresthod(
+			pixels_val, Y_tslt_pixels_cov, Y_tslt_proj_cov, pixels_cov, features_index_tslt, thresholds_tslt, i);
+		get_feature_idx_thresthod(
+			pixels_val, Y_angle_pixels_cov, Y_angle_proj_cov, pixels_cov, features_index_angle, thresholds_angle, i);
 
 	}
 
@@ -245,8 +248,10 @@ void FernTrain::Regress_expdis(vector<Target_type> *targets,
 		cal_Y_pixels_cov_proj_cov(Y_exp, pixels_val, Y_exp_pixels_cov, Y_exp_proj_cov);
 		cal_Y_pixels_cov_proj_cov(Y_dis, pixels_val, Y_dis_pixels_cov, Y_dis_proj_cov);
 
-		get_feature_idx_thresthod(pixels_val, Y_exp_pixels_cov, Y_exp_proj_cov, pixels_cov, features_index_exp, thresholds_exp, i);
-		get_feature_idx_thresthod(pixels_val, Y_dis_pixels_cov, Y_dis_proj_cov, pixels_cov, features_index_dis, thresholds_dis, i);
+		get_feature_idx_thresthod(
+			pixels_val, Y_exp_pixels_cov, Y_exp_proj_cov, pixels_cov, features_index_exp, thresholds_exp, i);
+		get_feature_idx_thresthod(
+			pixels_val, Y_dis_pixels_cov, Y_dis_proj_cov, pixels_cov, features_index_dis, thresholds_dis, i);
 
 	}
 

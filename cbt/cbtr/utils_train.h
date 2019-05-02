@@ -3,17 +3,17 @@
 
 #define EPSILON 1e-3
 
-#define ignore_64_train
+//#define ignore_64_train
 //#define mxini_def
 
-const int G_land_num = 74;
+const int G_land_num = 73;
 const int G_train_pic_id_num = 3300;
 const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 77;
-const int G_inner_land_num = 59;
+const int G_inner_land_num = 58;
 const int G_line_num = 84;
 const int G_outer_land_num = 15;
 //const int G_jaw_land_num = 20;
@@ -25,7 +25,7 @@ const float G_rand_rot_border = 0.1;
 const float G_rand_tslt_border = 20;
 #endif // normalization
 #ifdef perspective
-const float G_rand_tslt_border = 1;
+const float G_rand_tslt_border = 0.1;
 //#define div_tslt_z_def
 #endif // perspective
 

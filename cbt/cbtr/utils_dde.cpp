@@ -627,9 +627,9 @@ void get_init_land_ang_0ide_i(
 		//std::cout << "sqz : " << i_v << ' ' << v.transpose() << "\n";
 #ifdef perspective
 		v = rot * v + T;
-		ans[i_v].x = v(0)*data.fcs / v(2) + data.center(0) + data.init_shape.dis(i_v + G_outer_land_num, 0);
-		ans[i_v].y = v(1)*data.fcs / v(2) + data.center(1) + data.init_shape.dis(i_v + G_outer_land_num, 1);
-		ans[i_v].y = data.image.rows - ans[i_v].y;
+		ans[i_v + G_outer_land_num].x = v(0)*data.fcs / v(2) + data.center(0) + data.init_shape.dis(i_v + G_outer_land_num, 0);
+		ans[i_v + G_outer_land_num].y = v(1)*data.fcs / v(2) + data.center(1) + data.init_shape.dis(i_v + G_outer_land_num, 1);
+		ans[i_v + G_outer_land_num].y = data.image.rows - ans[i_v + G_outer_land_num].y;
 #endif // perspective
 #ifdef normalization
 		Eigen::RowVector2f temp = ((data.s) * (rot * v)).transpose() + T + data.init_shape.dis.row(i_v+G_outer_land_num);
@@ -786,7 +786,9 @@ void vector2target(Eigen::VectorXf &data, Target_type &ans) {
 	for (int i = 1; i < G_nShape; i++) ans.exp(i) = data(i-1);
 	ans.exp(0) = 0;
 	for (int i = 0; i < 2; i++) ans.tslt(i) = data(i + G_nShape - 1);
+#ifdef normalization
 	ans.tslt(2) = 0;
+#endif // normalization
 	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) ans.rot(i, j) = data(G_nShape + 3 + i * 3 + j);
 	for (int i = 0; i < 3; i++) ans.angle(i) = data(G_nShape - 1 + 2 + i);
 	for (int i = 0; i < G_land_num; i++)for (int j = 0; j < 2; j++) ans.dis(i, j) = data(G_nShape - 1 + 2 + 3 + i * 2 + j);
@@ -1033,38 +1035,6 @@ uchar get_sobel_batch_feature(cv::Mat img, cv::Point p) {
 		}
 	ans = max(ans, (float)0);
 	return (uchar)(ans);
-}
-void load_slt(
-	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
-	std::string path_slt, std::string path_rect) {
-	puts("loading silhouette line&vertices...");
-	FILE *fp;
-	fopen_s(&fp, path_slt.c_str(), "r");
-	int line_num;
-	fscanf_s(fp, "%d", &line_num);
-	if (line_num != G_line_num) {
-		puts("line num error!!!..");
-		exit(-1);
-	}
-	for (int i = 0; i < line_num; i++) {
-		int x, num;
-
-		fscanf_s(fp, "%d%d", &x, &num);
-		slt_line[i].resize(num);
-		for (int j = 0; j < num; j++)
-			fscanf_s(fp, "%d", &slt_line[i][j]);
-	}
-	fclose(fp);
-	fopen_s(&fp, path_rect.c_str(), "r");
-	int vtx_num = 0;
-	fscanf_s(fp, "%d", &vtx_num);	
-	for (int i = 0; i < vtx_num; i++) {
-		int idx, num;
-		fscanf_s(fp, "%d%d", &idx, &num);
-		slt_point_rect[idx].resize(num);
-		for (int j = 0; j < num; j++) fscanf_s(fp, "%d%d", &slt_point_rect[idx][j].first, &slt_point_rect[idx][j].second);
-	}
-	fclose(fp);
 }
 
 //#define test_updt_slt

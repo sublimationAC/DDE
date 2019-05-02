@@ -38,20 +38,21 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 			}
 			else {
 				int len = strlen(dp->d_name);
-				if (dp->d_name[len - 1] == 'd' && dp->d_name[len - 2] == 'n') {
+				if (dp->d_name[len - 3] == 'd' && dp->d_name[len - 4] == 'n' &&
+					dp->d_name[len - 1] == '3' && dp->d_name[len - 2] == '7') {
 					////	
 					DataPoint temp;
 					std::string p = path + "/" + dp->d_name;
 
 
-					if (_access((p.substr(0, p.find(".land")) + sfx).c_str(), 0) == -1) {
+					if (_access((p.substr(0, p.find(".land73")) + sfx).c_str(), 0) == -1) {
 						free(namelist[index]);
 						index++;
 						continue;
 					}
 					load_land(path + "/" + dp->d_name, temp);
 
-					load_img(p.substr(0, p.find(".land")) + sfx, temp);
+					load_img(p.substr(0, p.find(".land73")) + sfx, temp);
 #ifdef  flap_2dland
 					for (int i = 0; i < temp.landmarks.size(); i++)
 						temp.landmarks[i].y = temp.image.rows - temp.landmarks[i].y;
@@ -59,20 +60,20 @@ void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint
 					//cal_rect(temp);
 					//system("pause");
 #ifdef  normalization
-					if (_access((p.substr(0, p.find(".land")) + ".lv").c_str(), 0) == -1) {
+					if (_access((p.substr(0, p.find(".land73")) + ".lv").c_str(), 0) == -1) {
 						puts("No lv !!!! error !");
-						exit(1);
+						exit(-1);
 
 					}
-					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
+					load_fitting_coef_one(p.substr(0, p.find(".land73")) + ".lv", temp);
 #endif //  normalization
 
 #ifdef perspective
-					if (_access((p.substr(0, p.find(".land")) + ".psp_f").c_str(), 0) == -1) {
+					if (_access((p.substr(0, p.find(".land73")) + ".psp_f").c_str(), 0) == -1) {
 						puts("No psp_f !!!! error !");
 						exit(-1);
 					}
-					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".psp_f", temp);
+					load_fitting_coef_one(p.substr(0, p.find(".land73")) + ".psp_f", temp);
 #endif // perspective
 
 
@@ -275,8 +276,13 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 
 #ifdef perspective
 	fread(&temp.fcs, sizeof(float), 1, fp);
+	std::cout << "f/tslt_z: " << temp.fcs / temp.shape.tslt(2) << " " << temp.shape.tslt(2) / temp.fcs << "\n";
+
+	//temp.fcs = temp.fcs / temp.shape.tslt(2) * 10;
+	//temp.shape.tslt(2) = 10;
+
 #endif // perspective
-	std::cout << "f/tslt_z: " << temp.fcs / temp.shape.tslt(2) << " " << temp.shape.tslt(2)/ temp.fcs << "\n";
+	
 
 	temp.shape.dis.resize(G_land_num, 2);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
@@ -300,6 +306,39 @@ void load_bldshps(Eigen::MatrixXf &bldshps, std::string &name) {
 	for (int i = 0; i < G_iden_num; i++) {
 		for (int j = 0; j < G_nShape*G_nVerts * 3; j++)
 			fread(&bldshps(i, j), sizeof(float), 1, fp);
+	}
+	fclose(fp);
+}
+
+void load_slt(
+	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	std::string path_slt, std::string path_rect) {
+	puts("loading silhouette line&vertices...");
+	FILE *fp;
+	fopen_s(&fp, path_slt.c_str(), "r");
+	int line_num;
+	fscanf_s(fp, "%d", &line_num);
+	if (line_num != G_line_num) {
+		puts("line num error!!!..");
+		exit(-1);
+	}
+	for (int i = 0; i < line_num; i++) {
+		int x, num;
+
+		fscanf_s(fp, "%d%d", &x, &num);
+		slt_line[i].resize(num);
+		for (int j = 0; j < num; j++)
+			fscanf_s(fp, "%d", &slt_line[i][j]);
+	}
+	fclose(fp);
+	fopen_s(&fp, path_rect.c_str(), "r");
+	int vtx_num = 0;
+	fscanf_s(fp, "%d", &vtx_num);
+	for (int i = 0; i < vtx_num; i++) {
+		int idx, num;
+		fscanf_s(fp, "%d%d", &idx, &num);
+		slt_point_rect[idx].resize(num);
+		for (int j = 0; j < num; j++) fscanf_s(fp, "%d%d", &slt_point_rect[idx][j].first, &slt_point_rect[idx][j].second);
 	}
 	fclose(fp);
 }

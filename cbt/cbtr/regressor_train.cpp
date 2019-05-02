@@ -11,6 +11,8 @@
 //#define all_face_def
 #define fp_inface_def
 #define norm_fp_def
+//#define norm_nhp_def
+
 //#define sort_fp_def
 //#define drct_fp_def
 #define batch_feature
@@ -214,20 +216,8 @@ void get_pixel_value(
 	sig = sqrt(sig);
 
 	for (int j = 0; j < P; ++j)
-	{
-		cv::Point pixel_pos =
-			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
-			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
-			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
-
-#ifdef small_rect_def
-		if (pixel_pos.inside(data.face_rect))
-#else
-		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
-#endif // small_rect_def	
-			p[j] =((data.image.at<uchar>(pixel_pos) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-		else
-			p[j] = (-ave / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
+	{			
+		p[j] =((pixel_se[j] - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;	
 	}
 #endif
 #ifdef sort_fp_def
@@ -289,7 +279,15 @@ void get_pixel_value(
 #else
 		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
 #endif // small_rect_def	
+#ifdef batch_feature
+#ifdef sb_batch_feature
+			p[j] = hash[get_sobel_batch_feature(data.image, pixel_pos)];
+#else
+			p[j] = hash[get_batch_feature(data.image, pixel_pos)];
+#endif // get_batch_feature
+#else
 			p[j] = hash[data.image.at<uchar>(pixel_pos)];
+#endif // batch_feature				
 		else
 			p[j] = hash[0];
 	}
@@ -309,9 +307,9 @@ void get_pixel_value(
 		{
 #ifdef batch_feature
 #ifdef sb_batch_feature
-			pixel_se[j] = get_sobel_batch_feature(data.image, pixel_pos);
+			p[j] = get_sobel_batch_feature(data.image, pixel_pos);
 #else
-			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+			p[j] = get_batch_feature(data.image, pixel_pos);
 #endif // get_batch_feature
 #else
 			p[j] = data.image.at<uchar>(pixel_pos);
@@ -321,6 +319,55 @@ void get_pixel_value(
 			p[j] = 0;
 	}
 #endif // drct_fp_def
+#ifdef norm_nhp_def
+	vector<uchar> pixel_se(P), pixel_cnt(260);
+	float ave = 0;
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect)) {
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))) {
+#endif // small_rect_def	
+#ifdef batch_feature
+#ifdef sb_batch_feature
+			pixel_se[j] = get_sobel_batch_feature(data.image, pixel_pos);
+#else
+			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+#endif // get_batch_feature
+#else
+			pixel_se[j] = data.image.at<uchar>(pixel_pos);
+#endif // batch_feature	
+		}
+		else
+			pixel_se[j] = 0;
+		pixel_cnt[pixel_se[j]]++;
+	}
+
+	int mi = 0;
+	for (int i = 0; i < 256; i++)
+		if (pixel_cnt[i] > 0) {
+			mi = pixel_cnt[i];
+			break;
+		}
+	int before = 0;
+	vector<int> hash(260);
+	for (int i = 0; i < 256; i++) {
+		if (pixel_cnt[i] == 0) continue;
+		before += pixel_cnt[i];
+		hash[i] = round(((before - mi)*1.0 / (P - mi)) * 255);
+	}
+
+	for (int j = 0; j < P; ++j)
+	{
+		p[j] = hash[pixel_se[j]];
+	}
+#endif // sort_fp_def
 }
 
 void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect,

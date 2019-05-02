@@ -16,7 +16,7 @@
 #define win64
 //#define linux
 
-
+//#define train_intersection_def
 
 #ifdef win64
 
@@ -30,9 +30,17 @@ std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_dat
 
 #endif // win64
 #ifdef linux
-std::string fwhs_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/fw";
-std::string lfw_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/lfw_image";
-std::string gtav_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/GTAV_image";
+#ifdef perspective
+std::string fwhs_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/fw";
+std::string lfw_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/lfw_image";
+std::string gtav_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/GTAV_image";
+#endif // perspective
+
+#ifdef normalization
+std::string fwhs_path_lv = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/fw";
+std::string lfw_path_lv = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/lfw_image";
+std::string gtav_path_lv = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/GTAV_image";
+#endif // normalization
 std::string test_path = "./test";
 std::string test_path_one = "/home/weiliu/DDE/cal_coeff/data_me/test_only_one";
 //std::string fwhs_path_p1 = "/home/weiliu/fitting_dde/1cal/data_me/fw_p1";
@@ -262,9 +270,11 @@ void aug_rand_tslt(
 #ifdef div_tslt_z_def
 		if (i <= G_rnd_tslt / 2)
 			data[idx].init_shape.tslt(2) = traindata[train_idx].shape.tslt(2);
-		else
+		else {
+			data[idx].init_shape.tslt = traindata[train_idx].shape.tslt;
 			data[idx].init_shape.tslt(2) = traindata[train_idx].shape.tslt(2)
 				+ cv::theRNG().uniform(-traindata[train_idx].shape.tslt(2)*0.1, traindata[train_idx].shape.tslt(2)*0.1);
+		}
 #else
 		data[idx].init_shape.tslt(2) = traindata[train_idx].shape.tslt(2) 
 			+ cv::theRNG().uniform(-traindata[train_idx].shape.tslt(2)*0.1, traindata[train_idx].shape.tslt(2)*0.1);
@@ -409,10 +419,24 @@ vector<DataPoint> ArgumentData(
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::MatrixXf &bldshps)
 {
 
-	vector<DataPoint> result(training_data.size() * G_trn_factor);
+	FILE *fp;
+	fopen_s(&fp, "/home/weiliu/train_dde_psp/const_file/eliminate_index.txt","r");
+	Eigen::VectorXi eli_idx(1000);
+	for (int i = 0; i < 1000; i++) fscanf_s(fp,"%d", &eli_idx(i));
+	fclose(fp);
+	int now = 0;
+
+
+	vector<DataPoint> result((training_data.size()-1000) * G_trn_factor);
 	int idx = 0;
 	for (int i = 0; i < training_data.size(); ++i)
 	{
+		if (now < 1000) {
+			if (i == eli_idx(now)) {
+				now++;
+				continue;
+			}
+		}
 		printf("ArgumentData i: %d\n", i);
 		aug_rand_rot(training_data,result,idx,i, slt_line, slt_point_rect, bldshps);
 		aug_rand_tslt(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
@@ -420,7 +444,9 @@ vector<DataPoint> ArgumentData(
 		aug_rand_user(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
 		aug_rand_f(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
 	}
+	printf("total aug train data: %d\n", result.size());
 	return result;
+
 }
 
 
@@ -463,12 +489,12 @@ void cal_inner_bldshp_matrix(std::vector<Eigen::MatrixXf> &arg_exp_land_matrix, 
 	}
 }
 #ifdef win64
-std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_line_new_short_ans.txt";
+std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_line_4_2.txt";
 std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_rect_new_short_ans.txt";
 #endif // win64
 #ifdef linux
-std::string slt_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_line_new_short_ans.txt";
-std::string rect_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_rect_new_short_ans.txt";
+std::string slt_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_line_new_4_2.txt";
+std::string rect_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_rect_new_4_2.txt";
 #endif // linux
 
 std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
@@ -494,10 +520,6 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 	cal_inner_bldshp_matrix(arg_inner_bldshp_matrix,bldshps,training_data);
 
-	
-	vector<DataPoint> argumented_training_data =
-		ArgumentData(training_data, slt_line, slt_point_rect, bldshps);
-
 	//for (int i = 0; i < 100; i++)
 	//	print_datapoint(argumented_training_data[i]);
 	puts("C");
@@ -519,8 +541,78 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 
 	puts("E");
 
+	vector<DataPoint> argumented_training_data =
+		ArgumentData(training_data, slt_line, slt_point_rect, bldshps);
+
 	puts("B");
 	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));
+#ifdef train_intersection_def
+	puts("training inter taed.....");
+	for (int i = 0; i < tp.T; ++i)
+	{
+		long long s = cv::getTickCount();
+
+		vector<Target_type> targets =
+			ComputeTargets(argumented_training_data);
+		FILE *fp;
+		fopen_s(&fp, "debug_target.txt", "a");
+		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
+		fclose(fp);
+
+
+		stage_regressors[i].Regress_ta(
+			triangleList, rect, left_eye_rect, right_eye_rect, mouse_rect, tri_idx, ref_shape, &targets,
+			argumented_training_data, bldshps, arg_inner_bldshp_matrix);
+
+
+		for (DataPoint &dp : argumented_training_data)
+		{
+			Target_type offset =
+				stage_regressors[i].Apply_ta(dp, bldshps, tri_idx, arg_inner_bldshp_matrix);
+			/*Transform t = Procrustes(dp.init_shape, mean_shape);
+			t.Apply(&offset, false);*/
+			dp.init_shape = shape_adjustment(dp.init_shape, offset);
+		}
+
+		cout << "(^_^) Finish training  tr..... " << i + 1 << " regressor. Using "
+			<< (cv::getTickCount() - s) / cv::getTickFrequency()
+			<< "s. " << tp.T << " in total." << endl;
+		cout << "around " << (tp.T - i - 1)*(cv::getTickCount() - s) / cv::getTickFrequency() / 60
+			<< "minutes letf!\n";
+
+		s = cv::getTickCount();
+
+		targets =
+			ComputeTargets(argumented_training_data);
+		//FILE *fp;
+		fopen_s(&fp, "debug_target.txt", "a");
+		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
+		fclose(fp);
+
+		stage_regressors[i].Regress_expdis(
+			triangleList, rect, left_eye_rect, right_eye_rect, mouse_rect, tri_idx, ref_shape, &targets,
+			argumented_training_data, bldshps, arg_inner_bldshp_matrix);
+
+
+		for (DataPoint &dp : argumented_training_data)
+		{
+			Target_type offset =
+				stage_regressors[i].Apply_expdis(dp, bldshps, tri_idx, arg_inner_bldshp_matrix);
+			/*Transform t = Procrustes(dp.init_shape, mean_shape);
+			t.Apply(&offset, false);*/
+			dp.init_shape = shape_adjustment(dp.init_shape, offset);
+		}
+
+		cout << "(^_^) Finish training dis exp....." << i + 1 << " regressor. Using "
+			<< (cv::getTickCount() - s) / cv::getTickFrequency()
+			<< "s. " << tp.T << " in total." << endl;
+		cout << "around " << (tp.T - i - 1)*(cv::getTickCount() - s) / cv::getTickFrequency() / 60
+			<< "minutes letf!\n";
+	}
+
+#else
+
+
 	puts("training tr.....");
 	for (int i = 0; i < tp.T; ++i)
 	{
@@ -588,6 +680,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 			<< "minutes letf!\n";
 	}
 
+#endif // train_intersection_def
 
 	puts("B");
 	system("pause");
