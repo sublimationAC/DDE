@@ -55,7 +55,7 @@ void fit_solve(
 
 	//data.shape.rot = ide[0].rot.block(0,0,3,3);
 	data.shape.angle = get_uler_angle_zyx(ide[0].rot.block(0, 0, 3, 3));
-#ifdef persepctive
+#ifdef perspective
 	data.shape.tslt = ide[0].tslt.row(0).transpose();
 #endif // persepctive
 #ifdef normalization
@@ -142,18 +142,18 @@ void cal_f(
 
 
 
-	for (int i_id = 0; i_id < G_train_pic_id_num; i_id++) {
+	for (int i_id = 0; i_id < 1; i_id++) {
 		if (ide[i_id].num == 0)continue;
 #ifndef test_coef
-		float L = 100, R = 1000, er_L, er_R;
+		/*float L = 100, R = 1000, er_L, er_R;
 		er_L = pre_cal_exp_ide_R_t(L, ide, bldshps, inner_land_corr,
-			slt_line, slt_point_rect, i_id, ide_sg_vl);
+			slt_line, slt_point_rect, i_id,ide_sg_vl);
 		er_R = pre_cal_exp_ide_R_t(R, ide, bldshps, inner_land_corr,
 			slt_line, slt_point_rect, i_id, ide_sg_vl);
 		fprintf(fp, "-------------------------------------------------\n");
-		while (R - L > 20) {
-			printf("i_id: %d cal f %.5f %.5f %.5f %.5f\n", i_id, L, er_L, R, er_R);
-			fprintf(fp, "i_id: %d cal f %.5f %.5f %.5f %.5f\n", i_id, L, er_L, R, er_R);
+		while (R-L>20) {
+			printf("i_id: %d cal f %.5f %.5f %.5f %.5f\n",i_id, L, er_L, R, er_R);
+			fprintf(fp, "i_id: %d cal f %.5f %.5f %.5f %.5f\n",i_id, L, er_L, R, er_R);
 			float mid_l, mid_r, er_mid_l, er_mid_r;
 			mid_l = L * 2 / 3 + R / 3;
 			mid_r = L / 3 + R * 2 / 3;
@@ -164,7 +164,21 @@ void cal_f(
 			if (er_mid_l < er_mid_r) R = mid_r, er_R = er_mid_r;
 			else L = mid_l, er_L = er_mid_l;
 		}
-		ide[i_id].fcs = (L + R) / 2;
+		ide[i_id].fcs = (L+R)/2;*/
+		float f2 = 2500, er_f2;
+		er_f2 = pre_cal_exp_ide_R_t(f2, ide, bldshps, inner_land_corr,
+			slt_line, slt_point_rect, i_id, ide_sg_vl);
+		float f1 = 800, er_f1;
+		er_f1 = pre_cal_exp_ide_R_t(f1, ide, bldshps, inner_land_corr,
+			slt_line, slt_point_rect, i_id, ide_sg_vl);
+
+		if (er_f1 > er_f2*1.2) {
+			ide[i_id].fcs = f2;
+			er_f2 = pre_cal_exp_ide_R_t(f2, ide, bldshps, inner_land_corr,
+				slt_line, slt_point_rect, i_id, ide_sg_vl);
+		}
+		else
+			ide[i_id].fcs = f1;
 #endif // !test_coef
 
 		/*FILE *fp;
@@ -300,13 +314,13 @@ float pre_cal_exp_ide_R_t(
 			test_2dland(f, ide, bldshps, id_idx, i_exp);
 #endif // test_posit_by2dland
 
-			Eigen::VectorXi out_land_cor(15);
+			Eigen::VectorXi out_land_cor(G_outer_land_num);
 			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
 			//std::cout << inner_land_cor << '\n';
 			//std::cout <<"--------------\n"<< out_land_cor << '\n';
 			Eigen::VectorXi land_cor(G_land_num);
-			for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
-			for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
+			for (int i = 0; i < G_outer_land_num; i++) land_cor(i) = out_land_cor(i);
+			for (int i = G_outer_land_num; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - G_outer_land_num);
 			ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
 
 			//test_slt(f, ide, bldshps, land_cor, id_idx, i_exp);
@@ -361,7 +375,7 @@ void cal_rt_posit(
 
 	Eigen::MatrixX2f land_in; Eigen::MatrixX3f bs_in;
 	int temp_num = 0;
-	if (ide[id_idx].land_cor(exp_idx, 20) == inner_land_cor(20 - 15) && ide[id_idx].land_cor(exp_idx, 30) == inner_land_cor(30 - 15)) {
+	if (ide[id_idx].land_cor(exp_idx, 20) == inner_land_cor(20 - G_outer_land_num) && ide[id_idx].land_cor(exp_idx, 30) == inner_land_cor(30 - 15)) {
 		land_in.resize(G_land_num, 2);
 		land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num, 0, G_land_num, 2);
 		//std::cout << land_in.transpose() << '\n';
@@ -370,9 +384,6 @@ void cal_rt_posit(
 			0; i < G_land_num; i++)
 			for (int axis = 0; axis < 3; axis++)
 				bs_in(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), axis);
-#ifdef deal_64
-		bs_in.row(64).array() = (bs_in.row(59).array() + bs_in.row(62).array()) / 2;
-#endif // deal_64
 
 
 		//std::cout << bs_in << '\n';
@@ -495,7 +506,8 @@ void cal_rt_pnp(
 	std::vector<cv::Point3f> land_3d; land_3d.clear();
 
 	int temp_num = 0;
-	if (ide[id_idx].land_cor(exp_idx, 20) == inner_land_cor(20 - 15) && ide[id_idx].land_cor(exp_idx, 30) == inner_land_cor(30 - 15)) {
+	if (ide[id_idx].land_cor(exp_idx, 20) == inner_land_cor(20 - G_outer_land_num) &&
+		ide[id_idx].land_cor(exp_idx, 30) == inner_land_cor(30 - G_outer_land_num)) {
 		/*land_in.resize(G_land_num, 2);
 		land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num, 0, G_land_num, 2);*/
 		for (int i_v = exp_idx * G_land_num; i_v < exp_idx*G_land_num + G_land_num; i_v++)
@@ -509,10 +521,7 @@ void cal_rt_pnp(
 			land_3d[i].y = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), 1);
 			land_3d[i].z = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), 2);
 		}
-#ifdef deal_64
-		//bs_in.row(64).array() = (bs_in.row(59).array() + bs_in.row(62).array()) / 2;
-		land_3d[64] = (land_3d[59] + land_3d[62]) / 2;
-#endif // deal_64
+
 
 
 		//std::cout << bs_in << '\n';
@@ -523,7 +532,7 @@ void cal_rt_pnp(
 	{
 		//land_in.resize(G_inner_land_num, 2);
 		//land_in = ide[id_idx].land_2d.block(exp_idx*G_land_num + 15, 0, G_inner_land_num, 2);
-		for (int i_v = exp_idx * G_land_num + 15; i_v < exp_idx*G_land_num + G_land_num; i_v++)
+		for (int i_v = exp_idx * G_land_num + G_outer_land_num; i_v < exp_idx*G_land_num + G_land_num; i_v++)
 			land_2d.push_back(cv::Point2f(ide[id_idx].land_2d(i_v, 0), ide[id_idx].land_2d(i_v, 1)));
 		//std::cout << land_in.transpose() << '\n';
 		//bs_in.resize(G_inner_land_num, 3);
@@ -571,6 +580,7 @@ void cal_rt_pnp(
 
 	cv::Mat rot;
 	cv::Rodrigues(rotation_vector, rot);
+	std::cout << "rotation_cv_matrix:\n" << rot << "\n\n";
 	//Eigen::Map<Eigen::Matrix3d> R(rot.ptr <double>(), rot.rows, rot.cols);
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
@@ -643,9 +653,7 @@ void cal_rt_normalization(
 		for (int i = 0; i < G_land_num; i++)
 			for (int axis = 0; axis < 3; axis++)
 				bs_in(i, axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, ide[id_idx].land_cor(exp_idx, i), axis);
-#ifdef deal_64
-		bs_in.row(64).array() = (bs_in.row(59).array() + bs_in.row(62).array()) / 2;
-#endif // deal_64
+
 		//std::cout << bs_in << '\n';
 		//std::cout << land_in << "\n";
 	}
@@ -735,9 +743,7 @@ void cal_inner_bldshps(
 	for (int i = 0; i < G_inner_land_num; i++)
 		for (int j = 0; j < 3; j++)
 			bs_in(i, j) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, inner_land_cor(i), j);
-#ifdef deal_64
-	bs_in.row(64 - 15).array() = (bs_in.row(59 - 15).array() + bs_in.row(62 - 15).array()) / 2;
-#endif // deal_64
+
 	//	std::cout << bs << '\n';
 		//std::cout << inner_land_cor.transpose() << '\n';
 		//printf("-%d %d\n", bs_in.rows(), bs_in.cols());
@@ -774,10 +780,10 @@ void update_slt(
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXi &out_land_cor) {
 	////////////////////////////////project
-
 	puts("updating silhouette...");
 	Eigen::Matrix3f R = ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3);
 
+	Eigen::VectorXf angle = get_uler_angle_zyx(R);
 	Eigen::Vector3f T = ide[id_idx].tslt.row(exp_idx).transpose();
 
 	//puts("A");
@@ -791,8 +797,14 @@ void update_slt(
 		float min_v_n = 10000;
 		int min_idx = 0;
 		Eigen::Vector3f cdnt;
+		int en = slt_line[i].size();
+		if (angle(1) < -0.1 && i < 34) en /= 3;
+		if (angle(1) < -0.1 && i >= 34 && i < 41) en /= 2;
+		if (angle(1) > 0.1 && i >= 49 && i < 84) en /= 3;
+		if (angle(1) > 0.1 && i >= 42 && i < 49) en /= 2;
 #ifdef perspective
-		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
+
+		for (int j = 0; j < en; j++) {
 			//printf("j %d\n", j);
 			int x = slt_line[i][j];
 			//printf("x %d\n", x);
@@ -845,10 +857,11 @@ void update_slt(
 		cdnt(0) = cdnt(0)*f / cdnt(2) + ide[id_idx].center(exp_idx, 0);
 		cdnt(1) = cdnt(1)*f / cdnt(2) + ide[id_idx].center(exp_idx, 1);
 		slt_cddt_cdnt.row(i) = cdnt.transpose();
-#endif // perspective
+#endif // posit
 
 #ifdef normalization
-		for (int j = 0, sz = slt_line[i].size(); j < sz; j++) {
+		for (int j = 0; j < en; j++) {
+
 			//printf("j %d\n", j);
 			int x = slt_line[i][j];
 			//printf("x %d\n", x);
@@ -922,13 +935,29 @@ void update_slt(
 #endif
 
 	}
+#ifdef test_updt_slt
+	FILE *fp;
+	fopen_s(&fp, "test_updt_slt.txt", "a");
+	fprintf(fp, "%.5f %.5f %.5f  ", angle(0) * 180 / acos(-1), angle(1) * 180 / acos(-1), angle(2) * 180 / acos(-1));
+	for (int j = 0; j < G_line_num; j++)
+		fprintf(fp, " %d", slt_cddt(j));
+	fprintf(fp, "\n");
+	fclose(fp);
+	fopen_s(&fp, "test_updt_slt_2d_point.txt", "a");
+	for (int j = 0; j < G_line_num; j++)
+		fprintf(fp, "%.5f %.5f\n", slt_cddt_cdnt(j, 0), slt_cddt_cdnt(j, 1));
+	fprintf(fp, "\n");
+	fclose(fp);
+
+
+#endif // test_updt_slt
 	//fclose(fp);
 	//puts("C");
 //	for (int i_jaw = 0; i_jaw < G_jaw_land_num; i_jaw++) {
 //		Eigen::Vector3f point;
 //		for (int axis = 0; axis < 3; axis++)
 //			point(axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, jaw_land_corr(i_jaw), axis);
-//#ifdef posit
+//#ifdef perspective
 //		point = R * point + T;
 //		point(0) = point(0)*f / point(2) + ide[id_idx].center(exp_idx, 0);
 //		point(1) = point(1)*f / point(2) + ide[id_idx].center(exp_idx, 0);
@@ -943,13 +972,16 @@ void update_slt(
 //	}
 	for (int i = 0; i < 15; i++) {
 		float min_dis = 10000;
-		int min_idx = 0;;
-		for (int j = 0; j < G_line_num; j++) {
+		int min_idx = 0;
+		int be = 0, en = G_land_num;
+		if (i < 7) be = 41, en = 84;
+		if (i > 7) be = 0, en = 42;
+		for (int j = be; j < en; j++) {
 #ifdef perspective
 			float temp =
 				fabs(slt_cddt_cdnt(j, 0) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 0)) +
 				fabs(slt_cddt_cdnt(j, 1) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 1));
-#endif // perspective
+#endif // posit
 #ifdef normalization
 			float temp =
 				fabs(slt_cddt_cdnt(j, 0) - ide[id_idx].land_2d(G_land_num*exp_idx + i, 0) - ide[id_idx].center(exp_idx, 0)) +
@@ -1055,9 +1087,7 @@ void cal_exp_point_matrix(
 			for (int j = 0; j < 3; j++)
 				result(i_shape, i_v * 3 + j) = V(j);
 		}
-#ifdef deal_64
-	result.block(0, 64 * 3, G_nShape, 3).array() = (result.block(0, 59 * 3, G_nShape, 3).array() + result.block(0, 62 * 3, G_nShape, 3).array()) / 2;
-#endif // deal_64
+
 }
 
 float cal_3dpaper_ide(
@@ -1103,9 +1133,7 @@ void cal_id_point_matrix(
 			for (int j = 0; j < 3; j++)
 				result(i_id, i_v * 3 + j) = V(j);
 		}
-#ifdef deal_64
-	result.block(0, 64 * 3, G_iden_num, 3).array() = (result.block(0, 59 * 3, G_iden_num, 3).array() + result.block(0, 62 * 3, G_iden_num, 3).array()) / 2;
-#endif // deal_64
+
 }
 
 

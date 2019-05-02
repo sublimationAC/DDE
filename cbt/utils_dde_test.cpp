@@ -59,7 +59,7 @@ void recal_dis_ang(DataPoint &data, Eigen::MatrixXf &bldshps) {
 #endif // normalization
 		
 	}
-
+	data.shape.dis.resize(G_land_num, 2);
 	data.shape.dis.array() = data.land_2d.array() - land.array();
 
 }
@@ -455,8 +455,8 @@ void update_2d_land_ang_0ide(DataPoint &data, Eigen::MatrixXf &exp_r_t_all_matri
 			v(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, exp, data.land_cor(i_v), axis);
 #ifdef perspective
 		v = rot * v + T;
-		data.landmarks[i_v].x=data.land_2d(i_v,0)= v(0)*data.fcs / v(2) + data.center(0);
-		data.land_2d(i_v, 1) = v(1)*data.fcs / v(2) + data.center(1);
+		data.landmarks[i_v].x=data.land_2d(i_v,0)= v(0)*data.fcs / v(2) + data.center(0)+data.shape.dis(i_v,0);
+		data.land_2d(i_v, 1) = v(1)*data.fcs / v(2) + data.center(1) + data.shape.dis(i_v, 1);
 		data.landmarks[i_v].y = data.image.rows - data.land_2d(i_v,1);
 		data.centeroid += data.land_2d.row(i_v);
 #endif // perspective
@@ -542,6 +542,7 @@ Target_type shape_difference(const Target_type &s1, const Target_type &s2)
 Target_type shape_adjustment(Target_type &shape, Target_type &offset)
 {
 	Target_type result;
+	result.land_cor = shape.land_cor;
 
 	result.dis.resize(G_land_num, 2);
 	result.dis.array() = shape.dis.array() + offset.dis.array();
@@ -590,6 +591,19 @@ void show_image_land_2d(cv::Mat img, Eigen::MatrixX2f &land) {
 	cv::imshow("dde result", image);
 	cv::waitKey();
 	//system("pause");
+}
+void draw_land_img(cv::Mat image, std::vector<cv::Point2d> landmarks) {
+	
+	for (int i = 0; i < 15; i++)
+		cv::circle(image, landmarks[i], 1, cv::Scalar(0, 250, 0), 2);
+	for (int i = 1; i < 15; i++)
+		cv::line(image, landmarks[i], landmarks[i - 1], cv::Scalar(255, 0, 0));
+
+	for (cv::Point2d landmark : landmarks)
+	{
+		cv::circle(image, landmark, 0.1, cv::Scalar(0, 250, 0), 2);
+	}
+	
 }
 
 //void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter &output_video) {
@@ -833,9 +847,7 @@ void cal_exp_r_t_all_matrix(
 			for (int j = 0; j < 3; j++)
 				result(i_shape, i_v * 3 + j) = V(j);
 		}
-#ifdef deal_64
-	result.block(0, 64 * 3, G_nShape, 3).array() = (result.block(0, 59 * 3, G_nShape, 3).array() + result.block(0, 62 * 3, G_nShape, 3).array()) / 2;
-#endif // deal_64
+
 }
 
 void target2vector(Target_type &data, Eigen::VectorXf &ans) {
@@ -851,7 +863,9 @@ void vector2target(Eigen::VectorXf &data, Target_type &ans) {
 	ans.dis.resize(G_land_num, 2);
 	for (int i = 1; i < G_nShape; i++) ans.exp(i) = data(i - 1);
 	ans.exp(0) = 0;
+#ifdef normalization
 	ans.tslt(2) = 0;
+#endif // normalization
 	for (int i = 0; i < G_tslt_num; i++) ans.tslt(i) = data(i + G_nShape - 1);
 	
 	//for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) ans.rot(i, j) = data(G_nShape + 3 + i * 3 + j);
@@ -980,6 +994,7 @@ void update_training_data(DataPoint &data, std::vector<DataPoint> &training_data
 	puts("updating train data.....");
 	for (int i_train = 0; i_train < training_data.size(); i_train++) {
 #ifdef perspective
+		training_data[i_train].shape.tslt(2) = (training_data[i_train].shape.tslt(2) / training_data[i_train].fcs)*data.fcs;
 		training_data[i_train].fcs = data.fcs;
 		training_data[i_train].center = data.center;
 #endif // perspective
@@ -1092,7 +1107,22 @@ std::pair<float, float> cal_sobel(cv::Mat img, cv::Point p) {
 	//if (p.x == 480) std::cout << ans.first << " " << ans.second << "\n";
 	return ans;
 }
+uchar get_sobel_batch_feature(cv::Mat img, cv::Point p) {
+	float ans = 0;
+	for (int i_x = p.x - G_pixel_batch_feature_size; i_x <= p.x + G_pixel_batch_feature_size; i_x++)
+		for (int i_y = p.y - G_pixel_batch_feature_size; i_y <= p.y + G_pixel_batch_feature_size; i_y++) {
+			cv::Point pos(i_x, i_y);
+			float r = dis_cv_pt(pos, p);
 
+			pos.x = std::max(std::min(i_x, img.cols), 0);
+			pos.y = std::max(std::min(i_y, img.rows), 0);
+
+			std::pair<float, float> sb = cal_sobel(img, cv::Point(i_x, i_y));
+			ans += exp(-r * r / 2)*sqrt(sb.first*sb.first + sb.second*sb.second);
+		}
+	ans = std::max(ans, (float)0);
+	return (uchar)(ans);
+}
 cv::Point lk_get_pos_next(int batch_feature_size, cv::Point X, cv::Mat frame_last, cv::Mat frame_now) {
 	
 	std::vector<cv::Mat> channel_last;
@@ -1158,4 +1188,55 @@ cv::Point lk_get_pos_next(int batch_feature_size, cv::Point X, cv::Mat frame_las
 		if (dp.norm() < EPSILON) break;
 	}	
 	return X + (cv::Point)dp_x;
+}
+
+void shape_err_print(DataPoint &data, DataPoint &data_ref, Eigen::VectorXf &ave_er) {
+	std::cout << "shape angle err :" << (data_ref.shape.angle - data.shape.angle).transpose() << "\n";
+	std::cout << "shape tslt err :" << (data_ref.shape.tslt - data.shape.tslt).transpose() << "\n";
+	std::cout << "shape exp err (norm) : "<< (data_ref.shape.exp - data.shape.exp).norm() <<"\n" << (data_ref.shape.exp - data.shape.exp).transpose() << "\n";
+	std::cout << "shape dis err(ave one axis):" << sqrt((data_ref.shape.dis - data.shape.dis).squaredNorm()/G_land_num/2) << "\n";
+	
+
+	Eigen::MatrixX2f dis = data_ref.land_2d - data.land_2d;
+	const int left_eye_num = 8;
+	int idx_lft_eye[left_eye_num] = { 27,28,29,30,66,67,68,65 };
+	const int right_eye_num = 8;
+	int idx_rt_eye[right_eye_num] = { 31,32,33,34,70,71,72,69 };
+
+	const int lft_bn_num = 6;
+	int idx_lft_bn[lft_bn_num] = { 21,22,23,24,25,26 };
+	const int rt_bn_num = 6;
+	int idx_rt_bn[rt_bn_num] = { 15,16,17,18,19,20 };
+
+	const int ms_be = 46, ms_ed = 64;
+	const int ns_be = 35, ns_ed = 46;
+
+	double err_slt = 0, err_eye_left = 0, err_eye_right = 0, err_lft_bn = 0, err_rt_bn = 0, err_ms = 0, err_ns = 0;
+	for (int i = 0; i < 15; i++) err_slt += dis.row(i).squaredNorm();
+
+	for (int i = 0; i < left_eye_num; i++) err_eye_left += dis.row(idx_lft_eye[i]).squaredNorm();
+	for (int i = 0; i < right_eye_num; i++) err_eye_right += dis.row(idx_rt_eye[i]).squaredNorm();
+
+	for (int i = 0; i < lft_bn_num; i++) err_lft_bn += dis.row(idx_lft_bn[i]).squaredNorm();
+	for (int i = 0; i < rt_bn_num; i++) err_rt_bn += dis.row(idx_rt_bn[i]).squaredNorm();
+
+	for (int i = ms_be; i < ms_ed; i++) err_ms += dis.row(i).squaredNorm();
+	for (int i = ns_be; i < ns_ed; i++) err_ns += dis.row(i).squaredNorm();
+
+	
+	printf("slt err:%.5f\nlft eye:%.5f  rt eye:%.5f\n", err_slt / 15, err_eye_left / left_eye_num, err_eye_right / right_eye_num);
+	printf("lft bn:%.5f  rt bn:%.5f\n", err_lft_bn / lft_bn_num, err_rt_bn / rt_bn_num);
+	printf("ms:%.5f  ns:%.5f\n", err_ms / (ms_ed - ms_be + 1), err_ns / (ns_ed - ns_be + 1));
+	puts("----------------");
+
+	ave_er.resize(5, 1);
+	ave_er.setZero();
+	for (int i = 0; i < G_angle_num; i++) ave_er(0) += fabs(data_ref.shape.angle(i) - data.shape.angle(i));
+	ave_er(0) /= G_angle_num;
+	for (int i=0;i<G_tslt_num;i++)ave_er(1)+= fabs(data_ref.shape.tslt(i) - data.shape.tslt(i));
+	ave_er(1) /= G_tslt_num;
+	for (int i = 0; i < G_nShape; i++) ave_er(2) += fabs(data_ref.shape.exp(i) - data.shape.exp(i));
+	ave_er(2) /= G_nShape;
+	ave_er(3) = sqrt((data_ref.shape.dis - data.shape.dis).squaredNorm() / G_land_num / 2);
+	ave_er(4) = sqrt(dis.squaredNorm() / G_land_num / 2);
 }

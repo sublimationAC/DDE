@@ -5,9 +5,11 @@
 #include <algorithm>
 #include <stdexcept>
 #define norm_fp_def
+//#define norm_nhp_def
 //#define sort_fp_def
 //#define drct_fp_def
-#define batch_feature
+//#define batch_feature
+//#define sb_batch_feature
 using namespace std;
 
 //void cal_2d_land_i_0ide(
@@ -24,7 +26,40 @@ using namespace std;
 //	}
 //}
 
-void cal_2d_land_i_ang_0ide(
+//void cal_2d_land_i_ang_0ide(
+//	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &exp_r_t_all_matrix, const Target_type &data, DataPoint &ini_data) {
+//	ans.resize(G_land_num);
+//#ifdef perspective
+//	Eigen::Vector3f T = data.tslt;
+//#endif // perspective
+//
+//#ifdef normalization
+//	Eigen::RowVector2f T = data.shape.tslt.block(0, 0, 1, 2);
+//#endif // normalization
+//
+//	Eigen::Matrix3f rot = get_r_from_angle_zyx(data.angle);
+//	Eigen::VectorXf exp = data.exp;
+//	exp(0) = 1;
+//	for (int i_v = 0; i_v < G_land_num; i_v++) {
+//		Eigen::Vector3f v;
+//		for (int axis = 0; axis < 3; axis++)
+//			v(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, exp, ini_data.land_cor(i_v), axis);
+//#ifdef perspective
+//		v = rot * v + T;
+//		ans[i_v].x = ini_data.fcs*v(0) / v(2) + ini_data.center(0) + data.dis(i_v, 0);
+//		ans[i_v].y = ini_data.fcs*v(1) / v(2) + ini_data.center(1) + data.dis(i_v, 1);
+//		ans[i_v].y = ini_data.image.rows - ans[i_v].y;
+//#endif // perspective
+//
+//#ifdef normalization
+//		Eigen::RowVector2f temp = ((ini_data.s) * (rot * v)).transpose() + T + data.dis.row(i_v);
+//		ans[i_v].x = temp(0); ans[i_v].y = ini_data.image.rows - temp(1);
+//#endif // normalization
+//	}
+//
+//}
+
+void cal_2d_land_i_ang_0ide_tgcor(
 	std::vector<cv::Point2d> &ans, Eigen::MatrixXf &exp_r_t_all_matrix, const Target_type &data, DataPoint &ini_data) {
 	ans.resize(G_land_num);
 #ifdef perspective
@@ -41,7 +76,7 @@ void cal_2d_land_i_ang_0ide(
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
-			v(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, exp, ini_data.land_cor(i_v), axis);
+			v(axis) = cal_3d_vtx_0ide(exp_r_t_all_matrix, exp, data.land_cor(i_v), axis);
 #ifdef perspective
 		v = rot * v + T;
 		ans[i_v].x = ini_data.fcs*v(0) / v(2) + ini_data.center(0) + data.dis(i_v, 0);
@@ -77,7 +112,11 @@ void get_pixel_value(
 		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))) {
 #endif // small_rect_def
 #ifdef batch_feature
-			pixel_se[j] = get_batch_feature(G_pixel_batch_feature_size ,data.image, pixel_pos);
+#ifdef sb_batch_feature
+			pixel_se[j] = get_sobel_batch_feature(data.image, pixel_pos);
+#else
+			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+#endif // get_batch_feature
 #else
 			pixel_se[j] = data.image.at<uchar>(pixel_pos);
 #endif // batch_feature			
@@ -95,19 +134,7 @@ void get_pixel_value(
 
 	for (int j = 0; j < P; ++j)
 	{
-		cv::Point pixel_pos =
-			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
-			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
-			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
-
-#ifdef small_rect_def
-		if (pixel_pos.inside(data.face_rect))
-#else
-		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
-#endif // small_rect_def	
-			p[j] = ((data.image.at<uchar>(pixel_pos) - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
-		else
-			p[j] = (-ave / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
+		p[j] = ((pixel_se[j] - ave) / sig)*G_norm_face_rect_sig + G_norm_face_rect_ave;
 	}
 #endif
 #ifdef sort_fp_def
@@ -126,7 +153,11 @@ void get_pixel_value(
 		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))) {
 #endif // small_rect_def	
 #ifdef batch_feature
+#ifdef sb_batch_feature
+			pixel_se[j] = get_sobel_batch_feature(data.image, pixel_pos);
+#else
 			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+#endif // get_batch_feature
 #else
 			pixel_se[j] = data.image.at<uchar>(pixel_pos);
 #endif // batch_feature	
@@ -165,7 +196,15 @@ void get_pixel_value(
 #else
 		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows)))
 #endif // small_rect_def	
+#ifdef batch_feature
+#ifdef sb_batch_feature
+			p[j] = hash[get_sobel_batch_feature(data.image, pixel_pos)];
+#else
+			p[j] = hash[get_batch_feature(data.image, pixel_pos)];
+#endif // get_batch_feature
+#else
 			p[j] = hash[data.image.at<uchar>(pixel_pos)];
+#endif // batch_feature				
 		else
 			p[j] = hash[0];
 	}
@@ -184,7 +223,11 @@ void get_pixel_value(
 #endif // small_rect_def		
 		{
 #ifdef batch_feature
+#ifdef sb_batch_feature
+			p[j] = get_sobel_batch_feature(data.image, pixel_pos);
+#else
 			p[j] = get_batch_feature(data.image, pixel_pos);
+#endif // get_batch_feature
 #else
 			p[j] = data.image.at<uchar>(pixel_pos);
 #endif // batch_feature	
@@ -193,7 +236,56 @@ void get_pixel_value(
 			p[j] = 0;
 	}
 #endif // drct_fp_def
-}
+#ifdef norm_nhp_def
+	vector<uchar> pixel_se(P), pixel_cnt(260);
+	float ave = 0;
+	for (int j = 0; j < P; ++j)
+	{
+		cv::Point pixel_pos =
+			temp[tri_idx(pixels_[j].first, 0)] * pixels_[j].second.x +
+			temp[tri_idx(pixels_[j].first, 1)] * pixels_[j].second.y +
+			temp[tri_idx(pixels_[j].first, 2)] * (1 - pixels_[j].second.x - pixels_[j].second.y);
+
+#ifdef small_rect_def
+		if (pixel_pos.inside(data.face_rect)) {
+#else
+		if (pixel_pos.inside(cv::Rect(0, 0, data.image.cols, data.image.rows))) {
+#endif // small_rect_def	
+#ifdef batch_feature
+#ifdef sb_batch_feature
+			pixel_se[j] = get_sobel_batch_feature(data.image, pixel_pos);
+#else
+			pixel_se[j] = get_batch_feature(data.image, pixel_pos);
+#endif // get_batch_feature
+#else
+			pixel_se[j] = data.image.at<uchar>(pixel_pos);
+#endif // batch_feature	
+		}
+		else
+			pixel_se[j] = 0;
+		pixel_cnt[pixel_se[j]]++;
+		}
+
+	int mi = 0;
+	for (int i = 0; i < 256; i++)
+		if (pixel_cnt[i] > 0) {
+			mi = pixel_cnt[i];
+			break;
+		}
+	int before = 0;
+	vector<int> hash(260);
+	for (int i = 0; i < 256; i++) {
+		if (pixel_cnt[i] == 0) continue;
+		before += pixel_cnt[i];
+		hash[i] = round(((before - mi)*1.0 / (P - mi)) * 255);
+	}
+
+	for (int j = 0; j < P; ++j)
+	{
+		p[j] = hash[pixel_se[j]];
+	}
+#endif // norm_nhp_def
+	}
 
 Target_type regressor_dde::Apply_ta(//const Transform &t,
 	const Target_type &data, Eigen::MatrixX3i &tri_idx,DataPoint &ini_data,Eigen::MatrixXf &bldshps,
@@ -214,7 +306,7 @@ Target_type regressor_dde::Apply_ta(//const Transform &t,
 	//cal_2d_land_i(temp, data, bldshps,ini_data);
 
 	
-	cal_2d_land_i_ang_0ide(temp, exp_r_t_all_matrix, data,ini_data);
+	cal_2d_land_i_ang_0ide_tgcor(temp, exp_r_t_all_matrix, data,ini_data);
 	
 	double *p = pixels_val.ptr<double>(0);
 
@@ -315,7 +407,7 @@ Target_type regressor_dde::Apply_expdis(//const Transform &t,
 	std::vector<cv::Point2d> temp(G_land_num);
 	//cal_2d_land_i(temp, data, bldshps,ini_data);
 
-	cal_2d_land_i_ang_0ide(temp, exp_r_t_all_matrix, data, ini_data);
+	cal_2d_land_i_ang_0ide_tgcor(temp, exp_r_t_all_matrix, data, ini_data);
 
 	double *p = pixels_val.ptr<double>(0);
 

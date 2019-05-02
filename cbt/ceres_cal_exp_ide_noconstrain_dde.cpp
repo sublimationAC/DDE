@@ -9,8 +9,8 @@ using ceres::Solver;
 using ceres::Solve;
 
 float beta_sum_user = 200;
-float beta_l1_sum_exp = 30;
-float beta_l2_exp = 30;
+float beta_l1_sum_exp = 6;
+float beta_l2_exp = 3;
 
 
 struct ceres_cal_exp {

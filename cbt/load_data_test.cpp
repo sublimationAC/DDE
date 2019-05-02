@@ -37,20 +37,21 @@ void load_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &i
 			}
 			else {
 				int len = strlen(dp->d_name);
-				if (dp->d_name[len - 1] == 'd' && dp->d_name[len - 2] == 'n') {
+				if (dp->d_name[len - 3] == 'd' && dp->d_name[len - 4] == 'n' &&
+					dp->d_name[len - 1] == '3' && dp->d_name[len - 2] == '7') {
 					////	
 					DataPoint temp;
 					std::string p = path + "/" + dp->d_name;
 
 
-					if (_access((p.substr(0, p.find(".land")) + sfx).c_str(), 0) == -1) {
+					if (_access((p.substr(0, p.find(".land73")) + sfx).c_str(), 0) == -1) {
 						free(namelist[index]);
 						index++;
 						continue;
 					}
 					load_land(path + "/" + dp->d_name, temp);
 
-					//load_img(p.substr(0, p.find(".land")) + sfx, temp);
+					//load_img(p.substr(0, p.find(".land73")) + sfx, temp);
 #ifdef  flap_2dland
 					for (int i = 0; i < temp.landmarks.size(); i++)
 						temp.landmarks[i].y = temp.image.rows - temp.landmarks[i].y;
@@ -59,14 +60,14 @@ void load_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &i
 					//system("pause");
 
 #ifdef perspective
-					if (_access((p.substr(0, p.find(".land")) + ".psp_f").c_str(), 0) == -1) {
+					if (_access((p.substr(0, p.find(".land73")) + ".psp_f").c_str(), 0) == -1) {
 						puts("No psp_f !!!! error !");
 						exit(1);
 					}
-					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".psp_f", temp);
+					load_fitting_coef_one(p.substr(0, p.find(".land73")) + ".psp_f", temp);
 #endif // perspective
 #ifdef normalization
-					load_fitting_coef_one(p.substr(0, p.find(".land")) + ".lv", temp);
+					load_fitting_coef_one(p.substr(0, p.find(".land73")) + ".lv", temp);
 #endif // normalization
 
 
@@ -86,7 +87,7 @@ void load_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &i
 }
 
 void load_land(std::string p, DataPoint &temp) {
-	std::cout << p << '\n';
+	std::cout<<"load land file: " << p << '\n';
 	FILE *fp;
 	fopen_s(&fp, p.c_str(), "r");
 	int n;
@@ -100,6 +101,13 @@ void load_land(std::string p, DataPoint &temp) {
 		printf("%d %.10f %.10f \n", temp.landmarks.size(),temp.landmarks[i].x, temp.landmarks[i].y);*/
 	}
 	fclose(fp);
+	//fopen_s(&fp, (p+"73").c_str(), "w");
+	//fprintf(fp, "%d\n", n-1);
+	//for (int i = 0; i < 74; i++) {			
+	//	if (i == 64) continue;
+	//	fprintf(fp, "%.6f %.6f\n", temp.landmarks[i].x, temp.landmarks[i].y);		
+	//}
+	//fclose(fp);
 	//system("pause");
 }
 void load_img(std::string p, DataPoint &temp) {	
@@ -231,6 +239,7 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 
 	temp.land_cor.resize(G_land_num);
 	for (int i_v = 0; i_v < G_land_num; i_v++) fread(&temp.land_cor(i_v), sizeof(int), 1, fp);
+	temp.shape.land_cor = temp.land_cor;
 
 #ifdef perspective
 	fread(&temp.fcs, sizeof(float), 1, fp);
@@ -298,16 +307,21 @@ void load_slt(
 	fopen_s(&fp, path_slt.c_str(), "r");
 	int line_num;
 	fscanf_s(fp, "%d", &line_num);
+	assert(line_num == G_line_num);
+
 	for (int i = 0; i < line_num; i++) {
-		int num;
-		fscanf_s(fp, "%d", &num);
+		int x, num;
+
+		fscanf_s(fp, "%d%d", &x, &num);
 		slt_line[i].resize(num);
 		for (int j = 0; j < num; j++)
 			fscanf_s(fp, "%d", &slt_line[i][j]);
 	}
 	fclose(fp);
 	fopen_s(&fp, path_rect.c_str(), "r");
-	for (int i = 0; i < 1585; i++) {
+	int vtx_num;
+	fscanf_s(fp, "%d", &vtx_num);
+	for (int i = 0; i < vtx_num; i++) {
 		int idx, num;
 		fscanf_s(fp, "%d%d", &idx, &num);
 		slt_point_rect[idx].resize(num);

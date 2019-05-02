@@ -15,17 +15,18 @@
 #define perspective
 #define EPSILON 1e-3
 //#define small_rect_def
+//#define train_intersection_def
 
-
-const int G_land_num = 74;
+const int G_land_num = 73;
 const int G_train_pic_id_num = 3300;
 const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
 const int G_iden_num = 77;
-const int G_inner_land_num = 59;
-const int G_line_num = 85;
+const int G_inner_land_num = 58;
+const int G_outer_land_num = 15;
+const int G_line_num = 84;
 //const int G_jaw_land_num = 20;
 
 const float G_rand_rot_border = 0.1;
@@ -40,7 +41,13 @@ const int G_rnd_user = 5;
 const int G_rnd_camr = 5;
 const int G_trn_factor = 35;
 
+#ifdef perspective
 const int G_tslt_num = 3;
+#endif // perspective
+#ifdef normalizatoin
+const int G_tslt_num = 2;
+#endif // normalizatoin
+
 const int G_angle_num = 3;
 const int G_target_type_size = G_nShape - 1 + G_tslt_num + G_angle_num + 2 * G_land_num;
 
@@ -48,7 +55,6 @@ const int G_target_type_size = G_nShape - 1 + G_tslt_num + G_angle_num + 2 * G_l
 const int G_dde_K = 5;
 
 const float pi = acos(-1);
-const float G_rand_angle_border = 15.0* pi / 180;
 
 const float G_norm_face_rect_ave = 120;
 const float G_norm_face_rect_sig = 60;
@@ -70,7 +76,7 @@ struct Target_type {
 	//Eigen::Matrix3f rot;
 	Eigen::Vector3f angle;
 	Eigen::MatrixX2f dis;
-
+	Eigen::VectorXi land_cor;
 };
 
 struct DataPoint
@@ -145,6 +151,8 @@ void show_image(cv::Mat img, cv::Rect rect, std::vector<cv::Point2d> landmarks);
 void show_image_0rect(cv::Mat img, std::vector<cv::Point2d> landmarks);
 void show_image_land_2d(cv::Mat img, Eigen::MatrixX2f &land);
 
+void draw_land_img(cv::Mat image, std::vector<cv::Point2d> landmarks);
+
 void save_video(cv::Mat img, std::vector<cv::Point2d> landmarks, cv::VideoWriter &output_video);
 void save_video(cv::Mat img, std::vector<cv::Point2f> landmarks, cv::VideoWriter &output_video);
 //void cal_2d_land_i_0dis(
@@ -183,6 +191,9 @@ void normalize_gauss_face_rect(cv::Mat image, cv::Rect &rect);
 
 uchar get_batch_feature(int patch_size, cv::Mat img, cv::Point p);
 
+uchar get_sobel_batch_feature(cv::Mat img, cv::Point p);
 std::pair<float, float> cal_sobel(cv::Mat img, cv::Point p);
 
 cv::Point lk_get_pos_next(int batch_feature_size, cv::Point p, cv::Mat frame_last, cv::Mat frame_now);
+
+void shape_err_print(DataPoint &data, DataPoint &data_ref, Eigen::VectorXf &ave_er);
