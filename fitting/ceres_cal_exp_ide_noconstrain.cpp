@@ -1,7 +1,7 @@
 #include "ceres/ceres.h"
 #include "glog/logging.h"
 #include "calculate_coeff.h"
-#define set_user_bound
+//#define set_user_bound
 using ceres::AutoDiffCostFunction;
 using ceres::CostFunction;
 using ceres::Problem;
@@ -9,6 +9,7 @@ using ceres::Solver;
 using ceres::Solve;
 
 float beta_sum_user = 200;
+//float beta_user_sig = 60;
 float beta_l1_sum_exp = 30;
 float beta_l2_exp = 30;
 
@@ -140,15 +141,17 @@ struct ceres_cal_user {
 			
 		for (int i_v = 0; i_v < G_land_num; i_v++) {
 			T V[3];
-			for (int j = 0; j < 3; j++) V[j] = (T)(0);
+			//for (int j = 0; j < 3; j++) V[j] = (T)(0);
+			for (int j = 0; j < 3; j++) 
+				V[j] = (T)id_point(0, i_v * 3 + j);
 			//printf("%d\n", i_v);
 			//V.setZero();
 
 			//puts("QAQ");
 
 			for (int axis = 0; axis < 3; axis++)
-				for (int i_id = 0; i_id < G_iden_num; i_id++)
-					V[axis] = V[axis] + ((double)(id_point(i_id, i_v * 3 + axis)))*x_user[i_id];
+				for (int i_id = 0; i_id < G_iden_num-1; i_id++)
+					V[axis] = V[axis] + ((double)(id_point(i_id+1, i_v * 3 + axis)))*x_user[i_id];
 			//std::cout << V.transpose() << '\n';
 			//puts("TAT");
 			for (int j = 0; j<3; j++)
@@ -168,11 +171,15 @@ struct ceres_cal_user {
 			ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 0), ide[id_idx].land_2d(G_land_num*exp_idx + i_v, 1),
 			V[0] * (double)f / V[2], V[1] * (double)f / V[2]);*/
 		}
+		
+		//for (int i_id = 0; i_id < G_iden_num - 1; i_id++)
+		//	residual[G_land_num * 2 + i_id] = (T)((double)(beta_user_sig)*((x_user[i_id]) / (double)(ide_sg_vl(i_id + 1))));
 		T ans = (T)0;
 		for (int i_id = 0; i_id < G_iden_num; i_id++)
 			ans += (T)x_user[i_id];
-		printf("- - %.6f\n", ans);
+		//printf("- - %.6f\n", ans);
 		residual[G_land_num * 2] = (ans - (T)1)*(ans - (T)1)*(T)beta_sum_user;
+
 		//fprintf(fp, "%.6f\n", ans);
 
 		return true;
@@ -193,25 +200,26 @@ float ceres_user_one(
 
 	puts("optimizing identity coeffients only by ceres");
 	//google::InitGoogleLogging(argv[0]);
-	double x_user[G_iden_num];
-	for (int i = 0; i < G_iden_num; i++) x_user[i] = user(i);
+	std::cout << "before opt user:" << user.transpose() << "\n\n";
+
+	double x_user[G_iden_num-1];
+	for (int i = 0; i < G_iden_num-1; i++) x_user[i] = user(i+1);
 	//puts("A");
 	Problem problem;
+	/*problem.AddResidualBlock(
+		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2+ G_iden_num - 1, G_iden_num-1>(
+			new ceres_cal_user(focus, ide, id_idx, exp_idx, id_point, ide_sg_vl)),
+		NULL, x_user);*/
 	problem.AddResidualBlock(
-		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2+1, G_iden_num>(
+		new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2 + 1, G_iden_num>(
 			new ceres_cal_user(focus, ide, id_idx, exp_idx, id_point, ide_sg_vl)),
 		NULL, x_user);
 	//puts("B");
 
 	Solver::Options options;
 
-#ifdef set_user_bound
-	for (int i = 0; i < G_iden_num; i++) {
-		problem.SetParameterLowerBound(x_user, i, 0.0);
-		problem.SetParameterUpperBound(x_user, i, 1.0);
-	}
-	options.max_num_iterations = 25;
-#endif // set_user_bound
+	options.max_num_iterations = 80;
+
 	//puts("C");
 
 	options.linear_solver_type = ceres::DENSE_QR;
@@ -222,10 +230,12 @@ float ceres_user_one(
 	Solve(options, &problem, &summary);
 	/*std::cout << summary.BriefReport() << "\n";
 	std::cout << "Initial : " << user.transpose() << "\n";*/
-	for (int i = 0; i < G_iden_num; i++)  user(i) = (float)x_user[i];
+	for (int i = 0; i < G_iden_num-1; i++)  user(i+1) = (float)x_user[i];
+	user(0) = 1;
 	//std::cout << "Final   : " << user.transpose() << "\n";
 
 	//system("pause");
+	std::cout << "aft opt user:" << user.transpose() << "\n\n";
 	return (float)(summary.final_cost);
 }
 
@@ -237,13 +247,14 @@ float ceres_user_fixed_exp(
 
 	puts("optimizing identity coeffients with fixed expression by ceres");
 	//google::InitGoogleLogging(argv[0]);
-	double x_user[G_iden_num];
-	for (int i = 0; i < G_iden_num; i++) x_user[i] = user(i);
+	std::cout << "before alllllllllllllllllll opt user:" << user.transpose() << "\n\n";
+	double x_user[G_iden_num-1];
+	for (int i = 0; i < G_iden_num-1; i++) x_user[i] = user(i+1);
 	//puts("A");
 	Problem problem;
 	for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
 		problem.AddResidualBlock(
-			new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2 + 1, G_iden_num>(
+			new AutoDiffCostFunction<ceres_cal_user, G_land_num * 2 + G_iden_num - 1, G_iden_num>(
 				new ceres_cal_user(focus, ide, id_idx, i_exp,
 					id_point_fix_exp.block(i_exp*G_iden_num, 0, G_iden_num, G_land_num * 3), ide_sg_vl)),
 			NULL, x_user);
@@ -252,13 +263,9 @@ float ceres_user_fixed_exp(
 	//puts("C");
 	Solver::Options options;
 
-#ifdef set_user_bound
-	for (int i = 0; i < G_iden_num; i++) {
-		problem.SetParameterLowerBound(x_user, i, 0.0);
-		problem.SetParameterUpperBound(x_user, i, 1.0);
-	}
-	options.max_num_iterations = 25;
-#endif // set_user_bound
+
+	options.max_num_iterations = 100;
+
 
 
 	options.linear_solver_type = ceres::DENSE_QR;
@@ -269,9 +276,11 @@ float ceres_user_fixed_exp(
 	Solve(options, &problem, &summary);
 	/*std::cout << summary.BriefReport() << "\n";
 	std::cout << "Initial : " << user.transpose() << "\n";*/
-	for (int i = 0; i < G_iden_num; i++)  user(i) = (float)x_user[i];
+	for (int i = 0; i < G_iden_num-1; i++)  user(i+1) = (float)x_user[i];
+	user(0) = 1;
 	//std::cout << "Final   : " << user.transpose() << "\n";
 
 	//system("pause");
+	std::cout << "aft alllllllllllllllllll opt user:" << user.transpose() << "\n\n";
 	return (float)(summary.final_cost);
 }

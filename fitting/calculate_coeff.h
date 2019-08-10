@@ -54,13 +54,29 @@ void test_normalization(
 	iden *ide, Eigen::MatrixXf &bldshps,
 	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx);
 
+void test_slt_vtx_angle(float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXi &inner_land_cor, int which_angle);
+
+float angle_err(
+	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx);
+
+float deal_one_angle(
+	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXi &inner_land_cor, int which_angle, float be, float en, float step);
+
+float updt_angle_slt_more(
+	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXi &inner_land_cor);
+
+
+
+
 void cal_inner_bldshps(
 	iden *ide, Eigen::MatrixXf &bldshps, Eigen::MatrixX3f &bs_in,
 	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx);
-
-float cal_3d_vtx(
-	iden *ide, Eigen::MatrixXf &bldshps,
-	int id_idx, int exp_idx, int vtx_idx, int axis);
 
 
 void update_slt(
@@ -72,8 +88,19 @@ void update_slt_me(
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXi &out_land_cor);
 
+void update_slt_dde(
+	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXi &out_land_cor);
+
 void test_slt(float f ,iden *ide, Eigen::MatrixXf &bldshps,
 	Eigen::VectorXi &land_cor, int id_idx, int exp_idx);
+
+void test_upt_slt_angle(
+	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXi &inner_land_cor);
+
 
 float cal_3dpaper_exp(
 	float f, iden* ide, Eigen::MatrixXf &bldshps,

@@ -217,13 +217,13 @@ int load_img_land_same_id(std::string path, std::string sfx, iden *ide, int id_i
 void load_land(std::string p, iden *ide, int id_idx) {
 	std::cout << p << '\n';
 	FILE *fp;
-	fopen_s(&fp, p.c_str(), "r");
+	fp=fopen( p.c_str(), "r");
 	int n;
-	fscanf_s(fp, "%d", &n);
+	fscanf(fp, "%d", &n);
 	assert(n == G_land_num);
 	ide[id_idx].land_2d.conservativeResize(n*(ide[id_idx].num + 1), 2);
 	for (int i = n * (ide[id_idx].num); i < n*(ide[id_idx].num + 1); i++)
-		fscanf_s(fp, "%f%f", &ide[id_idx].land_2d(i, 0), &ide[id_idx].land_2d(i, 1));
+		fscanf(fp, "%f%f", &ide[id_idx].land_2d(i, 0), &ide[id_idx].land_2d(i, 1));
 	fclose(fp);
 }
 
@@ -319,12 +319,12 @@ void test_2dslt(
 	cv::imshow("test_image", image);// imgs[id_idx][img_idx]);
 	cv::waitKey(0);
 	FILE *fp;
-	fopen_s(&fp, "./test_slt_vtx.txt", "r");
+	fp=fopen( "./test_slt_vtx.txt", "r");
 	int n;
-	fscanf_s(fp,"%d",&n);
+	fscanf(fp,"%d",&n);
 	for (int i = 0; i < n; i++) {
 		float x, y;
-		fscanf_s(fp, "%f%f", &x, &y);
+		fscanf(fp, "%f%f", &x, &y);
 		cv::circle(
 			image,//imgs[id_idx][img_idx],
 			cv::Point2f(x, y),
@@ -345,8 +345,8 @@ void test_2dslt(
 void load_inner_land_corr(Eigen::VectorXi &cor) {
 	puts("loading inner landmarks correspondence...");
 	FILE *fp;
-	fopen_s(&fp, "./inner_jaw/inner_vertex_corr_58_416ans.txt", "r");
-	for (int i = 0; i < G_inner_land_num; i++) fscanf_s(fp, "%d", &cor(i));
+	fp=fopen( "../const_file/inner_jaw/inner_vertex_corr_58_416ans.txt", "r");
+	for (int i = 0; i < G_inner_land_num; i++) fscanf(fp, "%d", &cor(i));
 	//std::cout << cor <<"------------------------------\n"<< '\n';
 	fclose(fp);
 }
@@ -354,8 +354,8 @@ void load_jaw_land_corr(Eigen::VectorXi &jaw_cor) {
 	/*
 	puts("loading jaw landmarks correspondence...");
 	FILE *fp;
-	fopen_s(&fp, "./inner_jaw/jaw_vertex.txt", "r");
-	for (int i = 0; i < G_jaw_land_num; i++) fscanf_s(fp, "%d", &jaw_cor(i));
+	fp=fopen( "./inner_jaw/jaw_vertex.txt", "r");
+	for (int i = 0; i < G_jaw_land_num; i++) fscanf(fp, "%d", &jaw_cor(i));
 	//std::cout << cor <<"------------------------------\n"<< '\n';
 	fclose(fp);
 	*/
@@ -366,9 +366,9 @@ void load_slt(
 	std::string path_slt,std::string path_rect) {
 	puts("loading silhouette line&vertices...");
 	FILE *fp;
-	fopen_s(&fp, path_slt.c_str(), "r");
+	fp=fopen( path_slt.c_str(), "r");
 	int line_num;
-	fscanf_s(fp, "%d", &line_num);
+	fscanf(fp, "%d", &line_num);
 	if (line_num != G_line_num) {
 		puts("Line num error!!!");
 		exit(-1);
@@ -376,35 +376,35 @@ void load_slt(
 	for (int i = 0; i < line_num; i++) {
 		int x,num;
 
-		fscanf_s(fp, "%d%d",&x, &num);
+		fscanf(fp, "%d%d",&x, &num);
 		slt_line[i].resize(num);
 		for (int j = 0; j < num; j++)
-			fscanf_s(fp, "%d", &slt_line[i][j]);
+			fscanf(fp, "%d", &slt_line[i][j]);
 	}
 	fclose(fp);
-	fopen_s(&fp, path_rect.c_str(), "r");
+	fp=fopen( path_rect.c_str(), "r");
 	int vtx_num;
-	fscanf_s(fp, "%d", &vtx_num);
+	fscanf(fp, "%d", &vtx_num);
 	for (int i = 0; i < vtx_num; i++) {
 		int idx, num;
-		fscanf_s(fp, "%d%d", &idx, &num);
+		fscanf(fp, "%d%d", &idx, &num);
 		slt_point_rect[idx].resize(num);
-		for (int j = 0; j < num; j++) fscanf_s(fp, "%d%d", &slt_point_rect[idx][j].first, &slt_point_rect[idx][j].second);
+		for (int j = 0; j < num; j++) fscanf(fp, "%d%d", &slt_point_rect[idx][j].first, &slt_point_rect[idx][j].second);
 	}
 	fclose(fp);
 }
 
 void test_3d22dland(cv::Mat_<uchar> img, std::string path,iden *ide,int id_idx,int exp_idx) {
 	FILE *fp;
-	fopen_s(&fp, path.c_str(), "r");
+	fp=fopen( path.c_str(), "r");
 	int num = 0;
-	fscanf_s(fp, "%d", &num);
+	fscanf(fp, "%d", &num);
 	for (int i = 0; i < num; i++) {
 		cv::Mat_<uchar> temp;
 		img.copyTo(temp);
 		for (int j = 0; j < G_land_num; j++) {
 			float x, y;
-			fscanf_s(fp, "%f%f", &x, &y);
+			fscanf(fp, "%f%f", &x, &y);
 			cv::circle(
 				temp, cv::Point2f(x, y),
 				1, cv::Scalar(244, 244, 244), -1, 8, 0);
@@ -417,9 +417,9 @@ void test_3d22dland(cv::Mat_<uchar> img, std::string path,iden *ide,int id_idx,i
 //void test_slt_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx) {
 //
 //	FILE *fp;
-//	fopen_s(&fp, path.c_str(), "r");
+//	fp=fopen( path.c_str(), "r");
 //	int num = 0;
-//	fscanf_s(fp, "%d", &num);
+//	fscanf(fp, "%d", &num);
 //	for (int i = 0; i < num; i++) {
 //		cv::Mat temp;
 //		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d/t_1/lv_out_first_frame.jpg");
@@ -427,7 +427,7 @@ void test_3d22dland(cv::Mat_<uchar> img, std::string path,iden *ide,int id_idx,i
 //
 //		for (int j = 0; j < G_line_num; j++) {
 //			float x, y;
-//			fscanf_s(fp, "%f%f", &x, &y);
+//			fscanf(fp, "%f%f", &x, &y);
 //			y = temp.rows - y;
 //			cv::circle(
 //				temp, cv::Point2f(x, y),
@@ -450,21 +450,24 @@ void test_3d22dland(cv::Mat_<uchar> img, std::string path,iden *ide,int id_idx,i
 void test_slt_me_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx) {
 	
 	FILE *fp;
-	fopen_s(&fp, path.c_str(), "r");
+	fp=fopen( path.c_str(), "r");
 	int num = 1;
-	//fscanf_s(fp, "%d", &num);
+	fscanf(fp, "%d", &num);
 	for (int i = 0; i < num; i++) {
 		cv::Mat temp;
-		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d/t_1/lv_out_first_frame.jpg");
-		temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d/t_1/ID17_004.jpg");
-
+		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d_me/t_1/lv_out_first_frame.jpg");		
+		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d/t_1/pose_0.jpg");
+		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d_left/t_1/pose_0.jpg");
+		temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d_right/t_1/ID24_007.bmp");
+		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d_errbig/t_1/George_W_Bush_0459.jpg");
 		int ptnum;
-		fscanf_s(fp, "%d", &ptnum);
-
+		fscanf(fp, "%d", &ptnum);
+		printf("%d\n", ptnum);
 		for (int j = 0; j < ptnum; j++) {
 			float x, y;
-			fscanf_s(fp, "%f%f", &x, &y);
+			fscanf(fp, "%f%f", &x, &y);
 			y = temp.rows - y;
+			if (j > ptnum / 2) continue;
 			cv::circle(
 				temp, cv::Point2f(x, y),
 				1, cv::Scalar(244, 244, 244), -1, 8, 0);
@@ -487,23 +490,45 @@ void test_slt_me_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id
 void test_inner_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_idx, int exp_idx) {
 
 	FILE *fp;
-	fopen_s(&fp, path.c_str(), "r");
+	fp=fopen( path.c_str(), "r");
 	int num = 0;
-	fscanf_s(fp, "%d", &num);
+	fscanf(fp, "%d", &num);
 	for (int i = 0; i < num; i++) {
 		cv::Mat temp;
-		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d/t_1/lv_out_first_frame.jpg");
-		temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d/t_1/pose_0.jpg");
+		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d_me/t_1/lv_out_first_frame.jpg");
+		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d/t_1/pose_0.jpg");
+		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d_left/t_1/pose_0.jpg");
+		temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d_right/t_1/ID24_007.bmp");
+		//temp = cv::imread("D:/sydney/first/data_me/test_only_one_2d_errbig/t_1/George_W_Bush_0459.jpg");
+		printf("%d  %d %d\n",i, temp.rows, temp.cols);
 
-		for (int j = 0; j < G_land_num; j++) {
+
+
+		for (int j = 0; j < 7; j++) {
 			float x, y;
-			fscanf_s(fp, "%f%f", &x, &y);
+			fscanf(fp, "%f%f", &x, &y);
+			y = temp.rows - y;
+			cv::circle(
+				temp, cv::Point2f(x, y),
+				2, cv::Scalar(0, 0, 244), -1, 8, 0);
+		}
+		for (int j = 7; j < 15; j++) {
+			float x, y;
+			fscanf(fp, "%f%f", &x, &y);
+			y = temp.rows - y;
+			cv::circle(
+				temp, cv::Point2f(x, y),
+				2, cv::Scalar(0, 244, 244), -1, 8, 0);
+		}
+		for (int j = 15; j < G_land_num; j++) {
+			float x, y;
+			fscanf(fp, "%f%f", &x, &y);
 			y = temp.rows - y;
 			cv::circle(
 				temp, cv::Point2f(x, y),
 				1, cv::Scalar(244, 244, 244), -1, 8, 0);
 		}
-		for (int j = 0; j < G_land_num; j++) {
+		for (int j = 0; j < 15; j++) {
 			float x, y;
 			x = ide[id_idx].land_2d(exp_idx*G_land_num + j, 0);
 			y = ide[id_idx].land_2d(exp_idx*G_land_num + j, 1);
@@ -511,6 +536,15 @@ void test_inner_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_
 			cv::circle(
 				temp, cv::Point2f(x, y),
 				2, cv::Scalar(0, 244, 0), -1, 8, 0);
+		}
+		for (int j = 15; j < G_land_num; j++) {
+			float x, y;
+			x = ide[id_idx].land_2d(exp_idx*G_land_num + j, 0);
+			y = ide[id_idx].land_2d(exp_idx*G_land_num + j, 1);
+			y = temp.rows - y;
+			cv::circle(
+				temp, cv::Point2f(x, y),
+				0.5, cv::Scalar(0, 244, 0), -1, 8, 0);
 		}
 		cv::imshow("test_image", temp);
 		cv::waitKey(0);
@@ -521,7 +555,7 @@ void test_inner_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_
 void save_result(iden *ide, int tot_id, std ::string name) {
 	std ::cout << "saving coefficients...file:" << name << "\n";
 	FILE *fp;
-	fopen_s(&fp, name.c_str(), "wb");
+	fp=fopen( name.c_str(), "wb");
 
 	fwrite(&tot_id, sizeof(int), 1, fp);
 	for (int i_id = 0; i_id < tot_id; i_id++) {
@@ -568,7 +602,24 @@ void save_result(iden *ide, int tot_id, std ::string name) {
 	puts("save successful!");
 }
 
-float cal_3d_vtx_(
+//float cal_3d_vtx(
+//	iden *ide, Eigen::MatrixXf &bldshps,
+//	int id_idx, int exp_idx, int vtx_idx, int axis) {
+//
+//	//puts("calculating one vertex coordinate...");
+//	float ans = 0;
+//
+//	for (int i_id = 0; i_id < G_iden_num; i_id++)
+//		for (int i_shape = 0; i_shape < G_nShape; i_shape++)
+//			if (i_shape == 0)
+//				ans += ide[id_idx].exp(exp_idx, i_shape)*ide[id_idx].user(i_id)
+//				*bldshps(i_id, vtx_idx * 3 + axis);
+//			else
+//				ans += ide[id_idx].exp(exp_idx, i_shape)*ide[id_idx].user(i_id)
+//				*(bldshps(i_id, 3 * G_nVerts*i_shape + vtx_idx * 3 + axis) - bldshps(i_id, vtx_idx * 3 + axis));
+//	return ans;
+//}
+float cal_3d_vtx(
 	iden *ide, Eigen::MatrixXf &bldshps,
 	int id_idx, int exp_idx, int vtx_idx, int axis) {
 
@@ -585,7 +636,6 @@ float cal_3d_vtx_(
 				*(bldshps(i_id, 3 * G_nVerts*i_shape + vtx_idx * 3 + axis) - bldshps(i_id, vtx_idx * 3 + axis));
 	return ans;
 }
-
 void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot) {
 	puts("calculating displacement...");
 	for (int i_id = 0; i_id < id_tot; i_id++) {
@@ -601,7 +651,7 @@ void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot) {
 			for (int i_v = 0; i_v < G_land_num; i_v++) {
 				Eigen::Vector3f v;
 				for (int axis = 0; axis < 3; axis++)
-					v(axis) = cal_3d_vtx_(ide, bldshps, i_id, exp_idx, ide[i_id].land_cor(exp_idx, i_v), axis);
+					v(axis) = cal_3d_vtx(ide, bldshps, i_id, exp_idx, ide[i_id].land_cor(exp_idx, i_v), axis);
 #ifdef posit
 				v = R * v + ide[i_id].tslt.row(exp_idx).transpose();
 
@@ -676,7 +726,7 @@ void cal_2dland_fidexp(float fcs,iden *ide, Eigen::MatrixXf &bldshps, Eigen::Mat
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		Eigen::Vector3f v;
 		for (int axis = 0; axis < 3; axis++)
-			v(axis) = cal_3d_vtx_(ide, bldshps, i_id, exp_idx, ide[i_id].land_cor(exp_idx, i_v), axis);
+			v(axis) = cal_3d_vtx(ide, bldshps, i_id, exp_idx, ide[i_id].land_cor(exp_idx, i_v), axis);
 #ifdef posit
 		v = R * v + ide[i_id].tslt.row(exp_idx).transpose();
 
@@ -694,7 +744,7 @@ void cal_2dland_fidexp(float fcs,iden *ide, Eigen::MatrixXf &bldshps, Eigen::Mat
 void save_result_one(iden *ide, int i_id, int exp_idx, std::string name) {
 	std::cout << "saving coefficients...file:" << name << "\n";
 	FILE *fp;
-	fopen_s(&fp, name.c_str(), "wb");
+	fp=fopen( name.c_str(), "wb");
 	for (int j = 0; j < G_iden_num; j++)
 		fwrite(&ide[i_id].user(j), sizeof(float), 1, fp);
 
@@ -828,4 +878,14 @@ int save_fitting_coef_same_id(std::string path, iden *ide, int id_idx,int &exp_i
 	}
 
 	return flag;
+}
+
+void load_mean_mesh(std::string mean_mesh_path,Eigen::MatrixX3f &mean_mesh) {
+	mean_mesh.resize(G_nVerts, 3);
+	FILE *fp;
+	fp = fopen(mean_mesh_path.c_str(), "r");
+	for (int i = 0; i < G_nVerts; i++)
+		for (int j = 0; j < 3; j++)
+			scanf("%f", &mean_mesh(i, j));
+	fclose(fp);
 }

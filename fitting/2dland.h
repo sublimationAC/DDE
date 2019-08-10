@@ -1,4 +1,9 @@
 #pragma once
+
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 //#include "math_headers.h"
 #include <Eigen/Core>
 #include <Eigen/LU>
@@ -37,7 +42,7 @@ const int G_nShape = 47;
 const int G_nVerts = 11510;
 const int G_nFaces = 11540;
 const int G_test_num = 77;
-const int G_iden_num = 10;
+const int G_iden_num = 77;
 const int G_inner_land_num = 58;
 const int G_line_num = 84;
 const int G_jaw_land_num = 20;
@@ -90,7 +95,7 @@ void test_inner_2dland(cv::Mat_<uchar> img, std::string path, iden *ide, int id_
 
 void save_result(iden *ide, int tot_id, std::string name);
 
-float cal_3d_vtx_(
+float cal_3d_vtx(
 	iden *ide, Eigen::MatrixXf &bldshps,
 	int id_idx, int exp_idx, int vtx_idx, int axis);
 void cal_dis(iden *ide, Eigen::MatrixXf &bldshps, int id_tot);
