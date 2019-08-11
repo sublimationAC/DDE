@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ofMain.h"
-#include "math_headers.h"
 #include "mesh.h"
+
 
 class ofApp : public ofBaseApp{
 

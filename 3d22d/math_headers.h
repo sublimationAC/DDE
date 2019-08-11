@@ -1,3 +1,4 @@
+const int G_line_num = 84;
 #ifndef _MATH_HEADERS_H_
 #define _MATH_HEADERS_H_
 

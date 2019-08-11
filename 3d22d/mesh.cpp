@@ -114,6 +114,44 @@ void draw_mesh(Mesh_my &mesh) {
 	}
 }
 
+void draw_mesh_point(Mesh_my &mesh) {
+	glPointSize(3);
+	for (int i = 0; i < mesh.num_rect; ++i) {
+		//printf("%d\n",i);
+		bool fl = 0;
+		for (int p = 0; p < 4; p++) {
+			int idx = mesh.rect(i, p);
+			if (mesh.vtx(idx, 2) < -0.1) fl = 1;
+		}
+		if (fl) continue;
+		for (int t = 0; t < 4; t++) {
+			int VertIndex = mesh.rect(i, t);
+			glBegin(GL_POINTS);
+			glVertex3f(mesh.vtx(VertIndex, 0), mesh.vtx(VertIndex, 1), mesh.vtx(VertIndex, 2));
+			glEnd();
+		}
+	}
+	//FILE *fp;
+	//fopen_s(&fp, "start_pt_idx_jaw.txt", "r");
+	//const int n = 29;
+	//Eigen::VectorXi cor(n);
+	//for (int i = 0; i < n; i++)
+	//	fscanf_s(fp, "%d", &cor(i));
+	//fclose(fp);
+	////puts("loading inner point");
+	//glPointSize(15);
+	//for (int i = 0; i < n; i++) {
+	//	glBegin(GL_POINTS);
+	//	glVertex3f(mesh.vtx(cor(i), 0), mesh.vtx(cor(i), 1), mesh.vtx(cor(i), 2));
+	//	//printf("%d ", cor(i));
+	//	glEnd();
+	//}
+	//glBegin(GL_POINTS);
+	//glVertex3f(mesh.vtx(10828, 0), mesh.vtx(10828, 1), mesh.vtx(10828, 2));
+	////printf("%d ", cor(i));
+	//glEnd();
+}
+
 void draw_line(Mesh_my &mesh,double agl){
 	double scale = 1.0001;
 	glLineWidth(1);
@@ -153,24 +191,26 @@ void draw_line(Mesh_my &mesh,double agl){
 		glVertex3f(mesh.vtx(i, 0), mesh.vtx(i, 1), mesh.vtx(i, 2));
 		glEnd();
 	}
+
 }
 
-void check_2d_3d_inner_jaw_corr(Mesh_my &mesh, Eigen::VectorXi &cor) {
+void check_2d_3d_inner_corr(Mesh_my &mesh) {
 	puts("loading inner point");
+	Eigen::VectorXi cor;
 	FILE *fp;
-	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/inner_jaw/inner_vertex_corr.txt", "r");
+	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/inner_jaw/inner_vertex_corr_58_416fw.txt", "r");
 	cor.resize(G_jaw_land_num + G_inner_land_num);
 	for (int i = 0; i < G_inner_land_num; i++)
 		fscanf_s(fp, "%d", &cor(i));
 	fclose(fp);
-	puts("loading inner point");
-	fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/inner_jaw/jaw_vertex.txt", "r");
-	for (int i = G_inner_land_num; i < G_inner_land_num + G_jaw_land_num; i++)
-		fscanf_s(fp, "%d", &cor(i));
-	fclose(fp);
+	//puts("loading jaw point");
+	//fopen_s(&fp, "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_u_e_3\\cal_coeffience_Q_M_u_e_3/inner_jaw/jaw_vertex.txt", "r");
+	//for (int i = G_inner_land_num; i < G_inner_land_num + G_jaw_land_num; i++)
+	//	fscanf_s(fp, "%d", &cor(i));
+	//fclose(fp);
 	puts("loading inner point");
 	glPointSize(15);
-	for (int i = 0; i < G_inner_land_num + G_jaw_land_num; i++) {
+	for (int i = 0; i < G_inner_land_num; i++) {
 		glBegin(GL_POINTS);
 		glVertex3f(mesh.vtx(cor(i), 0), mesh.vtx(cor(i), 1), mesh.vtx(cor(i), 2));
 		//printf("%d ", cor(i));
@@ -229,7 +269,7 @@ void check_2d_3d_out_corr(Mesh_my &mesh) {
 		}
 	}
 	
-	//puts("asd");
+	puts("asd");
 	glLineWidth(5);
 	for (int i = 0; i < G_line_num; i++)
 		for (int j = 0; j < E[i].size()-1; j++) {
@@ -388,12 +428,13 @@ void test_slt() {
 	fclose(fp);
 }
 
-void get_coef_land(Eigen::MatrixX3f &coef_land,std::string name) {
+void get_coef_land(Eigen::MatrixX3f &coef_land, int &test_coef_num_tot,std::string name) {
 	puts("get_coef_land");
 	FILE *fp;
 	fopen_s(&fp, name.c_str(), "r");
 	int num;
 	fscanf_s(fp, "%d", &num);
+	test_coef_num_tot = num;
 	coef_land.resize(num * G_land_num, 3);
 	for (int j = 0; j < num * G_land_num; j++)
 		fscanf_s(fp, "%f%f%f", &coef_land(j, 0), &coef_land(j, 1), &coef_land(j, 2));
@@ -541,11 +582,9 @@ void get_positive_point(Mesh_my &mesh) {
 }
 
 
-std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/sillht.txt";
-std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_point_rect.txt";
-
 void test_update_slt_norm(
-	Mesh_my &mesh,Eigen::MatrixX3f &norm_line) {
+	Mesh_my &mesh,Eigen::MatrixX3f &norm_line,Eigen::VectorXi &slt_cddt_idx,
+	std::string slt_path, std::string rect_path) {
 	////////////////////////////////project
 
 	puts("calculating silhouette...");
@@ -553,6 +592,9 @@ void test_update_slt_norm(
 	std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
 	FILE *fp;
 	fopen_s(&fp, slt_path.c_str(), "r");
+	int num;
+	fscanf_s(fp, "%d", &num);
+	assert(num == G_line_num);
 	for (int i = 0; i < G_line_num; i++) {
 		int num;
 		fscanf_s(fp, "%d", &num);
@@ -562,21 +604,21 @@ void test_update_slt_norm(
 	}
 	fclose(fp);
 	fopen_s(&fp, rect_path.c_str(), "r");
-	for (int i = 0; i < 496; i++) {
+	int vtx_num;
+	fscanf_s(fp, "%d", &vtx_num);
+	for (int i = 0; i < vtx_num; i++) {
 		int idx, num;
 		fscanf_s(fp, "%d%d", &idx, &num);
+		printf("%d %d %d\n", i, idx, num);
 		slt_point_rect[idx].resize(num);
 		for (int j = 0; j < num; j++) fscanf_s(fp, "%d%d", &slt_point_rect[idx][j].first, &slt_point_rect[idx][j].second);
 	}
 	fclose(fp);
 
 
-	
-	Eigen::VectorXi slt_cddt(G_line_num + G_jaw_land_num);
-
 	int cnt_norm_line = 0;
-
-	for (int i = 0; i < G_line_num; i++) {
+	slt_cddt_idx.setZero();
+	for (int i = 0; i < 10; i++) {
 		printf("tst updt slt i %d\n", i);
 		float min_v_n = 10000;
 		int min_idx = 0;
@@ -622,30 +664,35 @@ void test_update_slt_norm(
 			cnt_norm_line++;
 			norm_line.conservativeResize(cnt_norm_line * 2, 3);
 			norm_line.row(cnt_norm_line * 2 - 2) = point[0].transpose();
-			norm_line.row(cnt_norm_line * 2 - 1) = (point[0]-nor).transpose();
+			norm_line.row(cnt_norm_line * 2 - 1) = ((point[0]-nor/10)).transpose();
 
 			//std::cout << "nor++\n\n" << nor << "\n";
 			//std::cout << "point--\n\n" << point[0].normalized() << "\n";
 			//std::cout << "rltv--\n\n"<<x << ' ' << nor.dot(point[0].normalized()) << "\n";
-			//if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+			if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
 
 
-			/*point[0].normalize();
+/*
+			cnt_norm_line++;
+			norm_line.conservativeResize(cnt_norm_line * 2, 3);
+			norm_line.row(cnt_norm_line * 2 - 2) = point[0].transpose();
+			point[0].normalize();
+			norm_line.row(cnt_norm_line * 2 - 1) = ((norm_line.row(cnt_norm_line * 2 - 2) + point[0].transpose() / 10)).transpose();
 			if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[0];*/
 		}
 		//puts("H");
 		//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
-		//slt_cddt(i) = min_idx;
+		slt_cddt_idx(i) = min_idx;
 
 	}
 
 }
 
-void draw_test_slt_norm(Eigen::MatrixX3f test_slt_norm) {
+void draw_test_slt_norm(Eigen::MatrixX3f test_slt_norm, Eigen::VectorXi slt_cddt_idx,Mesh_my &mesh) {
 	std::cout << test_slt_norm.rows() << " " << test_slt_norm.cols() << "\n";
 	glLineWidth(1);
 	for (int i = 0; i < test_slt_norm.rows(); i += 2) {
-		printf("%d\n",i);
+		//printf("%d\n",i);
 		glBegin(GL_LINES);
 		glVertex3f(test_slt_norm(i, 0), test_slt_norm(i, 1), test_slt_norm(i, 2));
 		glVertex3f(test_slt_norm(i + 1, 0), test_slt_norm(i + 1, 1), test_slt_norm(i + 1, 2));
@@ -657,4 +704,175 @@ void draw_test_slt_norm(Eigen::MatrixX3f test_slt_norm) {
 		glVertex3f(test_slt_norm(i, 0), test_slt_norm(i, 1), test_slt_norm(i, 2));
 		glEnd();
 	}
+	glPointSize(10);
+	for (int i = 0; i < slt_cddt_idx.rows(); i++) {
+		glBegin(GL_POINTS);
+		glVertex3f(mesh.vtx(slt_cddt_idx(i),0), mesh.vtx(slt_cddt_idx(i), 1), mesh.vtx(slt_cddt_idx(i), 2));
+		glEnd();
+	}
+	
+}
+
+void show_scratch_line(int num, std::vector <int> *scrtch_line, Mesh_my &mesh) {
+	float scale = 1.01;
+	//printf("%d\n", scrtch_line[60][2]);
+	//for (int idx = 0; idx < G_line_num; idx++) {
+	//	glLineWidth(3);
+	//	//printf("%d %d----\n", idx, scrtch_line[idx].size());
+	//	for (int i = 2; i < scrtch_line[idx].size(); i++) {
+	//		//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+	//		glBegin(GL_LINES);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i], 0)*scale, mesh.vtx(scrtch_line[idx][i], 1)*scale, mesh.vtx(scrtch_line[idx][i], 2)*scale);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i - 1], 0)*scale, mesh.vtx(scrtch_line[idx][i - 1], 1)*scale, mesh.vtx(scrtch_line[idx][i - 1], 2)*scale);
+	//		glEnd();
+	//	}
+	//	glPointSize(10);
+	//	for (int i = 1; i < scrtch_line[idx].size(); i++) {
+	//		//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+	//		glBegin(GL_POINTS);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i], 0)*scale, mesh.vtx(scrtch_line[idx][i], 1)*scale, mesh.vtx(scrtch_line[idx][i], 2)*scale);
+	//		glEnd();
+	//	}
+	//}
+	//for (int idx = 48; idx < 84; idx++) {
+	//	glLineWidth(3);
+	//	//printf("%d %d----\n", idx, scrtch_line[idx].size());
+	//	for (int i = 2; i < scrtch_line[idx].size(); i++) {
+	//		//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+	//		glBegin(GL_LINES);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i], 0)*scale, mesh.vtx(scrtch_line[idx][i], 1)*scale, mesh.vtx(scrtch_line[idx][i], 2)*scale);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i - 1], 0)*scale, mesh.vtx(scrtch_line[idx][i - 1], 1)*scale, mesh.vtx(scrtch_line[idx][i - 1], 2)*scale);
+	//		glEnd();
+	//	}
+	//	glPointSize(10);
+	//	for (int i = 1; i < scrtch_line[idx].size()/2; i++) {
+	//		//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+	//		glBegin(GL_POINTS);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i], 0)*scale, mesh.vtx(scrtch_line[idx][i], 1)*scale, mesh.vtx(scrtch_line[idx][i], 2)*scale);
+	//		glEnd();
+	//	}
+	//}
+	//for (int idx = 70; idx < 84; idx++) {
+	//	glLineWidth(3);
+	//	//printf("%d %d----\n", idx, scrtch_line[idx].size());
+	//	for (int i = 2; i < scrtch_line[idx].size(); i++) {
+	//		//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+	//		glBegin(GL_LINES);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i], 0)*scale, mesh.vtx(scrtch_line[idx][i], 1)*scale, mesh.vtx(scrtch_line[idx][i], 2)*scale);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i - 1], 0)*scale, mesh.vtx(scrtch_line[idx][i - 1], 1)*scale, mesh.vtx(scrtch_line[idx][i - 1], 2)*scale);
+	//		glEnd();
+	//	}
+	//	glPointSize(10);
+	//	for (int i = std::min((int)(scrtch_line[idx].size()), 15)-6; i < std::min((int)(scrtch_line[idx].size()), 15); i++) {
+	//		//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+	//		glBegin(GL_POINTS);
+	//		glVertex3f(mesh.vtx(scrtch_line[idx][i], 0)*scale, mesh.vtx(scrtch_line[idx][i], 1)*scale, mesh.vtx(scrtch_line[idx][i], 2)*scale);
+	//		glEnd();
+	//	}
+	//}
+
+	Eigen::VectorXi rdc(num);
+	rdc.setZero();
+	//rdc.block(8, 0, 6, 1) <<
+	//	1, 1, 1, 3, 0, 3;
+	//rdc.block(14, 0, 10, 1) <<
+	//	6, 7, 7, 7, 5, 5, 5, 5, 5, 5;
+	//rdc.block(24, 0, 10, 1) <<
+	//	6, 9,9, 9, 9, 9, 8, 5, 4,3;
+	printf("line num:%d\n", num);
+	for (int idx = 0; idx < num; idx++) {
+		glLineWidth(3);
+		//printf("%d %d----\n", idx, scrtch_line[idx].size());
+		for (int i = 2; i < scrtch_line[idx].size(); i++) {
+			//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+			glBegin(GL_LINES);
+			glVertex3f(mesh.vtx(scrtch_line[idx][i], 0)*scale, mesh.vtx(scrtch_line[idx][i], 1)*scale, mesh.vtx(scrtch_line[idx][i], 2)*scale);
+			glVertex3f(mesh.vtx(scrtch_line[idx][i - 1], 0)*scale, mesh.vtx(scrtch_line[idx][i - 1], 1)*scale, mesh.vtx(scrtch_line[idx][i - 1], 2)*scale);
+			glEnd();
+		}
+		glPointSize(10);
+		for (int i = 1; i < scrtch_line[idx].size()- rdc(idx); i++) {
+			//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+			glBegin(GL_POINTS);
+			glVertex3f(mesh.vtx(scrtch_line[idx][i], 0)*scale, mesh.vtx(scrtch_line[idx][i], 1)*scale, mesh.vtx(scrtch_line[idx][i], 2)*scale);
+			glEnd();
+		}
+	}
+}
+
+void get_silhouette_rect(Mesh_my &mesh,std::string path) {
+	puts("getting scratch_line");
+	FILE *fp;
+	fopen_s(&fp, path.c_str(), "r");
+	int num;
+	fscanf_s(fp, "%d", &num);
+	memset(use, 0, sizeof(use));
+	for (int idx = 0; idx < num; idx++) {
+		int p, n;
+		fscanf_s(fp, "%d%d", &p, &n);
+		printf("%d %d\n", p, n);
+		for (int i = 0; i < n; i++) {
+			int x;
+			fscanf_s(fp, "%d", &x);
+			use[x] = 1;
+		}
+	}
+
+	for (int i = 0; i < 20000; i++) {
+		slt_point_rect[i].clear();
+
+	}
+
+	fopen_s(&fp, "slt_rect_4_10.txt", "w");
+	
+	for (int i = 0; i < mesh.num_rect; i++)
+		for (int j = 0; j < 4; j++) {
+			int idx = mesh.rect(i, j);
+			if (use[idx])
+				
+				if (slt_point_rect[idx].size() == 0)
+					slt_point_rect[idx].push_back(
+						std::make_pair(mesh.rect(i, (j + 3) % 4), mesh.rect(i, (j + 1) % 4)));
+				else {
+					Eigen::RowVector3d V[2];
+					cal_nor_vec(V[0], mesh.vtx.row(slt_point_rect[idx][0].first), mesh.vtx.row(slt_point_rect[idx][0].second), mesh.vtx.row(idx));
+					cal_nor_vec(V[1], mesh.vtx.row(mesh.rect(i, (j + 3) % 4)), mesh.vtx.row(mesh.rect(i, (j + 1) % 4)), mesh.vtx.row(idx));
+					if (V[0].dot(V[1]) > 0)
+						slt_point_rect[idx].push_back(
+							std::make_pair(mesh.rect(i, (j + 3) % 4), mesh.rect(i, (j + 1) % 4)));
+					else
+						slt_point_rect[idx].push_back(
+							std::make_pair(mesh.rect(i, (j + 1) % 4), mesh.rect(i, (j + 3) % 4)));
+				}
+		}
+	num = 0;
+	for (int i = 0; i < 20000; i++) 
+		if (use[i]) num++;
+	fprintf(fp, "%d\n", num);
+	for (int i = 0; i < 20000; i++) {
+		if (use[i]) {
+			fprintf(fp, "%d %d ", i, slt_point_rect[i].size());
+			for (int j = 0; j < slt_point_rect[i].size(); j++)
+				fprintf(fp, " %d %d", slt_point_rect[i][j].first, slt_point_rect[i][j].second);
+			fprintf(fp, "\n");
+		}
+	}
+	fclose(fp);
+}
+void draw_tst_slt_pts(Eigen::MatrixXi &slt_pts, int idx, Mesh_my mesh) {
+	float scale = 1.01;
+	glPointSize(5);
+	printf("now idx %d angle: %d\n", idx, (idx*10)-90);
+	for (int i = 0; i < G_line_num; i++) {
+		//printf("%d %d \n",i, slt_pts(idx, i));
+		glBegin(GL_POINTS);
+		glVertex3f(mesh.vtx(slt_pts(idx, i), 0)*scale, mesh.vtx(slt_pts(idx, i), 1)*scale, mesh.vtx(slt_pts(idx, i), 2)*scale);
+		glEnd();
+	}
+	//for (int i = 70; i < 84; i++) {
+	//	//printf("%d %d %d\n",i, scrtch_line[idx][i], scrtch_line[idx][i-1]);
+	//	glBegin(GL_POINTS);
+	//	glVertex3f(mesh.vtx(slt_pts(idx,i), 0)*scale, mesh.vtx(slt_pts(idx, i), 1)*scale, mesh.vtx(slt_pts(idx, i), 2)*scale);
+	//	glEnd();
+	//}
 }
