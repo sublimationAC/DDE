@@ -370,6 +370,26 @@ void get_pixel_value(
 #endif // sort_fp_def
 }
 
+//void save_triidx_4py(std::vector<cv::Point2d> &ref_shape,
+//	Eigen::MatrixX3i &tri_idx, std::vector<std::pair<int, cv::Point2d>> &pixels_ta_) {
+//	puts("save_triidx_4py");
+//	freopen("tri_idx_px.txt", "w", stdout);
+//	printf("%d\n", ref_shape.size());
+//	for (int i = 0; i < ref_shape.size(); i++)
+//		printf("%.10f %.10f\n", ref_shape[i].x, ref_shape[i].y);
+//
+//	printf("%d\n", tri_idx.rows());
+//	for (int i = 0; i < tri_idx.rows(); i++)
+//		printf("%d %d %d\n", tri_idx(i, 0), tri_idx(i, 1), tri_idx(i, 2));
+//
+//	printf("%d\n", pixels_ta_.size());
+//	for (int i = 0; i < pixels_ta_.size(); i++)
+//		printf("%d %.10f %.10f\n", pixels_ta_[i].first, pixels_ta_[i].second.x, pixels_ta_[i].second.y);
+//
+//	fclose(stdout);
+//	exit(44);
+//}
+
 void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &rect,
 	cv::Rect &left_eye_rect, cv::Rect &right_eye_rect, cv::Rect &mouse_rect,
 	Eigen::MatrixX3i &tri_idx, std::vector<cv::Point2d> &ref_shape, std::vector<Target_type> *targets,
@@ -388,7 +408,7 @@ void RegressorTrain::Regress_ta(std::vector<cv::Vec6f> &triangleList, cv::Rect &
 	get_feature_pixel(rect,left_eye_rect,right_eye_rect,mouse_rect,tri_idx,ref_shape,training_parameters_.P,
 		tri_center,pixels_ta_);
 
-	
+	//save_triidx_4py(ref_shape, tri_idx, pixels_ta_);
 
 	// If you want to use AVX2, you must pay attention to memory alignment.
 	// AVX2 is not used by default. You can change Covariance in fern_train.cpp

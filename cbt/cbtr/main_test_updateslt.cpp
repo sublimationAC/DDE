@@ -24,16 +24,16 @@
 //std::string fwhs_path = "D:/sydney/first/data_me/test_lv/fw";
 //std::string lfw_path = "D:/sydney/first/data_me/test_lv/lfw_image";
 //std::string gtav_path = "D:/sydney/first/data_me/test_lv/GTAV_image";
-//std::string test_path = "D:/sydney/first/data_me/test";
+//std::string test_path = "D:/sydney/first/data_me/test_fw_psp_f";
 //std::string test_path_one = "D:/sydney/first/data_me/test_only_one";
-//std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
+////std::string coef_path = "D:/sydney/first/data_me/fitting_coef/ide_fw_p1.lv";
 //std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_77.lv";
 //
 //#endif // win64
 //#ifdef linux
-//std::string fwhs_path = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/fw";
-//std::string lfw_path = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/lfw_image";
-//std::string gtav_path = "/home/weiliu/fitting_dde/fitting_coef_l12_slt/GTAV_image";
+//std::string fwhs_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/fw";
+//std::string lfw_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/lfw_image";
+//std::string gtav_path = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/GTAV_image";
 //std::string test_path = "./test";
 //std::string test_path_one = "/home/weiliu/DDE/cal_coeff/data_me/test_only_one";
 ////std::string fwhs_path_p1 = "/home/weiliu/fitting_dde/1cal/data_me/fw_p1";
@@ -42,7 +42,7 @@
 //std::string fwhs_path_p3 = "/home/weiliu/fitting_dde/3cal/data_me/fw_p3";
 //std::string fwhs_path_p4 = "/home/weiliu/fitting_dde/4cal/data_me/fw_p4";
 //std::string fwhs_path_p5 = "/home/weiliu/fitting_dde/5cal/data_me/fw_p5";
-//std::string bldshps_path = "/home/weiliu/fitting_dde/cal/deal_data/blendshape_ide_svd_77.lv";
+//std::string bldshps_path = "/home/weiliu/fitting_dde/const_file/deal_data/blendshape_ide_svd_77.lv";
 //
 //#endif // linux
 //
@@ -200,7 +200,7 @@
 //		cal_2d_land_i_ang_tg(land_temp, data[idx].init_shape, bldshps, data[idx]);
 //		draw_image_land_2d(image_save, land_temp, cv::Scalar(255,0, 0));
 //
-//		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 //		cal_2d_land_i_ang_tg(land_temp, data[idx].shape, bldshps, data[idx]);
 //		puts("calculating new init landmarks");
 //		draw_image_land_2d(image_save, land_temp, cv::Scalar(255, 255, 255));
@@ -244,7 +244,7 @@
 //		data[idx].init_shape.angle(1) += cv::theRNG().uniform(-G_rand_angle_border * 10, G_rand_angle_border * 10);
 //		data[idx].init_shape.angle(2) += cv::theRNG().uniform(-G_rand_angle_border * 5, G_rand_angle_border * 5);
 //
-//		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 //		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 //		cal_slt_bldshps(data[idx], bldshps);
 //		idx++;
@@ -272,7 +272,7 @@
 //#ifdef normalization
 //		data[idx].init_shape.tslt(2) = 0;
 //#endif // normalization		
-//		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 //		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 //		cal_slt_bldshps(data[idx], bldshps);
 //		idx++;
@@ -297,7 +297,7 @@
 //#ifdef normalization
 //		data[idx].init_shape.tslt(2) = 0;
 //#endif // normalization	
-//		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 //		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 //		cal_slt_bldshps(data[idx], bldshps);
 //		idx++;
@@ -333,7 +333,7 @@
 //		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
 //		data[idx].ide_idx = train_idx;
 //		//		update_slt();
-//		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 //		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 //		cal_slt_bldshps(data[idx], bldshps);
 //		idx++;
@@ -359,7 +359,7 @@
 //		data[idx].user = traindata[*it_u].user;
 //		data[idx].ide_idx = *it_u;
 //		//recal_dis_ang_0ide(data[idx],arg_exp_land_matrix[*it_u]);
-//		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 //		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 //		cal_slt_bldshps(data[idx], bldshps);
 //		idx++;
@@ -390,7 +390,7 @@
 //		data[idx].s(1, 1) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
 //#endif
 //		//recal_dis_ang_0ide(data[idx], arg_exp_land_matrix[train_idx]);
-//		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 //		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 //		cal_slt_bldshps(data[idx], bldshps);
 //		idx++;
@@ -457,12 +457,12 @@
 //	}
 //}
 //#ifdef win64
-//std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_line_new_short_ans.txt";
-//std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_rect_new_short_ans.txt";
+//std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_line_4_10.txt";
+//std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_rect_4_10.txt";
 //#endif // win64
 //#ifdef linux
-//std::string slt_path = "/home/weiliu/fitting_dde/cal/3d22d/slt_line_new.txt";
-//std::string rect_path = "/home/weiliu/fitting_dde/cal/3d22d/slt_rect_new.txt";
+//std::string slt_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_line_4_10.txt";
+//std::string rect_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_rect_4_10.txt";
 //#endif // linux
 //
 //std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
@@ -598,7 +598,7 @@
 //
 //Eigen::MatrixXf bldshps(G_iden_num, G_nShape * 3 * G_nVerts);
 //
-//int main(int argc, char *argv[])
+//int main()
 //{
 //	
 //		vector<DataPoint> training_data = GetTrainingData();
@@ -610,8 +610,10 @@
 //
 //		get_index_slt_point_rect(slt_line, slt_point_rect, training_data[0]);
 //
-//		//DataPoint data = training_data[0];
-//		//data.init_shape = data.shape;
+//		DataPoint data = training_data[0];
+//		data.init_shape = data.shape;
+//
+////yaw
 //		//int st = -90, en = 90, step = 10;
 //		//FILE *fp;
 //		//fopen_s(&fp, "test_updt_slt.txt", "w");
@@ -619,18 +621,28 @@
 //		//fclose(fp);
 //		//for (int ang = st; ang <= en; ang += step) {
 //		//	printf("now angle: %d\n", ang);
-//		//	data.init_shape.angle(1) = ang*G_rand_angle_border;
-//		//	update_slt_init_shape(bldshps, slt_line, slt_point_rect, data);
+//		//	data.init_shape.angle(1) = ang * G_rand_angle_border;
+//		//	update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data);
 //		//}
+////roll
+//		int st = -30, en = 50, step = 10;
+//		FILE *fp;
+//		fopen_s(&fp, "test_updt_slt.txt", "w");
+//		fprintf(fp, "%d\n", (en - st) / step + 1);
+//		fclose(fp);
+//		for (int ang = st; ang <= en; ang += step) {
+//			printf("now angle: %d\n", ang);
+//			data.init_shape.angle(2) = ang * G_rand_angle_border;
+//			update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data);
+//		}
+//
+//		//vector<Eigen::MatrixXf> arg_inner_bldshp_matrix(training_data.size());
+//
+//		//cal_inner_bldshp_matrix(arg_inner_bldshp_matrix, bldshps, training_data);
 //
 //
-//		vector<Eigen::MatrixXf> arg_inner_bldshp_matrix(training_data.size());
-//
-//		cal_inner_bldshp_matrix(arg_inner_bldshp_matrix, bldshps, training_data);
-//
-//
-//		vector<DataPoint> argumented_training_data =
-//			ArgumentData(training_data, slt_line, slt_point_rect, bldshps, arg_inner_bldshp_matrix);
+//		//vector<DataPoint> argumented_training_data =
+//		//	ArgumentData(training_data, slt_line, slt_point_rect, bldshps, arg_inner_bldshp_matrix);
 //		//system("pause");
 //		
 //	

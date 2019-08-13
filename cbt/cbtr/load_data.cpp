@@ -4,6 +4,11 @@
 #define flap_2dland
 #define debug
 
+#ifdef linux
+using std::max;
+using std::min;
+#endif
+
 
 int num = 0;
 void load_img_land_coef(std::string path, std::string sfx, std::vector<DataPoint> &img) {
@@ -235,16 +240,18 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	temp.user.resize(G_iden_num);
 	for (int j = 0; j < G_iden_num; j++)
 		fread(&temp.user(j), sizeof(float), 1, fp);
-
+	std::cout << "user" << temp.user << '\n';
 	temp.land_2d.resize(G_land_num, 2);
 	for (int i_v = 0; i_v < G_land_num; i_v++) {
 		fread(&temp.land_2d(i_v, 0), sizeof(float), 1, fp);
 		fread(&temp.land_2d(i_v, 1), sizeof(float), 1, fp);
 	}
-
+	std::cout << "land_2d:" << temp.land_2d << '\n';
 	
 	fread(&temp.center(0), sizeof(float), 1, fp);
 	fread(&temp.center(1), sizeof(float), 1, fp);
+
+	std::cout << "center:" << temp.center << '\n';
 
 	temp.shape.exp.resize(G_nShape);
 	for (int i_shape = 0; i_shape < G_nShape; i_shape++)
@@ -258,7 +265,7 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 	for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++)
 		fread(&rot(i, j), sizeof(float), 1, fp);
 	temp.shape.angle = get_uler_angle_zyx(rot);
-
+	std::cout << "angle:" << temp.shape.angle << '\n';
 	for (int i = 0; i < 3; i++) fread(&temp.shape.tslt(i), sizeof(float), 1, fp);
 //#ifdef normalization
 //	temp.shape.tslt(2) = 0;
@@ -276,6 +283,7 @@ void load_fitting_coef_one(std::string name, DataPoint &temp) {
 
 #ifdef perspective
 	fread(&temp.fcs, sizeof(float), 1, fp);
+	std::cout << "f tslt_z: " << temp.fcs << ' ' << temp.shape.tslt(2) << "\n";
 	std::cout << "f/tslt_z: " << temp.fcs / temp.shape.tslt(2) << " " << temp.shape.tslt(2) / temp.fcs << "\n";
 
 	//temp.fcs = temp.fcs / temp.shape.tslt(2) * 10;

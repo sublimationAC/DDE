@@ -13,8 +13,8 @@
 #include "regressor_train.h"
 //#include "load_data.hpp"
 
-#define win64
-//#define linux
+//#define win64
+#define linux
 
 //#define train_intersection_def
 
@@ -31,9 +31,9 @@ std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_dat
 #endif // win64
 #ifdef linux
 #ifdef perspective
-std::string fwhs_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/fw";
-std::string lfw_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/lfw_image";
-std::string gtav_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/GTAV_image";
+std::string fwhs_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_ddeslt_8_1_1600/fw";
+std::string lfw_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_ddeslt_8_1_1600/lfw_image";
+std::string gtav_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_ddeslt_8_1_1600/GTAV_image";
 #endif // perspective
 
 #ifdef normalization
@@ -49,7 +49,7 @@ std::string fwhs_path_p2 = "/home/weiliu/fitting_dde/2cal/data_me/fw_p2";
 std::string fwhs_path_p3 = "/home/weiliu/fitting_dde/3cal/data_me/fw_p3";
 std::string fwhs_path_p4 = "/home/weiliu/fitting_dde/4cal/data_me/fw_p4";
 std::string fwhs_path_p5 = "/home/weiliu/fitting_dde/5cal/data_me/fw_p5";
-std::string bldshps_path = "/home/weiliu/fitting_dde/cal/deal_data/blendshape_ide_svd_77.lv";
+std::string bldshps_path = "/home/weiliu/fitting_dde/const_file/deal_data/blendshape_ide_svd_77.lv";
 
 #endif // linux
 
@@ -144,10 +144,10 @@ vector<DataPoint> GetTrainingData(const TrainingParameters &tp)
 {
 
 	vector<DataPoint> result;
-	/*load_img_land_coef(fwhs_path,".jpg",result);
-	load_img_land_coef(lfw_path, ".jpg", result);
-	load_img_land_coef(gtav_path, ".bmp", result);*/
-	load_img_land_coef(fwhs_path, ".jpg", result);
+	load_img_land_coef(fwhs_path_psp_f,".jpg",result);
+	load_img_land_coef(lfw_path_psp_f, ".jpg", result);
+	load_img_land_coef(gtav_path_psp_f, ".bmp", result);
+	//load_img_land_coef(fwhs_path, ".jpg", result);
 
 	return result;
 }
@@ -202,7 +202,7 @@ void aug_rand_rot(
 		cal_2d_land_i_ang_tg(land_temp, data[idx].init_shape, bldshps, data[idx]);
 		draw_image_land_2d(image_save, data[idx].landmarks, cv::Scalar(0, 0, 255));*/
 
-		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		
 		data[idx].init_shape.angle(0) += cv::theRNG().uniform(-G_rand_angle_border * 15, G_rand_angle_border * 15);
 		data[idx].init_shape.angle(2) += cv::theRNG().uniform(-G_rand_angle_border * 5, G_rand_angle_border * 5);
 
@@ -212,6 +212,7 @@ void aug_rand_rot(
 
 		cal_2d_land_i_ang_tg(land_temp, data[idx].init_shape, bldshps, data[idx]);
 		draw_image_land_2d(image_save, data[idx].landmarks, cv::Scalar(255, 255, 255));*/
+		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 
 		cal_slt_bldshps(data[idx], bldshps);
@@ -235,7 +236,7 @@ void aug_rand_rot(
 		//for (int j=0;j<3;j++)
 		//	data[idx].init_shape.angle(j)+= cv::theRNG().uniform(-G_rand_angle_border, G_rand_angle_border);
 		data[idx].init_shape.angle(1) += cv::theRNG().uniform(-G_rand_angle_border * 10, G_rand_angle_border * 10);
-		update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 		data[idx].init_shape.angle(0) += cv::theRNG().uniform(-G_rand_angle_border * 15, G_rand_angle_border * 15);
 		
 		data[idx].init_shape.angle(2) += cv::theRNG().uniform(-G_rand_angle_border * 5, G_rand_angle_border * 5);
@@ -284,8 +285,9 @@ void aug_rand_tslt(
 #ifdef normalization
 		data[idx].init_shape.tslt(2) = 0;
 #endif // normalization		
-		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
 		//recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
+		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 	}
@@ -314,7 +316,6 @@ void aug_rand_tslt(
 #ifdef normalization
 		data[idx].init_shape.tslt(2) = 0;
 #endif // normalization	
-		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
 		//recal_dis_ang_sqz_optmz(data[idx], bldshps);
 		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
@@ -350,8 +351,8 @@ void aug_rand_exp(
 		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
 		data[idx].ide_idx = train_idx;
 		//		update_slt();
-		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
-		//recal_dis_ang_sqz_optmz(data[idx], bldshps);
+		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
+		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
 	}
@@ -375,8 +376,8 @@ void aug_rand_user(
 		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].user = traindata[*it_u].user;
 		data[idx].ide_idx = *it_u;
-		//recal_dis_ang_0ide(data[idx],arg_exp_land_matrix[*it_u]);
-		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		//recal_dis_ang_0ide(data[idx],arg_exp_land_matrix[*it_u]);		
+		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
@@ -408,6 +409,7 @@ void aug_rand_f(
 #endif
 		//recal_dis_ang_0ide(data[idx], arg_exp_land_matrix[train_idx]);
 		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
+		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 		recal_dis_ang_sqz_optmz(data[idx], bldshps);
 		cal_slt_bldshps(data[idx], bldshps);
 		idx++;
@@ -420,9 +422,9 @@ vector<DataPoint> ArgumentData(
 {
 
 	FILE *fp;
-	fopen_s(&fp, "/home/weiliu/train_dde_psp/const_file/eliminate_index.txt","r");
+	fp = fopen("/home/weiliu/train_dde_psp/const_file/eliminate_index.txt","r");
 	Eigen::VectorXi eli_idx(1000);
-	for (int i = 0; i < 1000; i++) fscanf_s(fp,"%d", &eli_idx(i));
+	for (int i = 0; i < 1000; i++) fscanf(fp,"%d", &eli_idx(i));
 	fclose(fp);
 	int now = 0;
 
@@ -493,8 +495,8 @@ std::string slt_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22
 std::string rect_path = "D:\\openframework\\of_v0.10.0_vs2017_release\\apps\\3d22d\\3d22d/slt_rect_new_short_ans.txt";
 #endif // win64
 #ifdef linux
-std::string slt_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_line_new_4_2.txt";
-std::string rect_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_rect_new_4_2.txt";
+std::string slt_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_line_4_10.txt";
+std::string rect_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_rect_4_10.txt";
 #endif // linux
 
 std::vector<std::pair<int, int> > slt_point_rect[G_nVerts];
@@ -555,7 +557,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		vector<Target_type> targets =
 			ComputeTargets(argumented_training_data);
 		FILE *fp;
-		fopen_s(&fp, "debug_target.txt", "a");
+		fp = fopen("debug_target.txt", "a");
 		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
 		fclose(fp);
 
@@ -585,7 +587,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		targets =
 			ComputeTargets(argumented_training_data);
 		//FILE *fp;
-		fopen_s(&fp, "debug_target.txt", "a");
+		fp=fopen( "debug_target.txt", "a");
 		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
 		fclose(fp);
 
@@ -621,7 +623,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		vector<Target_type> targets = 
 			ComputeTargets(argumented_training_data);
 		FILE *fp;
-		fopen_s(&fp, "debug_target.txt", "a");
+		fp=fopen( "debug_target.txt", "a");
 		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
 		fclose(fp);
 
@@ -655,7 +657,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 		vector<Target_type> targets =
 			ComputeTargets(argumented_training_data);
 		FILE *fp;
-		fopen_s(&fp, "debug_target.txt", "a");
+		fp=fopen( "debug_target.txt", "a");
 		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
 		fclose(fp);
 

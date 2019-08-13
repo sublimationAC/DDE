@@ -5,6 +5,8 @@
 
 //#define ignore_64_train
 //#define mxini_def
+//#define rand_exp_from_set_def
+
 
 const int G_land_num = 73;
 const int G_train_pic_id_num = 3300;
@@ -17,6 +19,8 @@ const int G_inner_land_num = 58;
 const int G_line_num = 84;
 const int G_outer_land_num = 15;
 //const int G_jaw_land_num = 20;
+
+
 
 
 const float G_rand_rot_border = 0.1;

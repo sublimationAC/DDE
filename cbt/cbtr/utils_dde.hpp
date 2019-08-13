@@ -84,7 +84,10 @@ uchar get_batch_feature(cv::Mat img, cv::Point p);
 uchar get_sobel_batch_feature(cv::Mat img, cv::Point p);
 
 
-void update_slt_init_shape(
+//void update_slt_init_shape(
+//	Eigen::MatrixXf &bldshps, std::vector<int> *slt_line,
+//	std::vector<std::pair<int, int> > *slt_point_rect, DataPoint &data);
+void update_slt_init_shape_DDE(
 	Eigen::MatrixXf &bldshps, std::vector<int> *slt_line,
 	std::vector<std::pair<int, int> > *slt_point_rect, DataPoint &data);
 
