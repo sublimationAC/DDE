@@ -760,6 +760,10 @@ void print_datapoint(DataPoint &data) {
 	std::cout << "center:" << data.center << "\n";
 	std::cout << "land:" << data.land_2d.transpose() << "\n";
 	std::cout << "landmark:" << data.landmarks << "\n";
+
+	for (int i = 0; i < data.user.rows(); i++)
+		printf("%.3f,\n", data.user(i));
+
 }
 
 void print_target(Target_type &data) {
@@ -1239,4 +1243,43 @@ void shape_err_print(DataPoint &data, DataPoint &data_ref, Eigen::VectorXf &ave_
 	ave_er(2) /= G_nShape;
 	ave_er(3) = sqrt((data_ref.shape.dis - data.shape.dis).squaredNorm() / G_land_num / 2);
 	ave_er(4) = sqrt(dis.squaredNorm() / G_land_num / 2);
+}
+
+float show_dis_part(Eigen::MatrixX2f &dis) {
+	
+	const int left_eye_num = 8;
+	int idx_lft_eye[left_eye_num] = { 27,28,29,30,66,67,68,65 };
+	const int right_eye_num = 8;
+	int idx_rt_eye[right_eye_num] = { 31,32,33,34,70,71,72,69 };
+
+	const int lft_bn_num = 6;
+	int idx_lft_bn[lft_bn_num] = { 21,22,23,24,25,26 };
+	const int rt_bn_num = 6;
+	int idx_rt_bn[rt_bn_num] = { 15,16,17,18,19,20 };
+
+	const int ms_be = 46, ms_ed = 64;
+	const int ns_be = 35, ns_ed = 46;
+
+	double err_slt = 0, err_eye_left = 0, err_eye_right = 0, err_lft_bn = 0, err_rt_bn = 0, err_ms = 0, err_ns = 0;
+	for (int i = 0; i < 15; i++) err_slt += dis.row(i).squaredNorm();
+
+	for (int i = 0; i < left_eye_num; i++) err_eye_left += dis.row(idx_lft_eye[i]).squaredNorm();
+	for (int i = 0; i < right_eye_num; i++) err_eye_right += dis.row(idx_rt_eye[i]).squaredNorm();
+
+	for (int i = 0; i < lft_bn_num; i++) err_lft_bn += dis.row(idx_lft_bn[i]).squaredNorm();
+	for (int i = 0; i < rt_bn_num; i++) err_rt_bn += dis.row(idx_rt_bn[i]).squaredNorm();
+
+	for (int i = ms_be; i < ms_ed; i++) err_ms += dis.row(i).squaredNorm();
+	for (int i = ns_be; i < ns_ed; i++) err_ns += dis.row(i).squaredNorm();
+
+	printf("slt err:%.5f\nlft eye:%.5f  rt eye:%.5f\n", err_slt / 15, err_eye_left / left_eye_num, err_eye_right / right_eye_num);
+	printf("lft bn:%.5f  rt bn:%.5f\n", err_lft_bn / lft_bn_num, err_rt_bn / rt_bn_num);
+	printf("ms:%.5f  ns:%.5f\n", err_ms / (ms_ed - ms_be + 1), err_ns / (ns_ed - ns_be + 1));
+
+
+	for (int i = 0; i < G_land_num; i++)
+		printf("%d %.5f %.5f\n", i, dis(i, 0), dis(i, 1));
+
+	printf("tot average error:%.5f\n", sqrt(dis.squaredNorm() / G_land_num / 2));
+	return sqrt(dis.squaredNorm() / G_land_num / 2);
 }

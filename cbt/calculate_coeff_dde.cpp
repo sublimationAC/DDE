@@ -315,7 +315,7 @@ float pre_cal_exp_ide_R_t(
 #endif // test_posit_by2dland
 
 			Eigen::VectorXi out_land_cor(G_outer_land_num);
-			update_slt(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
+			update_slt_me(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
 			//std::cout << inner_land_cor << '\n';
 			//std::cout <<"--------------\n"<< out_land_cor << '\n';
 			Eigen::VectorXi land_cor(G_land_num);
@@ -997,6 +997,378 @@ void update_slt(
 	}
 	std::cout << "slt_cddt_cdnt\n" << slt_cddt_cdnt.block(0, 0, slt_cddt_cdnt.rows(), 2).rowwise() + ide[id_idx].center.row(exp_idx) << "\n";
 	std::cout << "out land\n" << ide[id_idx].land_2d.block(G_land_num*exp_idx, 0, 15, 2).rowwise() + ide[id_idx].center.row(exp_idx) << "\n";
+	std::cout << "out land correlation\n" << out_land_cor.transpose() << "\n";
+	system("pause");
+}
+
+void update_slt_me(
+	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXi &out_land_cor) {
+	////////////////////////////////project
+	puts("updating silhouette...");
+	Eigen::Matrix3f R = ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3);
+	Eigen::VectorXf angle = get_uler_angle_zyx(R);
+	Eigen::Vector3f T = ide[id_idx].tslt.row(exp_idx).transpose();
+
+	//puts("A");
+
+	Eigen::VectorXf land_cor_mi(15);
+	for (int i = 0; i < 15; i++) land_cor_mi(i) = 1e8;
+
+	//puts("B");
+	//FILE *fp;
+	//fopen_s(&fp, "test_slt.txt", "w");
+	if (fabs(angle(2)) < 0.2) {
+		/*std::vector<cv::Point2f> test_slt_2dpt;
+		test_slt_2dpt.clear();*/
+		for (int i_line = 0; i_line < G_line_num; i_line++) {
+#ifdef perspective
+			for (int j = 0; j < slt_line[i_line].size(); j++) {
+				//printf("j %d\n", j);
+				int x = slt_line[i_line][j];
+
+				Eigen::Vector3f point;
+				for (int axis = 0; axis < 3; axis++)
+					point(axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+				point = R * point + T;
+				point(0) = point(0)*f / point(2) + ide[id_idx].center(exp_idx, 0);
+				point(1) = point(1)*f / point(2) + ide[id_idx].center(exp_idx, 1);
+				//test_slt_2dpt.push_back(cv::Point2f(point(0), point(1)));
+				for (int p = 0; p < 15; p++) {
+					float temp = (point.block(0, 0, 2, 1).transpose() - ide[id_idx].land_2d.row(G_land_num*exp_idx + p)).squaredNorm();
+					if (temp < land_cor_mi(p)) {
+						land_cor_mi(p) = temp;
+						out_land_cor(p) = x;
+					}
+				}
+			}
+
+#endif // perspective
+
+		}
+		//		for (int i_line = 49; i_line < G_line_num; i_line++) {
+		//#ifdef perspective
+		//			for (int j = 0; j < slt_line[i_line].size(); j++) {
+		//				//printf("j %d\n", j);
+		//				int x = slt_line[i_line][j];
+		//
+		//				Eigen::Vector3f point;
+		//				for (int axis = 0; axis < 3; axis++)
+		//					point(axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+		//				point = R * point + T;
+		//				point(0) = point(0)*f / point(2) + ide[id_idx].center(exp_idx, 0);
+		//				point(1) = point(1)*f / point(2) + ide[id_idx].center(exp_idx, 1);
+		//				//test_slt_2dpt.push_back(cv::Point2f(point(0), point(1)));
+		//				for (int p = 0; p < 8; p++) {
+		//					float temp = (point.block(0, 0, 2, 1).transpose() - ide[id_idx].land_2d.row(G_land_num*exp_idx + p)).squaredNorm();
+		//					if (temp < land_cor_mi(p)) {
+		//						land_cor_mi(p) = temp;
+		//						out_land_cor(p) = x;
+		//					}
+		//				}
+		//			}
+		//
+		//#endif // perspective
+		//
+		//		}
+		////#ifdef test_updt_slt
+		////		FILE *fp;
+		////		fopen_s(&fp, "test_updt_slt_me_2d_point.txt", "w");
+		////		fprintf(fp, "%d\n", test_slt_2dpt.size());
+		////		for (int t = 0; t < test_slt_2dpt.size(); t++)
+		////			fprintf(fp, "%.5f %.5f\n", test_slt_2dpt[t].x, test_slt_2dpt[t].y);
+		////		fprintf(fp, "\n");
+		////		fclose(fp);
+		////#endif // test_updt_slt
+		//		for (int i_line = 34; i_line < 49; i_line++) {
+		//			float min_v_n = 10000;
+		//			int min_idx = 0;
+		//			Eigen::Vector3f cdnt;
+		//			int en = slt_line[i_line].size(), be = 0;
+		//			if (angle(1) < 0 && i_line < 41) en /= 2;
+		//			if (angle(1) > 0 && i_line >= 41) en /= 2;
+		//#ifdef perspective
+		//			for (int j = be; j < en; j++) {
+		//				//printf("j %d\n", j);
+		//				int x = slt_line[i_line][j];
+		//				//printf("x %d\n", x);
+		//				Eigen::Vector3f nor;
+		//				nor.setZero();
+		//				Eigen::Vector3f V[2], point[3];
+		//				for (int axis = 0; axis < 3; axis++)
+		//					point[0](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+		//				point[0] = R * point[0] + T;
+		//				//test															//////////////////////////////////debug
+		//				//puts("A");
+		//				//fprintf(fp, "%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+		//				//printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+		//				//puts("B");
+		//
+		//
+		//				////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//
+		//				for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
+		//					//printf("k %d\n", k);
+		//					for (int axis = 0; axis < 3; axis++) {
+		//						point[1](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].first, axis);
+		//						point[2](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].second, axis);
+		//					}
+		//					for (int i = 1; i < 3; i++) point[i] = R * point[i] + T;
+		//					V[0] = point[1] - point[0];
+		//					V[1] = point[2] - point[0];
+		//					//puts("C");
+		//					V[0] = V[0].cross(V[1]);
+		//					//puts("D");
+		//					V[0].normalize();
+		//					nor = nor + V[0];
+		//					//printf("__ %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+		//				}
+		//				//printf("== %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+		//				//puts("F");
+		//				if (nor.norm() > EPSILON) nor.normalize();
+		//				//std::cout << "nor++\n\n" << nor << "\n";
+		//				//std::cout << "point--\n\n" << point[0].normalized() << "\n";
+		//				//std::cout << "rltv--\n\n"<<x << ' ' << nor.dot(point[0].normalized()) << "\n";
+		//				if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+		//
+		//
+		//				/*point[0].normalize();
+		//				if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[0];*/
+		//			}
+		//			//puts("H");
+		//			//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
+		//
+		//			cdnt(0) = cdnt(0)*f / cdnt(2) + ide[id_idx].center(exp_idx, 0);
+		//			cdnt(1) = cdnt(1)*f / cdnt(2) + ide[id_idx].center(exp_idx, 1);
+		//			for (int p = 0; p < 12; p++) {
+		//				float temp = (cdnt.block(0, 0, 2, 1).transpose() - ide[id_idx].land_2d.row(G_land_num*exp_idx + p)).squaredNorm();
+		//
+		//				if (temp < land_cor_mi(p)) {
+		//					land_cor_mi(p) = temp;
+		//					out_land_cor(p) = min_idx;
+		//				}
+		//			}
+		//#endif // perspective
+		//
+		//		}
+
+		std::cout << "land_cor_mi:\n" << land_cor_mi.transpose() << "\n";
+
+		std::cout << "out land correlation\n" << out_land_cor.transpose() << "\n";
+		return;
+	}
+
+
+	if (angle(2) < 0) {
+		std::vector<cv::Point2f> test_slt_2dpt;
+		test_slt_2dpt.clear();
+		for (int i_line = 0; i_line < 34; i_line++) {
+#ifdef perspective
+			for (int j = 0; j < slt_line[i_line].size(); j++) {
+				//printf("j %d\n", j);
+				int x = slt_line[i_line][j];
+
+				Eigen::Vector3f point;
+				for (int axis = 0; axis < 3; axis++)
+					point(axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+				point = R * point + T;
+				point(0) = point(0)*f / point(2) + ide[id_idx].center(exp_idx, 0);
+				point(1) = point(1)*f / point(2) + ide[id_idx].center(exp_idx, 1);
+				test_slt_2dpt.push_back(cv::Point2f(point(0), point(1)));
+				for (int p = 8; p < 15; p++) {
+					float temp = (point.block(0, 0, 2, 1).transpose() - ide[id_idx].land_2d.row(G_land_num*exp_idx + p)).squaredNorm();
+					if (temp < land_cor_mi(p)) {
+						land_cor_mi(p) = temp;
+						out_land_cor(p) = x;
+					}
+				}
+			}
+
+#endif // perspective
+
+		}
+#ifdef test_updt_slt
+		FILE *fp;
+		fopen_s(&fp, "test_updt_slt_me_2d_point.txt", "w");
+		fprintf(fp, "%d\n", test_slt_2dpt.size());
+		for (int t = 0; t < test_slt_2dpt.size(); t++)
+			fprintf(fp, "%.5f %.5f\n", test_slt_2dpt[t].x, test_slt_2dpt[t].y);
+		fprintf(fp, "\n");
+		fclose(fp);
+#endif // test_updt_slt
+		for (int i_line = 34; i_line < G_line_num; i_line++) {
+			float min_v_n = 10000;
+			int min_idx = 0;
+			Eigen::Vector3f cdnt;
+			int en = slt_line[i_line].size(), be = 0;
+			if (angle(1) < -0.1 && i_line < 41) en /= 2;
+#ifdef perspective
+			for (int j = be; j < en; j++) {
+				//printf("j %d\n", j);
+				int x = slt_line[i_line][j];
+				//printf("x %d\n", x);
+				Eigen::Vector3f nor;
+				nor.setZero();
+				Eigen::Vector3f V[2], point[3];
+				for (int axis = 0; axis < 3; axis++)
+					point[0](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+				point[0] = R * point[0] + T;
+				//test															//////////////////////////////////debug
+				//puts("A");
+				//fprintf(fp, "%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				//printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				//puts("B");
+
+
+				////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+				for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
+					//printf("k %d\n", k);
+					for (int axis = 0; axis < 3; axis++) {
+						point[1](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].first, axis);
+						point[2](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].second, axis);
+					}
+					for (int i = 1; i < 3; i++) point[i] = R * point[i] + T;
+					V[0] = point[1] - point[0];
+					V[1] = point[2] - point[0];
+					//puts("C");
+					V[0] = V[0].cross(V[1]);
+					//puts("D");
+					V[0].normalize();
+					nor = nor + V[0];
+					//printf("__ %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				}
+				//printf("== %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				//puts("F");
+				if (nor.norm() > EPSILON) nor.normalize();
+				//std::cout << "nor++\n\n" << nor << "\n";
+				//std::cout << "point--\n\n" << point[0].normalized() << "\n";
+				//std::cout << "rltv--\n\n"<<x << ' ' << nor.dot(point[0].normalized()) << "\n";
+				if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+
+
+				/*point[0].normalize();
+				if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[0];*/
+			}
+			//puts("H");
+			//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
+
+			cdnt(0) = cdnt(0)*f / cdnt(2) + ide[id_idx].center(exp_idx, 0);
+			cdnt(1) = cdnt(1)*f / cdnt(2) + ide[id_idx].center(exp_idx, 1);
+			for (int p = 0; p < 12; p++) {
+				float temp = (cdnt.block(0, 0, 2, 1).transpose() - ide[id_idx].land_2d.row(G_land_num*exp_idx + p)).squaredNorm();
+
+				if (temp < land_cor_mi(p)) {
+					land_cor_mi(p) = temp;
+					out_land_cor(p) = min_idx;
+				}
+			}
+#endif // perspective
+
+		}
+
+	}
+	else {
+		for (int i_line = 49; i_line < G_line_num; i_line++) {
+#ifdef perspective
+			for (int j = 0; j < slt_line[i_line].size(); j++) {
+				//printf("j %d\n", j);
+				int x = slt_line[i_line][j];
+
+				Eigen::Vector3f point;
+				for (int axis = 0; axis < 3; axis++)
+					point(axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+				point = R * point + T;
+				point(0) = point(0)*f / point(2) + ide[id_idx].center(exp_idx, 0);
+				point(1) = point(1)*f / point(2) + ide[id_idx].center(exp_idx, 1);
+				for (int p = 0; p < 7; p++) {
+					float temp = (point.block(0, 0, 2, 1).transpose() - ide[id_idx].land_2d.row(G_land_num*exp_idx + p)).squaredNorm();
+
+
+					if (temp < land_cor_mi(p)) {
+						land_cor_mi(p) = temp;
+						out_land_cor(p) = x;
+					}
+				}
+			}
+
+#endif // perspective
+
+		}
+		for (int i_line = 0; i_line < 49; i_line++) {
+			float min_v_n = 10000;
+			int min_idx = 0;
+			Eigen::Vector3f cdnt;
+			int en = slt_line[i_line].size(), be = 0;
+			if (angle(1) > 0.1 && i_line >= 42) en /= 2;
+#ifdef perspective
+			for (int j = be; j < en; j++) {
+				//printf("j %d\n", j);
+				int x = slt_line[i_line][j];
+				//printf("x %d\n", x);
+				Eigen::Vector3f nor;
+				nor.setZero();
+				Eigen::Vector3f V[2], point[3];
+				for (int axis = 0; axis < 3; axis++)
+					point[0](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, x, axis);
+				point[0] = R * point[0] + T;
+				//test															//////////////////////////////////debug
+				//puts("A");
+				//fprintf(fp, "%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				//printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				//puts("B");
+
+
+				////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+				for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
+					//printf("k %d\n", k);
+					for (int axis = 0; axis < 3; axis++) {
+						point[1](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].first, axis);
+						point[2](axis) = cal_3d_vtx(ide, bldshps, id_idx, exp_idx, slt_point_rect[x][k].second, axis);
+					}
+					for (int i = 1; i < 3; i++) point[i] = R * point[i] + T;
+					V[0] = point[1] - point[0];
+					V[1] = point[2] - point[0];
+					//puts("C");
+					V[0] = V[0].cross(V[1]);
+					//puts("D");
+					V[0].normalize();
+					nor = nor + V[0];
+					//printf("__ %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				}
+				//printf("== %.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+				//puts("F");
+				if (nor.norm() > EPSILON) nor.normalize();
+				//std::cout << "nor++\n\n" << nor << "\n";
+				//std::cout << "point--\n\n" << point[0].normalized() << "\n";
+				//std::cout << "rltv--\n\n"<<x << ' ' << nor.dot(point[0].normalized()) << "\n";
+				if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0];// printf("%.6f %.6f %.6f \n", point[0](0), point[0](1), point[0](2));
+
+
+				/*point[0].normalize();
+				if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[0];*/
+			}
+			//puts("H");
+			//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
+
+			cdnt(0) = cdnt(0)*f / cdnt(2) + ide[id_idx].center(exp_idx, 0);
+			cdnt(1) = cdnt(1)*f / cdnt(2) + ide[id_idx].center(exp_idx, 1);
+			for (int p = 4; p < 15; p++) {
+				float temp = (cdnt.block(0, 0, 2, 1).transpose() - ide[id_idx].land_2d.row(G_land_num*exp_idx + p)).squaredNorm();
+				if (temp < land_cor_mi(p)) {
+					land_cor_mi(p) = temp;
+					out_land_cor(p) = min_idx;
+				}
+			}
+#endif // perspective
+
+		}
+	}
+
+	std::cout << "land_cor_mi:\n" << land_cor_mi.transpose() << "\n";
+
 	std::cout << "out land correlation\n" << out_land_cor.transpose() << "\n";
 	system("pause");
 }

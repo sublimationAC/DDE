@@ -75,6 +75,11 @@ float cal_3d_vtx(
 void update_slt(
 	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::VectorXi &out_land_cor);
+void update_slt_me(
+	float f, iden* ide, Eigen::MatrixXf &bldshps, int id_idx, int exp_idx,
+	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
+	Eigen::VectorXi &out_land_cor);
+
 
 void test_slt(float f ,iden *ide, Eigen::MatrixXf &bldshps,
 	Eigen::VectorXi &land_cor, int id_idx, int exp_idx);

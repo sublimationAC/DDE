@@ -197,3 +197,5 @@ std::pair<float, float> cal_sobel(cv::Mat img, cv::Point p);
 cv::Point lk_get_pos_next(int batch_feature_size, cv::Point p, cv::Mat frame_last, cv::Mat frame_now);
 
 void shape_err_print(DataPoint &data, DataPoint &data_ref, Eigen::VectorXf &ave_er);
+
+float show_dis_part(Eigen::MatrixX2f &dis);

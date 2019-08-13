@@ -15,7 +15,9 @@ extern cv::Mat G_debug_up_image;
 void update_slt_ddex(
 	Eigen::MatrixXf &exp_r_t_all_matrix, std::vector<int> *slt_line,
 	std::vector<std::pair<int, int> > *slt_point_rect, DataPoint &data);
-
+void update_slt_ddex_dde(
+	Eigen::MatrixXf &exp_r_t_all_matrix, std::vector<int> *slt_line,
+	std::vector<std::pair<int, int> > *slt_point_rect, DataPoint &data);
 
 class DDEX
 {

@@ -6,7 +6,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "image_process.hpp"
-#include "calculate_coeff_dde.hpp"
+#include "post_processing.hpp"
 #define debug_def
 #define from_video
 //#define norm_lk_face
@@ -92,6 +92,9 @@ std::string inner_cor_path = "D:\\sydney\\first\\code\\2017\\cal_coeffience_Q_M_
 #endif // win64
 #ifdef linux
 #ifdef perspective
+//std::string fwhs_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/fw";
+//std::string lfw_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/lfw_image";
+//std::string gtav_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/GTAV_image";
 std::string fwhs_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/fw";
 std::string lfw_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/lfw_image";
 std::string gtav_path_psp_f = "/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/GTAV_image";
@@ -182,7 +185,7 @@ DataPoint pre_process(
 	DataPoint data;
 	data.image = gray_image;
 
-	fit_solve(landmarks, bldshps, inner_land_corr, slt_line, slt_point_rect, ide_sg_vl, data);
+//	fit_solve(landmarks, bldshps, inner_land_corr, slt_line, slt_point_rect, ide_sg_vl, data);
 
 	//testing the result of fitting
 	cal_2d_land_i_0dis_ang(landmarks, bldshps, data);
@@ -426,10 +429,15 @@ void DDE_video_test(
 
 
 			
-			lps_data.shape.angle.array() = 3 * last_data[1].angle.array() - last_data[0].angle.array() - last_data[2].angle.array();
-			lps_data.shape.tslt.array() = 3 * last_data[1].tslt.array() - last_data[0].tslt.array() - last_data[2].tslt.array();
-			lps_data.shape.exp.array() = 3 * last_data[1].exp.array() - last_data[0].exp.array() - last_data[2].exp.array();
-			lps_data.shape.dis.array() = 3 * last_data[1].dis.array() - last_data[0].dis.array() - last_data[2].dis.array();
+			//lps_data.shape.angle.array() = 3 * last_data[1].angle.array() - last_data[0].angle.array() - last_data[2].angle.array();
+			//lps_data.shape.tslt.array() = 3 * last_data[1].tslt.array() - last_data[0].tslt.array() - last_data[2].tslt.array();
+			//lps_data.shape.exp.array() = 3 * last_data[1].exp.array() - last_data[0].exp.array() - last_data[2].exp.array();
+			//lps_data.shape.dis.array() = 3 * last_data[1].dis.array() - last_data[0].dis.array() - last_data[2].dis.array();
+			
+			lps_data.shape.angle.array() = (last_data[0].angle.array() + last_data[2].angle.array())/2;
+			lps_data.shape.tslt.array() = (last_data[0].tslt.array() + last_data[2].tslt.array())/2;
+			lps_data.shape.exp.array() = (last_data[0].exp.array() - last_data[2].exp.array())/2;
+			lps_data.shape.dis.array() =  (last_data[0].dis.array() - last_data[2].dis.array())/2;
 
 			update_2d_land_ang_0ide(lps_data, exp_r_t_all_matrix);
 #ifdef usefilter
@@ -452,7 +460,7 @@ void DDE_video_test(
 		last_data[2] = data.shape;
 		////system("pause");
 		puts("errorA");
-		fprintf(fp_t, "%.10f %.10f %.10f\n", data.shape.tslt(0), data.shape.tslt(1), (last_data[1].tslt-data.shape.tslt).norm());
+		fprintf(fp_t, "%.10f %.10f %.10f %.10f\n", data.shape.tslt(0), data.shape.tslt(1), data.shape.tslt(2), (last_data[1].tslt-data.shape.tslt).norm());
 		puts("errorB");
 		fprintf(fp_a, "%.10f %.10f %.10f %.10f\n", data.shape.angle(0)*180/pi , data.shape.angle(1) * 180 / pi, 
 			data.shape.angle(2) * 180 / pi, (last_data[1].angle - data.shape.angle).norm());
