@@ -113,6 +113,40 @@ def load_psp_f(name,data,user,num_ide,num_exp,num_land):
     print('load successful one')
 #    print('user when load one', user)
 
+def save_psp_f(name,data,user):
+    print('save psp_f filename:  ',name)
+    with open(name,'wb') as f:        
+        for x in user:
+            f.write(struct.pack('f',np.float32(x)))
+            
+        for x in data.land_inv:
+            f.write(struct.pack('ff',np.float32(x[0]),np.float32(x[1])))        
+              
+        f.write(struct.pack('ff',np.float32(data.center[0]),np.float32(data.center[1])))        
+                
+        for x in data.exp:
+            f.write(struct.pack('f',np.float32(x)))
+                    
+        rot=util.angle2matrix_zyx(data.angle)
+        for i in range(3):
+            for j in range(3):
+                f.write(struct.pack('f',np.float32(rot[i,j])))
+                
+        for x in data.tslt:
+            f.write(struct.pack('f',np.float32(x)))
+        
+        for x in data.land_cor:
+            f.write(struct.pack('f',np.int32(x)))        
+                
+        f.write(struct.pack('f',np.float32(data.fcs)))        
+                
+        for x in data.dis:
+            for y in x:
+                f.write(struct.pack('f',np.float32(y)))
+    print('save successful one')
+
+
+
 def load_bldshps(name,num_ide,num_exp,num_vtx):
     print('loading blendshapes  :',name)
     bldshps=np.empty((num_ide,num_exp,num_vtx,3),dtype=np.float64)
@@ -161,9 +195,80 @@ def load_tri_idx(name,num_land):
     
     return mean_ldmk,tri_idx,px_barycenter
         
+def load_img_230(name,data):
+    print('load image image name:  ',name)
+    data.img_230=cv2.imread(name)
+# =============================================================================
+#     cv2.imshow('test image',data.img_230)
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
+# =============================================================================
+
+def load_cnn(data_cnn,path,imgend,num_ide,num_exp,num_land):
+    
+    for root,dirs,name_file in os.walk(path):
+        if (len(name_file)>0):
+            flag=1
+            print(root,name_file)
+            for name_file_land73 in name_file:                    
+                print('file name: ', name_file_land73)
+                if name_file_land73.endswith('.land73'):
+                    
+                    name_file_land73=root+'/'+name_file_land73
+                    name_file_img=name_file_land73[:-6]+imgend
+                    name_file_img_230=name_file_land73[:-7]+'_230.'+imgend
+                    name_file_psp_f=name_file_land73[:-6]+'psp_f'
+                    if not(os.path.exists(name_file_img) and os.path.exists(name_file_psp_f)):
+                        continue;
+                    
+                    
+                    new_data=base.DataOneImg()
+                    new_data.file_name=name_file_land73[:-6]
+                    
+                    load_img(name_file_img,new_data)
+                    load_img_230(name_file_img_230,new_data)
+                    load_land73(name_file_land73,new_data,num_land)
+                    
+                    user=np.empty((num_ide,),dtype=np.float64)
+                    load_psp_f(name_file_psp_f,new_data,user,num_ide,num_exp,num_land)
+#                    print('user when load', user)
+                    if flag==1:
+                        flag=0
+                        data_cnn.append(base.DataOneIdentity())
+                        data_cnn[-1].user=user
+                        data_cnn[-1].dir_name=root
+                    
+                    data_cnn[-1].data.append(new_data)        
         
-        
-        
+def load_dataHEbldshps():
+    data=[]
+#    fwhs_path='/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/fw'
+#    lfw_path='/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/lfw_image'
+#    gtav_path='/home/weiliu/fitting_dde/fitting_psp_f_l12_slt/GTAV_image'
+    fwhs_path='/data/weiliu/fitting_psp_f_l12_slt/FaceWarehouse'
+    lfw_path='/data/weiliu/fitting_psp_f_l12_slt/lfw_image'
+    gtav_path='/data/weiliu/fitting_psp_f_l12_slt/GTAV_image'
+    
+    load(data,fwhs_path,'jpg',num_ide=77,num_exp=47,num_land=73)
+    load(data,lfw_path,'jpg',num_ide=77,num_exp=47,num_land=73)
+    load(data,gtav_path,'bmp',num_ide=77,num_exp=47,num_land=73) 
+    
+#    test_path='/home/weiliu/fitting_dde/4_psp_f_cal_test/data_me/test_only_three/'
+#    load.load(data,test_path,'jpg',num_ide=77,num_exp=47,num_land=73)
+    
+    # =============================================================================
+    # for one_ide in data:
+    #     for one_img in one_ide.data:
+    #         print(one_img.land_cor)
+    # =============================================================================
+
+    
+#    bldshps_path='/home/weiliu/fitting_dde/const_file/deal_data/blendshape_ide_svd_77.lv'
+    bldshps_path='/data/weiliu/fitting_psp_f_l12_slt/const_file/blendshape_ide_svd_77.lv'    
+    bldshps=load_bldshps(bldshps_path,num_ide=77,num_exp=47,num_vtx=11510)
+    util.bld_reduce_neu(bldshps)
+    return data,bldshps
+    
         
 def test_load():
     #test:

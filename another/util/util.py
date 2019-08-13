@@ -7,6 +7,7 @@ Created on Fri Jun 28 14:40:45 2019
 
 import numpy as np
 from math import cos, sin, acos, asin, fabs, sqrt
+import cv2
 
 def angle2matrix(angles):
     ''' get rotation matrix from three rotation angles(degree). right-handed.
@@ -170,8 +171,8 @@ def get_land(data,bldshps,user):
     landmk_3d=np.tensordot(np.tensordot(ldmk_bld,user,axes=(0,0)),data.exp,axes=(0,0))
     
     landmk_3d=(angle2matrix_zyx(data.angle)@landmk_3d.T).T+data.tslt
-    landmk_3d_=(data.rot@landmk_3d.T).T+data.tslt
-    print(np.concatenate((landmk_3d, landmk_3d_), axis=1))
+#    landmk_3d_=(data.rot@landmk_3d.T).T+data.tslt
+#    print(np.concatenate((landmk_3d, landmk_3d_), axis=1))
     
     
     landmk_3d[:,0]/=landmk_3d[:,2]
@@ -179,33 +180,325 @@ def get_land(data,bldshps,user):
     
     landmk_3d*=data.fcs
     
-    print('center-------',data.center)
-    print(landmk_3d[:10,0:2])
+# =============================================================================
+#     print('center-------',data.center)
+#     print(landmk_3d[:10,0:2])
+# =============================================================================
     landmk_3d[:,0:2]+=data.center
-    print(landmk_3d[:10,0:2])
-    print('###################################')
-    print(data.dis[:5])
+# =============================================================================
+#     print(landmk_3d[:10,0:2])
+#     print('###################################')
+#     print(data.dis[:5])
+# =============================================================================
     
     ans=(landmk_3d[:,0:2]+data.dis).copy()
         
     ans[:,1]=data.img.shape[0]-ans[:,1]
     
-    print(np.concatenate((ans, data.land), axis=1))    
+#    print(np.concatenate((ans, data.land), axis=1))    
 
     
     return ans    
     
+def get_land_spfbldshps_inv(data,spf_bldshps):
+    
+    ldmk_bld=spf_bldshps[:,data.land_cor,:]
+    
+    landmk_3d=np.tensordot(ldmk_bld,data.exp,axes=(0,0))
+    
+    landmk_3d=(angle2matrix_zyx(data.angle)@landmk_3d.T).T+data.tslt
+#    landmk_3d_=(data.rot@landmk_3d.T).T+data.tslt
+#    print(np.concatenate((landmk_3d, landmk_3d_), axis=1))
     
     
+    landmk_3d[:,0]/=landmk_3d[:,2]
+    landmk_3d[:,1]/=landmk_3d[:,2]
+    
+    landmk_3d*=data.fcs
+    
+    landmk_3d[:,0:2]+=data.center
+    
+    ans=(landmk_3d[:,0:2]+data.dis).copy()
+    
+#    print(np.concatenate((ans, data.land), axis=1))    
+
+    
+    return ans   
+
+def get_land_spfbldshps(data,spf_bldshps):
+    
+    ldmk_bld=spf_bldshps[:,data.land_cor,:]
+    
+    landmk_3d=np.tensordot(ldmk_bld,data.exp,axes=(0,0))
+    
+    landmk_3d=(angle2matrix_zyx(data.angle)@landmk_3d.T).T+data.tslt
+#    landmk_3d_=(data.rot@landmk_3d.T).T+data.tslt
+#    print(np.concatenate((landmk_3d, landmk_3d_), axis=1))
     
     
+    landmk_3d[:,0]/=landmk_3d[:,2]
+    landmk_3d[:,1]/=landmk_3d[:,2]
+    
+    landmk_3d*=data.fcs
+    
+    landmk_3d[:,0:2]+=data.center
+    
+    ans=(landmk_3d[:,0:2]+data.dis).copy()
+    ans[:,1]=data.img.shape[0]-ans[:,1]
+#    print(np.concatenate((ans, data.land), axis=1))    
+
+    
+    return ans    
+
+
+def get_input_from_land_img(land,image,tri_idx,px_barycenter):
+    
+    assert(len(image.shape)==2) #gray image
+    assert(image.ndim==2)
+    num_px=px_barycenter[0].shape[0]
+    
+    pos=(land[tri_idx[px_barycenter[0]][:,0]]*(px_barycenter[1][:,0].reshape(num_px,1))+
+         land[tri_idx[px_barycenter[0]][:,1]]*(px_barycenter[1][:,1].reshape(num_px,1))+
+         land[tri_idx[px_barycenter[0]][:,2]]*(px_barycenter[1][:,2].reshape(num_px,1)))
+    
+    pos=np.around(pos).astype(np.int)
+    
+    data_input=image[
+                (np.minimum(image.shape[0]-1,np.maximum(0,pos[:,1])),
+                 np.minimum(image.shape[1]-1,np.maximum(0,pos[:,0])))].copy()
     
     
+#       0~1                    
+    data_input=\
+        (data_input-data_input.min())/\
+        max(1,(data_input.max()-data_input.min()))
+       
+#       -1~1             
+    data_input=data_input*2-1      
+
+    return data_input    
     
+def norm_img(image):
+    assert(image.ndim==3)
     
+    ans=image.copy().astype(np.float32)
+    for i in range(image.shape[2]):
+        now=ans[:,:,i]
+        ma=now.max()
+        mi=now.min()
+        ans[:,:,i]=(ans[:,:,i]-mi)/(ma-mi)*2-1
     
+    return ans
+
+def load_slt_rect():
+    print('loading silhouette line&vertices...')
+    slt_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_line_4_10.txt";
+    slt_line_pt=[]
+    slt_pt_rect=[]
+    with open(slt_path,'r') as f:
+        line=f.readline().strip().split()
+        slt_line_num=int(line)
+        assert(slt_line_num==84)
+        slt_line_pt=[0]*slt_line_num
+        for i in range(slt_line_num):
+            line=f.readline().strip().split()
+            assert(i==int(line[0]))
+            num=int(line[1])
+            slt_line_pt[i]=map(int,line[2:])        
     
+    rect_path = "/home/weiliu/fitting_dde/const_file/3d22d/slt_rect_4_10.txt";
+    with open(rect_path,'r') as f:
+        line=f.readline().strip().split()
+        slt_rect_num=int(line)        
+        slt_pt_rect=[0]*slt_rect_num
+        for i in range(slt_rect_num):
+            line=f.readline().strip().split()            
+            
+            idx=int(line[0])
+            num=int(line[1])            
+            slt_pt_rect[idx]=map(int,line[2:])
+            
+    return slt_line_pt,slt_pt_rect
     
+slt_line_pt,slt_pt_rect=load_slt_rect()
+def get_slt_land_cor(data,bldshps,user):
+    
+#could be faster
+    if (len(bldshps)==4):
+        face_3d=np.tensordot(np.tensordot(bldshps,user,axes=(0,0)),data.exp,axes=(0,0))
+    else:
+        face_3d=np.tensordot(bldshps,data.exp,axes=(0,0))
+        
+    face_3d=(angle2matrix_zyx(data.angle)@face_3d.T).T+data.tslt
+    
+    line_num=len(slt_line_pt)
+    slt_pt_idx=[0]*line_num
+    for i in range(line_num):
+        mi=9999
+        for j in range(len(slt_line_pt[i])):
+            x=slt_line_pt[i][j]
+            
+            
+            v=face_3d[x]
+            norm=np.zeros((3,))
+            for k in range(0,len(slt_pt_rect[x])//2,2):
+                v1=face_3d[slt_pt_rect[v][k]]-v
+                v2=face_3d[slt_pt_rect[v][k+1]]-v
+                t=np.cross(v1,v2)
+                assert(np.linalg.norm(t)>0)
+                t=t/np.linalg.norm(t)
+                norm+=t
+            assert(np.linalg.norm(norm)>0)
+            norm=norm/np.linalg.norm(norm)
+            if abs(norm[2])<mi:
+                mi=norm[2]
+                slt_pt_idx[j]=x
+                
+            vt=v.copy()
+            assert(np.linalg.norm(vt)>0)
+            vt/=np.linalg.norm(vt)
+            if (abs(vt[2])<mi):
+                mi=abs(vt[2])
+                slt_pt_idx[j]=x
+                
+        
+    slt_pt_3d=face_3d[slt_pt_idx]
+    slt_pt_2d=slt_pt_3d[:,0:2].copy()
+    slt_pt_2d=slt_pt_2d/slt_pt_3d[:,2].reshape(line_num,1)
+    
+    image=data.img
+    for pt in slt_pt_2d:        
+        cv2.circle(image,tuple(np.around(pt).astype(np.int)), 2, (255,255,255), -1)
+        
+    cv2.imshow('test image',image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    all_length=np.empty(line_num,dtype=np.float64)
+    mid_jaw_idx=41    
+    data.land_cor[7]=slt_pt_idx[mid_jaw_idx]
+    
+    all_length[mid_jaw_idx]=0
+    for i in range(mid_jaw_idx-1,-1,-1):
+        pt0=slt_pt_2d[i]
+        pt1=slt_pt_2d[i-1]
+        all_length[i]=all_length[i-1]+np.linalg.norm(pt0-pt1)
+    
+    itv=all_length[8]/7
+    now_idx=8
+    for i in range(mid_jaw_idx-1,-1,-1):
+        if itv*(now_idx-7)>=all_length[i]:
+            data.land_cor[now_idx]=slt_pt_idx[i]
+            now_idx+=1
+            if (now_idx>14):
+                break
+    if (now_idx==14):
+        data.land_cor[now_idx]=slt_pt_idx[0]
+    
+    all_length[mid_jaw_idx]=0
+    for i in range(mid_jaw_idx+1,line_num):
+        pt0=slt_pt_2d[i]
+        pt1=slt_pt_2d[i-1]
+        all_length[i]=all_length[i-1]+np.linalg.norm(pt0-pt1)
+        
+    itv=all_length[line_num-10]/7
+    now_idx=6
+    for i in range(mid_jaw_idx+1,line_num):
+        if itv*(7-now_idx)>all_length[i]:
+            data.land_cor[now_idx]=slt_pt_idx[i]
+            now_idx-=1
+            if (now_idx<0):
+                break
+    if (now_idx==0):
+        data.land_cor[now_idx]=slt_pt_idx[line_num-1]
+        
+def get_slt_land_cor_init(data,bldshps,user):
+    
+#could be faster
+    face_3d=np.tensordot(np.tensordot(bldshps,user,axes=(0,0)),data.init_exp,axes=(0,0))
+
+    face_3d=(angle2matrix_zyx(data.init_angle)@face_3d.T).T+data.init_tslt
+    
+    line_num=len(slt_line_pt)
+    slt_pt_idx=[0]*line_num
+    for i in range(line_num):
+        mi=9999
+        for j in range(len(slt_line_pt[i])):
+            x=slt_line_pt[i][j]
+            
+            
+            v=face_3d[x]
+            norm=np.zeros((3,))
+            for k in range(0,len(slt_pt_rect[x])//2,2):
+                v1=face_3d[slt_pt_rect[v][k]]-v
+                v2=face_3d[slt_pt_rect[v][k+1]]-v
+                t=np.cross(v1,v2)
+                assert(np.linalg.norm(t)>0)
+                t=t/np.linalg.norm(t)
+                norm+=t
+            assert(np.linalg.norm(norm)>0)
+            norm=norm/np.linalg.norm(norm)
+            if abs(norm[2])<mi:
+                mi=norm[2]
+                slt_pt_idx[j]=x
+                
+            vt=v.copy()
+            assert(np.linalg.norm(vt)>0)
+            vt/=np.linalg.norm(vt)
+            if (abs(vt[2])<mi):
+                mi=abs(vt[2])
+                slt_pt_idx[j]=x
+                
+        
+    slt_pt_3d=face_3d[slt_pt_idx]
+    slt_pt_2d=slt_pt_3d[:,0:2].copy()
+    slt_pt_2d=slt_pt_2d/slt_pt_3d[:,2].reshape(line_num,1)
+    
+    image=data.img
+    for pt in slt_pt_2d:        
+        cv2.circle(image,tuple(np.around(pt).astype(np.int)), 2, (255,255,255), -1)
+        
+    cv2.imshow('test image',image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    all_length=np.empty(line_num,dtype=np.float64)
+    mid_jaw_idx=41    
+    data.land_cor[7]=slt_pt_idx[mid_jaw_idx]
+    
+    all_length[mid_jaw_idx]=0
+    for i in range(mid_jaw_idx-1,-1,-1):
+        pt0=slt_pt_2d[i]
+        pt1=slt_pt_2d[i-1]
+        all_length[i]=all_length[i-1]+np.linalg.norm(pt0-pt1)
+    
+    itv=all_length[8]/7
+    now_idx=8
+    for i in range(mid_jaw_idx-1,-1,-1):
+        if itv*(now_idx-7)>=all_length[i]:
+            data.land_cor[now_idx]=slt_pt_idx[i]
+            now_idx+=1
+            if (now_idx>14):
+                break
+    if (now_idx==14):
+        data.land_cor[now_idx]=slt_pt_idx[0]
+    
+    all_length[mid_jaw_idx]=0
+    for i in range(mid_jaw_idx+1,line_num):
+        pt0=slt_pt_2d[i]
+        pt1=slt_pt_2d[i-1]
+        all_length[i]=all_length[i-1]+np.linalg.norm(pt0-pt1)
+        
+    itv=all_length[line_num-10]/7
+    now_idx=6
+    for i in range(mid_jaw_idx+1,line_num):
+        if itv*(7-now_idx)>all_length[i]:
+            data.land_cor[now_idx]=slt_pt_idx[i]
+            now_idx-=1
+            if (now_idx<0):
+                break
+    if (now_idx==0):
+        data.land_cor[now_idx]=slt_pt_idx[line_num-1]
     
     
     

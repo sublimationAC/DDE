@@ -20,6 +20,7 @@ class DataOneImg:
         self.land=[]
         self.center=[]
         self.dis=[]
+        
 
 class DataOneIdentity:
     def __init__(self):
@@ -67,4 +68,57 @@ class TrainOnePoint:
         self.init_angle=one_img.angle.copy()
         self.init_tslt=one_img.tslt.copy()
         self.init_exp=one_img.exp.copy()
+        
+        
+class TestOnePoint:
+        
+    def __init__(self,one_img,user):        
+        
+        self.user=user
+        self.img=one_img.img
+        self.exp=one_img.exp.copy()
+        self.tslt=one_img.tslt.copy()
+        self.angle=one_img.angle.copy()
+        self.dis=one_img.dis.copy()
+        
+        self.land_cor=one_img.land_cor.copy()
+        self.land=one_img.land.copy()
+        self.land_inv=one_img.land_inv.copy()
+        self.center=one_img.center
+        self.fcs=one_img.fcs 
+        
+class TestVideoOnePoint:
+        
+    def __init__(self,one_img):                
+        
+        self.exp=one_img        
+        self.exp=one_img.exp.copy()
+        self.tslt=one_img.tslt.copy()
+        self.angle=one_img.angle.copy()
+        self.dis=one_img.dis.copy()
+        self.land_cor=one_img.land_cor.copy()
+    
+        self.fcs=0.0
+        self.land_inv=[]
+        self.land=[]
+        self.center=[]
+        
+class DataCNNOne:
+    def __init__(self):
+        self.img=[]
+        self.img_230=[]
+        self.exp=[]
+        self.land_cor=[]
+        self.rot=[]
+        self.angle=[]
+        self.tslt=[]
+        self.file_name=[]
+        self.fcs=0.0
+        self.land_inv=[]
+        self.land=[]
+        self.center=[]
+        self.dis=[]        
+        
+        self.centroid_inv=[]
+        
         
