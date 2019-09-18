@@ -179,7 +179,7 @@ set<int> rand_df_idx(int which, int border, int num) {
 void aug_rand_rot(
 	const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
-	Eigen::MatrixXf &bldshps) {
+	Eigen::MatrixXf &bldshps, std::vector<pair<int, pair<int, Eigen::Vector3f>>> &rand_rot_save) {
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_rot);
 	auto it = temp.cbegin();
@@ -206,7 +206,7 @@ void aug_rand_rot(
 		data[idx].init_shape.angle(0) += cv::theRNG().uniform(-G_rand_angle_border * 15, G_rand_angle_border * 15);
 		data[idx].init_shape.angle(2) += cv::theRNG().uniform(-G_rand_angle_border * 5, G_rand_angle_border * 5);
 
-		
+		rand_rot_save.push_back(make_pair(train_idx, make_pair(*it, data[idx].init_shape.angle)));
 		/*cal_2d_land_i_ang_tg(land_temp, data[idx].init_shape, bldshps, data[idx]);
 		draw_image_land_2d(image_save, data[idx].landmarks, cv::Scalar(0, 0, 255));
 
@@ -252,7 +252,7 @@ void aug_rand_rot(
 void aug_rand_tslt(
 	const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, 
-	Eigen::MatrixXf &bldshps) {
+	Eigen::MatrixXf &bldshps, std::vector<pair<int, pair<int, Eigen::Vector3f>>> &rand_tslt_save) {
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_tslt);
 	auto it = temp.cbegin();
@@ -281,7 +281,7 @@ void aug_rand_tslt(
 			+ cv::theRNG().uniform(-traindata[train_idx].shape.tslt(2)*0.1, traindata[train_idx].shape.tslt(2)*0.1);
 #endif // div_tslt_z_def
 #endif // perspective
-
+		rand_tslt_save.push_back(make_pair(train_idx, make_pair(*it, data[idx].init_shape.tslt)));
 #ifdef normalization
 		data[idx].init_shape.tslt(2) = 0;
 #endif // normalization		
@@ -327,7 +327,7 @@ void aug_rand_tslt(
 void aug_rand_exp(
 	const vector<DataPoint> &traindata, vector<DataPoint> &data, int &idx, int train_idx,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, 
-	Eigen::MatrixXf &bldshps) {
+	Eigen::MatrixXf &bldshps, std::vector<pair<int, pair<int, Eigen::VectorXf>>> &rand_exp_save) {
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_exp);
 	auto it = temp.cbegin();
@@ -347,7 +347,7 @@ void aug_rand_exp(
 			data[idx].init_shape.exp(j) += cv::theRNG().uniform(-G_rand_exp_border, G_rand_exp_border);
 
 #endif // rand_exp_from_set
-
+		rand_exp_save.push_back(make_pair(train_idx, make_pair(*it, data[idx].init_shape.exp)));
 		data[idx].init_shape.exp(0) = data[idx].shape.exp(0) = 1;
 		data[idx].ide_idx = train_idx;
 		//		update_slt();
@@ -360,7 +360,7 @@ void aug_rand_exp(
 void aug_rand_user(
 	const vector<DataPoint> &traindata, vector<DataPoint> &data,int &idx, int train_idx,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, 
-	Eigen::MatrixXf &bldshps) {
+	Eigen::MatrixXf &bldshps, std::vector<pair<int, pair<int, int>>> &rand_user_save) {
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
 	auto it = temp.cbegin();
@@ -376,6 +376,9 @@ void aug_rand_user(
 		data[idx].init_shape.angle = traindata[train_idx].shape.angle;
 		data[idx].user = traindata[*it_u].user;
 		data[idx].ide_idx = *it_u;
+
+		rand_user_save.push_back(make_pair(train_idx, make_pair(*it, *it_u)));
+
 		//recal_dis_ang_0ide(data[idx],arg_exp_land_matrix[*it_u]);		
 		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
 		recal_dis_ang_sqz_optmz(data[idx], bldshps);
@@ -387,7 +390,7 @@ void aug_rand_user(
 void aug_rand_f(
 	const vector<DataPoint> &traindata, vector<DataPoint> &data,int &idx, int train_idx,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, 
-	Eigen::MatrixXf &bldshps) {
+	Eigen::MatrixXf &bldshps, std::vector<pair<int, pair<int, float>>> &rand_f_save) {
 
 	set<int> temp = rand_df_idx(train_idx, traindata.size(), G_rnd_user);
 	auto it = temp.cbegin();
@@ -407,6 +410,8 @@ void aug_rand_f(
 		data[idx].s(0, 0) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
 		data[idx].s(1, 1) += cv::theRNG().uniform(-G_rand_s_border, G_rand_s_border);
 #endif
+
+		rand_f_save.push_back(make_pair(train_idx, make_pair(*it, data[idx].fcs)));
 		//recal_dis_ang_0ide(data[idx], arg_exp_land_matrix[train_idx]);
 		//update_slt_init_shape(bldshps, slt_line, slt_point_rect, data[idx]);
 		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data[idx]);
@@ -416,10 +421,82 @@ void aug_rand_f(
 	}
 }
 
+void save_train_dp(
+	std::vector<pair<int, pair<int, Eigen::Vector3f>>> &rand_rot_save,
+	std::vector<pair<int, pair<int, Eigen::Vector3f>>> &rand_tslt_save,
+	std::vector<pair<int, pair<int, Eigen::VectorXf>>> &rand_exp_save,
+	std::vector<pair<int, pair<int, int>>> &rand_user_save,
+	std::vector<pair<int, pair<int, float>>> &rand_f_save,
+	const TrainingParameters &tp) {
+
+	std::string p = tp.output_model_pathname.substr(0, tp.output_model_pathname.find(".xml.gz"));
+
+	//cv::FileStorage train_init_data_file;
+	//train_init_data_file.open(p+"_train_init_data_file.xml.gz", cv::FileStorage::WRITE);
+	//train_init_data_file << "rand_rot_save" << rand_rot_save;
+	//train_init_data_file << "rand_tslt_save" << rand_tslt_save;
+	//train_init_data_file << "rand_exp_save" << rand_exp_save;
+	//train_init_data_file << "rand_user_save" << rand_user_save;
+	//train_init_data_file << "rand_f_save" << rand_f_save;
+	//
+	//train_init_data_file.release();
+
+	FILE *fp;
+	
+	fp = fopen((p + ".train_init_data").c_str(), "wb");
+
+	int num = rand_rot_save.size();
+	fwrite(&num, sizeof(int), 1,fp);
+	for (int j = 0; j < num; j++) {
+		fwrite(&(rand_rot_save[j].first), sizeof(int), 1, fp);
+		fwrite(&(rand_rot_save[j].second.first), sizeof(int), 1, fp);
+		for (int i=0;i<3;i++)
+			fwrite(&(rand_rot_save[j].second.second(i)), sizeof(float), 1, fp);
+	}
+
+	num = rand_tslt_save.size();
+	fwrite(&num, sizeof(int), 1, fp);
+	for (int j = 0; j < num; j++) {
+		fwrite(&(rand_tslt_save[j].first), sizeof(int), 1, fp);
+		fwrite(&(rand_tslt_save[j].second.first), sizeof(int), 1, fp);
+		for (int i = 0; i < 3; i++)
+			fwrite(&(rand_tslt_save[j].second.second(i)), sizeof(float), 1, fp);
+	}
+
+	num = rand_exp_save.size();
+	fwrite(&num, sizeof(int), 1, fp);
+	for (int j = 0; j < num; j++) {
+		fwrite(&(rand_exp_save[j].first), sizeof(int), 1, fp);
+		fwrite(&(rand_exp_save[j].second.first), sizeof(int), 1, fp);
+		for (int i = 0; i < rand_exp_save[j].second.second.rows(); i++)
+			fwrite(&(rand_exp_save[j].second.second(i)), sizeof(float), 1, fp);
+	}
+
+	num = rand_user_save.size();
+	fwrite(&num, sizeof(int), 1, fp);
+	for (int j = 0; j < num; j++) {
+		fwrite(&(rand_user_save[j].first), sizeof(int), 1, fp);
+		fwrite(&(rand_user_save[j].second.first), sizeof(int), 1, fp);		
+		fwrite(&(rand_user_save[j].second.second), sizeof(int), 1, fp);
+	}
+
+	num = rand_f_save.size();
+	fwrite(&num, sizeof(int), 1, fp);
+	for (int j = 0; j < num; j++) {
+		fwrite(&(rand_f_save[j].first), sizeof(int), 1, fp);
+		fwrite(&(rand_f_save[j].second.first), sizeof(int), 1, fp);
+		fwrite(&(rand_f_save[j].second.second), sizeof(float), 1, fp);
+	}
+	fclose(fp);
+}
+
+
 vector<DataPoint> ArgumentData(
-	const vector<DataPoint> &training_data,
-	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, Eigen::MatrixXf &bldshps)
+	const vector<DataPoint> &training_data,std::vector <int> *slt_line, 
+	std::vector<std::pair<int, int> > *slt_point_rect, Eigen::MatrixXf &bldshps,
+	const TrainingParameters &tp)
 {
+	int fl_eli = 0;
 
 	FILE *fp;
 	fp = fopen("/home/weiliu/train_dde_psp/const_file/eliminate_index.txt","r");
@@ -428,27 +505,45 @@ vector<DataPoint> ArgumentData(
 	fclose(fp);
 	int now = 0;
 
+	vector<DataPoint> result((training_data.size()-1000*fl_eli) * G_trn_factor);
 
-	vector<DataPoint> result((training_data.size()-1000) * G_trn_factor);
+	Eigen::VectorXf exp;
+
+#ifdef normalization
+	Eigen::RowVector3f tslt;
+#endif
+	//Eigen::Matrix3f rot;
+	Eigen::MatrixX2f dis;
+	Eigen::RowVector3f angle;
+
+	std::vector<pair<int, pair<int, Eigen::Vector3f>>> rand_rot_save; rand_rot_save.clear();
+	std::vector<pair<int, pair<int, Eigen::Vector3f>>> rand_tslt_save; rand_tslt_save.clear();
+	std::vector<pair<int, pair<int, Eigen::VectorXf>>> rand_exp_save; rand_exp_save.clear();
+	std::vector<pair<int, pair<int, int>>> rand_user_save; rand_user_save.clear();
+	std::vector<pair<int, pair<int, float>>> rand_f_save; rand_f_save.clear();
+
+
 	int idx = 0;
 	for (int i = 0; i < training_data.size(); ++i)
 	{
-		if (now < 1000) {
+		if (fl_eli==1 && now < 1000) {
 			if (i == eli_idx(now)) {
 				now++;
 				continue;
 			}
 		}
 		printf("ArgumentData i: %d\n", i);
-		aug_rand_rot(training_data,result,idx,i, slt_line, slt_point_rect, bldshps);
-		aug_rand_tslt(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
-		aug_rand_exp(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
-		aug_rand_user(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
-		aug_rand_f(training_data, result, idx, i, slt_line, slt_point_rect, bldshps);
+		aug_rand_rot(training_data,result,idx,i, slt_line, slt_point_rect, bldshps, rand_rot_save);
+		aug_rand_tslt(training_data, result, idx, i, slt_line, slt_point_rect, bldshps, rand_tslt_save);
+		aug_rand_exp(training_data, result, idx, i, slt_line, slt_point_rect, bldshps, rand_exp_save);
+		aug_rand_user(training_data, result, idx, i, slt_line, slt_point_rect, bldshps,rand_user_save);
+		aug_rand_f(training_data, result, idx, i, slt_line, slt_point_rect, bldshps,rand_f_save);
 	}
 	printf("total aug train data: %d\n", result.size());
-	return result;
 
+	save_train_dp(rand_rot_save, rand_tslt_save, rand_exp_save, rand_user_save, rand_f_save,tp);
+
+	return result;
 }
 
 
@@ -459,9 +554,10 @@ vector<DataPoint> ArgumentData(
 vector<Target_type> ComputeTargets(const vector<DataPoint> &data)
 {
 	vector<Target_type> result;
-
+	int idx = 0;
 	for (const DataPoint& dp : data)
-	{
+	{		
+		printf("%d\n", idx++);
 		Target_type error= shape_difference(dp.shape,dp.init_shape);
 		result.push_back(error);
 	}
@@ -544,7 +640,7 @@ void TrainModel(const vector<DataPoint> &training_data, const TrainingParameters
 	puts("E");
 
 	vector<DataPoint> argumented_training_data =
-		ArgumentData(training_data, slt_line, slt_point_rect, bldshps);
+		ArgumentData(training_data, slt_line, slt_point_rect, bldshps,tp);
 
 	puts("B");
 	vector<RegressorTrain> stage_regressors(tp.T, RegressorTrain(tp));

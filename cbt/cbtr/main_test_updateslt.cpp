@@ -13,8 +13,8 @@
 //#include "regressor_train.h"
 ////#include "load_data.hpp"
 //
-//#define win64
-////#define linux
+////#define win64
+//#define linux
 //#define changed
 //#define rand_exp_from_set_def
 //
@@ -518,7 +518,7 @@
 //		vector<Target_type> targets =
 //			ComputeTargets(argumented_training_data);
 //		FILE *fp;
-//		fopen_s(&fp, "debug_target.txt", "a");
+//		fp=fopen( "debug_target.txt", "a");
 //		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
 //		fclose(fp);
 //
@@ -552,7 +552,7 @@
 //		vector<Target_type> targets =
 //			ComputeTargets(argumented_training_data);
 //		FILE *fp;
-//		fopen_s(&fp, "debug_target.txt", "a");
+//		fp=fopen( "debug_target.txt", "a");
 //		fprintf(fp, "out number: %d ++++++++++++++++++++++++++++++++++++++++\n", i);
 //		fclose(fp);
 //
@@ -597,17 +597,111 @@
 //}
 //
 //Eigen::MatrixXf bldshps(G_iden_num, G_nShape * 3 * G_nVerts);
+//void draw_land_img(cv::Mat image, std::vector<cv::Point2d> landmarks) {
+//
+//	for (int i = 0; i < 15; i++)
+//		cv::circle(image, landmarks[i], 1, cv::Scalar(0, 250, 0), 2);
+//	for (int i = 1; i < 15; i++)
+//		cv::line(image, landmarks[i], landmarks[i - 1], cv::Scalar(255, 0, 0));
+//
+//	for (cv::Point2d landmark : landmarks)
+//	{
+//		cv::circle(image, landmark, 0.1, cv::Scalar(0, 250, 0), 2);
+//	}
+//
+//}
+//void test_upt_slt_angle(
+//	DataPoint &data, Eigen::MatrixXf &bldshps,
+//	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect) {
+//	float pi = acos(-1);
+//	float be = -pi / 2, step = pi / 100;
+//	float en = pi / 2 + step - 0.000000001;
+//
+//
+//	FILE *fp;
+//	fp = fopen("test_updt_slt_dde_2d_point.txt", "w");
+//	fprintf(fp, "%d\n", (int)((en - be) / step + 1) * 3);
+//	fclose(fp);
+//
+//	fp = fopen("test_updt_slt_dde.txt", "w");
+//	fprintf(fp, "%d\n", (int)((en - be) / step + 1) * 3);
+//	fclose(fp);
+//
+//	Eigen::Vector3f angle;
+//	angle = data.init_shape.angle;
+//	data.shape.angle = data.init_shape.angle;
+//	int i = 1, which = 0;
+//	for (float ag = be; ag < en; ag += step, i++) {
+//		angle(which) = ag;
+//		data.init_shape.angle = angle;
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data);
+//	}
+//	printf("i %d\n", i);
+//	angle(which) = data.shape.angle(which);
+//	which = 1;
+//	for (float ag = be; ag < en; ag += step, i++) {
+//		angle(which) = ag;
+//		data.init_shape.angle = angle;
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data);
+//	}
+//	printf("i %d\n", i);
+//	angle(which) = data.shape.angle(which);
+//	which = 2;
+//	for (float ag = be; ag < en; ag += step, i++) {
+//		angle(which) = ag;
+//		data.init_shape.angle = angle;
+//		update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, data);
+//	}
+//	
+//}
+//void debug_inner_slt() {
+//	DataPoint temp;
+//	//std::string psp_name = "G:\\DDE\\server_lv\\lv_small_psp_inslt/lv_small_52";
+//	std::string psp_name = "/home/weiliu/psp_f2obj/lv_small_psp_inslt/lv_small_52";
+//	load_fitting_coef_one(psp_name + ".psp_f", temp);
+//
+//	temp.image = cv::imread("/home/weiliu/running_dde/psp_f_file/lv_small_first_frame.jpg");
+//
+//
+//	
+//	//cal_init_2d_land_ang_0ide_i(temp, training_data[i],arg_exp_land_matrix[training_data[i].ide_idx]);
+//	load_bldshps(bldshps, bldshps_path);
+//	std::vector<cv::Point2d> land_temp(G_land_num);
+//	
+//	cal_2d_land_i_ang_tg(land_temp, temp.shape, bldshps, temp);
+//	draw_land_img(temp.image, land_temp);
+//
+//	cv::imshow("img",temp.image);
+//	cv::waitKey(0);
+//
+//	load_slt(slt_line, slt_point_rect, slt_path, rect_path);
+//	get_index_slt_point_rect(slt_line, slt_point_rect, temp);
+//
+//	temp.init_shape = temp.shape;
+//	update_slt_init_shape_DDE(bldshps, slt_line, slt_point_rect, temp);
+//
+//	cal_2d_land_i_ang_tg(land_temp, temp.shape, bldshps, temp);
+//	draw_land_img(temp.image, land_temp);
+//	cv::imshow("img", temp.image);
+//	cv::waitKey(0);
+//
+//	test_upt_slt_angle(temp, bldshps,
+//		slt_line, slt_point_rect);
+//
+//	exit(9);
+//}
 //
 //int main()
 //{
-//	
+//	debug_inner_slt();
+//
 //		vector<DataPoint> training_data = GetTrainingData();
 //		printf("training_data size: %d %.5f %.5f\n", training_data.size(),sin(30),sin(pi/6));
 //		system("pause");
 //		//train_data_normalize(training_data);
 //		load_bldshps(bldshps, bldshps_path);
 //		load_slt(slt_line, slt_point_rect, slt_path, rect_path);
-//
+//		
 //		get_index_slt_point_rect(slt_line, slt_point_rect, training_data[0]);
 //
 //		DataPoint data = training_data[0];
@@ -616,7 +710,7 @@
 ////yaw
 //		//int st = -90, en = 90, step = 10;
 //		//FILE *fp;
-//		//fopen_s(&fp, "test_updt_slt.txt", "w");
+//		//fp=fopen( "test_updt_slt.txt", "w");
 //		//fprintf(fp, "%d\n", (en - st) / step + 1);
 //		//fclose(fp);
 //		//for (int ang = st; ang <= en; ang += step) {
@@ -627,7 +721,7 @@
 ////roll
 //		int st = -30, en = 50, step = 10;
 //		FILE *fp;
-//		fopen_s(&fp, "test_updt_slt.txt", "w");
+//		fp=fopen( "test_updt_slt.txt", "w");
 //		fprintf(fp, "%d\n", (en - st) / step + 1);
 //		fclose(fp);
 //		for (int ang = st; ang <= en; ang += step) {

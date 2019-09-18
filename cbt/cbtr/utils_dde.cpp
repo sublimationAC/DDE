@@ -1532,13 +1532,10 @@ void update_slt_init_shape_DDE(
 	Eigen::MatrixXf &bldshps, std::vector<int> *slt_line,
 	std::vector<std::pair<int, int> > *slt_point_rect, DataPoint &data) {
 	////////////////////////////////project
-#ifdef test_updt_slt
-	FILE *fp;
-	fp=fopen( "test_updt_slt.txt", "a");
-#endif // test_updt_slt
 
 	puts("updating silhouette...");
 	//Eigen::Matrix3f R = data.shape.rot;
+//	std::cout << data.init_shape.angle << "\n";
 	Eigen::Matrix3f R = get_r_from_angle_zyx(data.init_shape.angle);
 #ifdef perspective
 	Eigen::Vector3f T = data.init_shape.tslt;
@@ -1554,19 +1551,19 @@ void update_slt_init_shape_DDE(
 
 
 	for (int i = 0; i < G_line_num; i++) {
-//		printf("i %d\n", i);
+//		printf("line number: i %d\n", i);
 		float min_v_n = 10000;
 		int min_idx = 0;
 		Eigen::Vector3f cdnt;
 
 		int en = slt_line[i].size(),be=0;
-		if (data.init_shape.angle(1) < -0.1 && i < 34) en /= 4;
+		if (data.init_shape.angle(1) < 0.1 && i < 34) en /= 4;
 		if (data.init_shape.angle(1) < -0.1 && i >= 34 && i < 41) en /= 2;
-		if (data.init_shape.angle(1) > 0.1 && i >= 49 && i < 84) en /= 4;
+		if (data.init_shape.angle(1) > -0.1 && i >= 49 && i < 84) en /= 4;
 		if (data.init_shape.angle(1) > 0.1 && i >= 42 && i < 49) en /= 2;
 		//if ((fabs(data.init_shape.angle(1)) < 0.5) && ((i < 26) || (i >= 57 && i < 84))) be = 3, en = slt_line[i].size() / 2;
 		//if ((fabs(data.init_shape.angle(1)) < 0.5) && ((i >= 26 && i < 31) || (0))) be = 2, en = slt_line[i].size() / 3;
-
+		float la = 0;
 		for (int j = be; j < en; j++) {
 			int x = slt_line[i][j];
 
@@ -1576,35 +1573,42 @@ void update_slt_init_shape_DDE(
 			for (int axis = 0; axis < 3; axis++)
 				point[0](axis) = cal_3d_vtx_optmz_last(bldshps, data.user, data.init_shape.exp, x, axis);
 			point[0] = R * point[0] + T;
-/*
-			for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
-				//printf("k %d\n", k);
-				for (int axis = 0; axis < 3; axis++) {
-					point[1](axis) =
-						cal_3d_vtx_optmz_last(bldshps, data.user, data.init_shape.exp, slt_point_rect[x][k].first, axis);
-					point[2](axis) =
-						cal_3d_vtx_optmz_last(bldshps, data.user, data.init_shape.exp, slt_point_rect[x][k].second, axis);
-				}
-				for (int i = 1; i < 3; i++) point[i] = R * point[i] + T;
-				V[0] = point[1] - point[0];
-				V[1] = point[2] - point[0];
 
-				V[0] = V[0].cross(V[1]);
+			//for (int k = 0, sz = slt_point_rect[x].size(); k < sz; k++) {
+			//	//printf("k %d\n", k);
+			//	for (int axis = 0; axis < 3; axis++) {
+			//		point[1](axis) =
+			//			cal_3d_vtx_optmz_last(bldshps, data.user, data.init_shape.exp, slt_point_rect[x][k].first, axis);
+			//		point[2](axis) =
+			//			cal_3d_vtx_optmz_last(bldshps, data.user, data.init_shape.exp, slt_point_rect[x][k].second, axis);
+			//	}
+			//	for (int i = 1; i < 3; i++) point[i] = R * point[i] + T;
+			//	V[0] = point[1] - point[0];
+			//	V[1] = point[2] - point[0];
 
-				V[0].normalize();
-				nor = nor + V[0];
+			//	V[0] = V[0].cross(V[1]);
 
-			}
+			//	V[0].normalize();
+			//	nor = nor + V[0];
 
-			nor.normalize();
+			//}
 
-			if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0] + T;*/
+			//nor.normalize();
+
+			//if (fabs(nor(2)) < min_v_n) min_v_n = fabs(nor(2)), min_idx = x, cdnt = point[0] + T;
 			
 			point[1] = point[0];
 			point[0].normalize();
 
+			//if (j>be) 
+			//	if (point[0](2)>la) printf("<");
+			//	else printf(">");
+			//printf("%.10f ", point[0](2));
+			la = point[0](2);
 			if (fabs(point[0](2)) < min_v_n) min_v_n = fabs(point[0](2)), min_idx = x, cdnt = point[1]+T;
 		}
+
+		//puts("");
 //		puts("H");
 		//fprintf(fp, "%.6f %.6f %.6f \n", cdnt(0), cdnt(1), cdnt(2));
 		slt_cddt(i) = min_idx;
@@ -1613,14 +1617,23 @@ void update_slt_init_shape_DDE(
 		slt_cddt_cdnt.row(i) = cdnt.transpose();
 
 	}
+
 #ifdef test_updt_slt
-	fprintf(fp, "%.5f %.5f %.5f  ", data.init_shape.angle(0), data.init_shape.angle(1), data.init_shape.angle(2));
+	FILE *fp;
+	fp = fopen("test_updt_slt_dde.txt", "a");
+	fprintf(fp, "%.5f %.5f %.5f  ", data.init_shape.angle(0) * 180 / acos(-1),
+		data.init_shape.angle(1) * 180 / acos(-1), data.init_shape.angle(2) * 180 / acos(-1));
 	for (int j = 0; j < G_line_num; j++)
 		fprintf(fp, " %d", slt_cddt(j));
 	fprintf(fp, "\n");
 	fclose(fp);
+	fp = fopen("test_updt_slt_dde_2d_point.txt", "a");
+	fprintf(fp, "%d\n", slt_cddt_cdnt.rows());
+	for (int t = 0; t < slt_cddt_cdnt.rows(); t++)
+		fprintf(fp, "%.5f %.5f\n", slt_cddt_cdnt(t, 0), slt_cddt_cdnt(t, 1));
+	fprintf(fp, "\n");
+	fclose(fp);
 #endif // test_updt_slt
-
 	//fclose(fp);
 //	puts("C");
 
@@ -1706,6 +1719,7 @@ void get_index_slt_point_rect(
 				now++;
 			}
 		}
+	//inner point
 	for (int i_v = 0; i_v < G_land_num; i_v++)
 		if (map_vtxidx_sqz[data.land_cor(i_v)] == -1) {
 			map_vtxidx_sqz[data.land_cor(i_v)] = now;
