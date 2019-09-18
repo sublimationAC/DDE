@@ -1,5 +1,6 @@
 #pragma once
-#include "admm_optimize.h"
+//#include "admm_optimize.h"
+#include "2dland.h"
 
 void init_exp_ide_r_t_pq(iden *ide, int ide_num);
 
@@ -27,6 +28,11 @@ float pre_cal_exp_ide_R_t_dvd(
 	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
 	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx,
 	Eigen::VectorXf &ide_sg_vl);
+
+float deal_exp_R_t(
+	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
+	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx, int i_exp,
+	Eigen::VectorXf &ide_sg_vl, int tot_exp_r, float init_exp);
 
 float admm_cal_exp_ide_R_t(
 	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,

@@ -1,16 +1,16 @@
 #include "calculate_coeff.h"
-#define test_coef
-#define test_coef_save_mesh
-//#define test_inner_land
-//#define upt_inner_cor
-
-#define px_err_def
-//#define pca_ide
-//#define test_ide_cf_def
-
-#define test_posit_by2dland
-//#define revise_rot_tslt
-#define test_updt_slt
+//#define test_coef
+//#define test_coef_save_mesh
+////#define test_inner_land
+////#define upt_inner_cor
+//
+//#define px_err_def
+////#define pca_ide
+////#define test_ide_cf_def
+//
+//#define test_posit_by2dland
+////#define revise_rot_tslt
+//#define test_updt_slt
 
 using std::min;
 using std::max;
@@ -194,7 +194,8 @@ void cal_f(
 		for (int i = st; i < en; i += step) {
 			temp((i - st) / step) =
 				pre_cal_exp_ide_R_t(i, ide, bldshps, inner_land_corr,
-					slt_line, slt_point_rect, i_id, ide_sg_vl,0);
+					slt_line, slt_point_rect, i_id, ide_sg_vl,0.5);
+
 			temp_tslt.row((i - st) / step) = ide[0].tslt.row(0);
 			Eigen::Matrix3f R = ide[0].rot.block(0, 0, 3, 3);
 			temp_angle.row((i - st) / step) = get_uler_angle_zyx(R).transpose();
@@ -387,8 +388,8 @@ float pre_cal_exp_ide_R_t(
 					//test_slt(f, ide, bldshps, land_cor, id_idx, i_exp);
 					/*test_slt_vtx_angle(f, ide, bldshps, id_idx, i_exp, 
 						slt_line, slt_point_rect, inner_land_cor,0);*/
-					test_upt_slt_angle(f, ide, bldshps, id_idx, i_exp,
-						slt_line, slt_point_rect, inner_land_cor);
+				/*	test_upt_slt_angle(f, ide, bldshps, id_idx, i_exp,
+						slt_line, slt_point_rect, inner_land_cor);*/
 
 					updt_angle_slt_more(f, ide, bldshps, id_idx, i_exp,
 						slt_line, slt_point_rect, inner_land_cor);
@@ -530,6 +531,86 @@ void init_exp_ide(iden *ide,int id_idx,float init_exp) {
 	for (int j = 0; j < ide[id_idx].num; j++) ide[id_idx].exp(j, 0) = 1;
 	ide[id_idx].user= Eigen::MatrixXf::Constant(G_iden_num, 1, 1.0/ G_iden_num);
 	//ide[id_idx].user(0) = 1;
+	/*ide[id_idx].user <<
+		0.000,
+		0.000,
+		0.000,
+		0.016,
+		0.000,
+		0.012,
+		0.000,
+		0.027,
+		0.024,
+		0.031,
+		0.022,
+		0.010,
+		0.011,
+		0.011,
+		0.008,
+		0.013,
+		0.028,
+		0.000,
+		0.000,
+		0.004,
+		0.022,
+		0.000,
+		0.021,
+		0.007,
+		0.049,
+		0.022,
+		0.000,
+		0.018,
+		0.025,
+		0.013,
+		0.008,
+		0.013,
+		0.000,
+		0.009,
+		0.006,
+		0.006,
+		0.000,
+		0.006,
+		0.000,
+		0.000,
+		0.030,
+		0.044,
+		0.004,
+		0.033,
+		0.026,
+		0.022,
+		0.000,
+		0.000,
+		0.030,
+		0.013,
+		0.014,
+		0.000,
+		0.010,
+		0.035,
+		0.003,
+		0.000,
+		0.008,
+		0.013,
+		0.004,
+		0.010,
+		0.023,
+		0.027,
+		0.013,
+		0.000,
+		0.026,
+		0.042,
+		0.023,
+		0.015,
+		0.000,
+		0.009,
+		0.000,
+		0.012,
+		0.039,
+		0.000,
+		0.000,
+		0.001,
+		0.006;*/
+
+
 	/*
 	0.1381161362,
 		0.0222614892,
@@ -678,6 +759,10 @@ float pre_cal_exp_ide_R_t_dvd(
 
 				}
 #endif
+
+				updt_angle_slt_more(f, ide, bldshps, id_idx, i_exp,
+					slt_line, slt_point_rect, inner_land_cor);
+
 				error = cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
 				error = cal_3dpaper_ide(f, ide, bldshps, id_idx, i_exp, land_cor, ide_sg_vl);
 			}
@@ -710,12 +795,13 @@ float pre_cal_exp_ide_R_t_dvd(
 		fprintf(fp, "\n");
 		fclose(fp);
 #endif // upt_inner_cor
-		bool fl = 0;
+		if (rounds < 2) continue;
+		int fl = 0;
 		for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
 			float this_err = print_error(f, ide, bldshps, id_idx, i_exp);
-			if (this_err > 3) fl = 1;
+			if (this_err > 3) fl += 1;
 		}
-		if (fl == 0) break;
+		if (fl <3) break;
 	}
 	for (int i = 0; i < tot_r; i++) printf("it %d err %.6f\n", i, temp(i));
 
@@ -737,115 +823,42 @@ float pre_cal_exp_ide_R_t_dvd(
 #endif //px_err_def
 
 	fp=fopen( "optmz_exp.txt", "w");
+	fprintf(fp, "id: %d\n", id_idx);
 	int exp_tot_r = 4;
 	for (int i_exp = 0; i_exp < ide[id_idx].num; i_exp++) {
 		float mi_er = 1e8, mi_exp = 0;
 		for (float init_exp = 0; init_exp < 0.91; init_exp += 0.3) {
-			ide[id_idx].exp.row(i_exp) = Eigen::MatrixXf::Constant(1, G_nShape, init_exp);
-			ide[id_idx].exp(i_exp, 0) = 1;
-			float error = 0, error_px = 0;
-			fprintf(fp, "-------------------------------\n");
-			fprintf(fp, "id:%d exp:%d init_exp:%.5f \n", id_idx, i_exp, init_exp);
-			for (int rounds = 0; rounds < exp_tot_r; rounds++) {
 
-#ifdef posit
-				cal_rt_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
-				//test_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
-#endif // posit
+			float error_px = deal_exp_R_t(
+				f, ide, bldshps, inner_land_cor,
+				slt_line, slt_point_rect, id_idx, i_exp,
+				ide_sg_vl, exp_tot_r, init_exp);
 
-				Eigen::VectorXi out_land_cor(15);
-				update_slt_dde(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
-
-				Eigen::VectorXi land_cor(G_land_num);
-				for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
-				for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
-				ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
-
-				error = cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
-				error_px = print_error(f, ide, bldshps, id_idx, i_exp);
-				fprintf(fp, "rounds:%d error:%.5f error_px:%.5f \n", rounds, error, error_px);
-			}
 			if (error_px < mi_er) mi_er = error_px, mi_exp = init_exp;
 		}
-		if (mi_er > 3) {
+		if (mi_er > 3)
 			for (float init_exp = 0.1; init_exp < 0.91; init_exp += 0.3) {
-				ide[id_idx].exp.row(i_exp) = Eigen::MatrixXf::Constant(1, G_nShape, init_exp);
-				ide[id_idx].exp(i_exp, 0) = 1;
-				float error = 0, error_px = 0;
-				fprintf(fp, "-------------------------------\n");
-				fprintf(fp, "id:%d exp:%d init_exp:%.5f \n", id_idx, i_exp, init_exp);
-				for (int rounds = 0; rounds < exp_tot_r; rounds++) {
-
-#ifdef posit
-					cal_rt_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
-					//test_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
-#endif // posit
-
-					Eigen::VectorXi out_land_cor(15);
-					update_slt_dde(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
-
-					Eigen::VectorXi land_cor(G_land_num);
-					for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
-					for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
-					ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
-
-					error = cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
-					error_px = print_error(f, ide, bldshps, id_idx, i_exp);
-					fprintf(fp, "rounds:%d error:%.5f error_px:%.5f \n", rounds, error, error_px);
-				}
+				float error_px = deal_exp_R_t(
+					f, ide, bldshps, inner_land_cor,
+					slt_line, slt_point_rect, id_idx, i_exp,
+					ide_sg_vl, exp_tot_r, init_exp);
 				if (error_px < mi_er) mi_er = error_px, mi_exp = init_exp;
 			}
-			if (mi_er > 3) {
-				for (float init_exp = 0.2; init_exp < 0.91; init_exp += 0.3) {
-					ide[id_idx].exp.row(i_exp) = Eigen::MatrixXf::Constant(1, G_nShape, init_exp);
-					ide[id_idx].exp(i_exp, 0) = 1;
-					float error = 0, error_px = 0;
-					fprintf(fp, "-------------------------------\n");
-					fprintf(fp, "id:%d exp:%d init_exp:%.5f \n", id_idx, i_exp, init_exp);
-					for (int rounds = 0; rounds < exp_tot_r; rounds++) {
-
-#ifdef posit
-						cal_rt_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
-						//test_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
-#endif // posit
-
-						Eigen::VectorXi out_land_cor(15);
-						update_slt_dde(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
-
-						Eigen::VectorXi land_cor(G_land_num);
-						for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
-						for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
-						ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
-
-						error = cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
-						error_px = print_error(f, ide, bldshps, id_idx, i_exp);
-						fprintf(fp, "rounds:%d error:%.5f error_px:%.5f \n", rounds, error, error_px);
-					}
-					if (error_px < mi_er) mi_er = error_px, mi_exp = init_exp;
-				}
+		if (mi_er > 3) 
+			for (float init_exp = 0.2; init_exp < 0.91; init_exp += 0.3) {
+				float error_px = deal_exp_R_t(
+					f, ide, bldshps, inner_land_cor,
+					slt_line, slt_point_rect, id_idx, i_exp,
+					ide_sg_vl, exp_tot_r, init_exp);
+				if (error_px < mi_er) mi_er = error_px, mi_exp = init_exp;
 			}
-		}
-		ide[id_idx].exp.row(i_exp) = Eigen::MatrixXf::Constant(1, G_nShape, mi_exp);
-		ide[id_idx].exp(i_exp, 0) = 1;
-		float error = 0, error_px = 0;
-		for (int rounds = 0; rounds < exp_tot_r; rounds++) {
+		
 
-#ifdef posit
-			cal_rt_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
-			//test_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
-#endif // posit
+		float error_px = deal_exp_R_t(
+			f, ide, bldshps, inner_land_cor,
+			slt_line, slt_point_rect, id_idx, i_exp,
+			ide_sg_vl, exp_tot_r, mi_exp);
 
-			Eigen::VectorXi out_land_cor(15);
-			update_slt_dde(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
-
-			Eigen::VectorXi land_cor(G_land_num);
-			for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
-			for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
-			ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
-
-			error = cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
-			error_px = print_error(f, ide, bldshps, id_idx, i_exp);
-		}
 		fprintf(fp, "final : init_exp:%.2f error:%.5f error_px:%.5f \n", mi_exp, error, error_px);
 	}
 	fclose(fp);
@@ -867,6 +880,42 @@ float pre_cal_exp_ide_R_t_dvd(
 
 	return error;
 }
+
+float deal_exp_R_t(
+	float f, iden *ide, Eigen::MatrixXf &bldshps, Eigen::VectorXi &inner_land_cor,
+	std::vector <int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect, int id_idx, int i_exp,
+	Eigen::VectorXf &ide_sg_vl, int tot_exp_r, float init_exp)
+{
+	ide[id_idx].exp.row(i_exp) = Eigen::MatrixXf::Constant(1, G_nShape, init_exp);
+	ide[id_idx].exp(i_exp, 0) = 1;
+	float error = 0, error_px = 0;
+	FILE *fp = fopen("optmz_exp.txt", "a");
+	fprintf(fp, "-------------------------------\n");
+	fprintf(fp, "id:%d exp:%d init_exp:%.5f \n", id_idx, i_exp, init_exp);
+	for (int rounds = 0; rounds < tot_exp_r; rounds++) {
+
+		cal_rt_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
+		//test_pnp(f, ide, bldshps, inner_land_cor, id_idx, i_exp);
+
+		Eigen::VectorXi out_land_cor(15);
+		update_slt_dde(f, ide, bldshps, id_idx, i_exp, slt_line, slt_point_rect, out_land_cor);
+
+		Eigen::VectorXi land_cor(G_land_num);
+		for (int i = 0; i < 15; i++) land_cor(i) = out_land_cor(i);
+		for (int i = 15; i < G_land_num; i++) land_cor(i) = inner_land_cor(i - 15);
+		ide[id_idx].land_cor.row(i_exp) = land_cor.transpose();
+
+		updt_angle_slt_more(f, ide, bldshps, id_idx, i_exp,
+			slt_line, slt_point_rect, inner_land_cor);
+
+		error = cal_3dpaper_exp(f, ide, bldshps, id_idx, i_exp, land_cor);
+		error_px = print_error(f, ide, bldshps, id_idx, i_exp);
+		fprintf(fp, "rounds:%d error:%.5f error_px:%.5f \n", rounds, error, error_px);
+	}
+	fclose(fp);
+	return error_px;
+}
+
 
 
 float admm_cal_exp_ide_R_t(
@@ -1150,8 +1199,9 @@ const int eye_corner_center[5] = { 27,29,31,33,64};
 void cal_rt_pnp(
 	float f, iden *ide, Eigen::MatrixXf &bldshps,
 	Eigen::VectorXi &inner_land_cor, int id_idx, int exp_idx) {
-
+#ifdef test_coef
 	puts("solve pnp...");
+#endif // test_coef
 
 	std::vector<cv::Point2f> land_2d; land_2d.clear();
 	std::vector<cv::Point3f> land_3d; land_3d.clear();
@@ -1202,7 +1252,7 @@ void cal_rt_pnp(
 	//}
 
 	if (ide[id_idx].land_cor(exp_idx, 20) == inner_land_cor(20 - 15) && ide[id_idx].land_cor(exp_idx, 30) == inner_land_cor(30 - 15)) {
-		puts("eye_corner_center");
+//		puts("eye_corner_center");
 		for (int i_v = 0; i_v < 15; i_v++) {			
 			land_2d.push_back(
 				cv::Point2f(
@@ -1586,23 +1636,26 @@ float deal_one_angle(
 #ifdef test_posit_by2dland
 			test_2dland(f, ide, bldshps, id_idx, exp_idx);
 #endif // test_posit_by2dland
-			printf("%.2f %d ag error: %.5f----------\n",ag, rd, angle_err(f, ide, bldshps, id_idx, exp_idx));
+			//printf("%.2f %d ag error: %.5f----------\n",ag, rd, angle_err(f, ide, bldshps, id_idx, exp_idx));
 			Eigen::VectorXf ang_aft = get_uler_angle_zyx(ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3));
-			std::cout << "now angle: " << ang_aft.transpose() << "\n";
+			//std::cout << "now angle: " << ang_aft.transpose() << "\n";
 			//ang_aft(0) = angle(0), ang_aft(2) = angle(2);
 			//ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3) = get_r_from_angle_zyx(ang_aft);
 		}
 		float error = angle_err(f, ide, bldshps, id_idx, exp_idx);
-
-		printf("%d which %.2f %.2f\n",which_angle, ag, error);
 		Eigen::VectorXf ang_aft = get_uler_angle_zyx(ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3));
+#ifdef test_updt_slt
+		printf("%d which %.2f %.2f\n",which_angle, ag, error);
 		std::cout << "aft angle: " << ang_aft.transpose() << "\n";
+#endif // test_updt_slt
 		if (error < mi_ag_err) {
 			mi_ag_err= error;
 			mi_angle = ang_aft;
 		}
 	}	
+#ifdef test_updt_slt
 	std::cout << " final smallest angle"<< mi_angle << "\n";
+#endif // test_updt_slt
 
 	ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3) = get_r_from_angle_zyx(mi_angle);
 	Eigen::VectorXi out_land_cor(15);
@@ -1619,13 +1672,13 @@ float updt_angle_slt_more(
 
 	if (angle_err(f, ide, bldshps, id_idx, exp_idx) > 3.5) {
 		
-		std::cout << "bf error: " << angle_err(f, ide, bldshps, id_idx, exp_idx) << "\n";
+		//std::cout << "bf error: " << angle_err(f, ide, bldshps, id_idx, exp_idx) << "\n";
 		deal_one_angle(
 			f, ide, bldshps, id_idx, exp_idx,
-			slt_line, slt_point_rect, inner_land_cor, 1, 0, 1.51,0.1);
-		std::cout << "aft error: " << angle_err(f, ide, bldshps, id_idx, exp_idx) << "\n";
-		std::cout << "aft angle :" 
-			<< get_uler_angle_zyx(ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3)).transpose() << "\n";
+			slt_line, slt_point_rect, inner_land_cor, 1, -1.5, 1.51,0.2);
+		//std::cout << "aft error: " << angle_err(f, ide, bldshps, id_idx, exp_idx) << "\n";
+		//std::cout << "aft angle :" 
+		//	<< get_uler_angle_zyx(ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3)).transpose() << "\n";
 		//exit(99);
 		/*deal_one_angle(
 			f, ide, bldshps, id_idx, exp_idx,
@@ -2258,7 +2311,9 @@ void update_slt_dde(
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXi &out_land_cor) {
 	////////////////////////////////project
+#ifdef test_coef
 	puts("updating silhouette dde...");
+#endif // test_coef
 	Eigen::Matrix3f R = ide[id_idx].rot.block(3 * exp_idx, 0, 3, 3);
 //	puts("A");
 	Eigen::VectorXf angle = get_uler_angle_zyx(R);
@@ -2278,9 +2333,9 @@ void update_slt_dde(
 		Eigen::Vector3f cdnt;
 
 		int en = slt_line[i].size(), be = 0;
-		if ( angle(1) < -0.1 && i < 34) en /= 4;
+		if ( angle(1) < 0.1 && i < 34) en /= 4;
 		if ( angle(1) < -0.1 && i >= 34 && i < 41) en /= 2;
-		if ( angle(1) > 0.1 && i >= 49 && i < 84) en /= 4;
+		if ( angle(1) > -0.1 && i >= 49 && i < 84) en /= 4;
 		if ( angle(1) > 0.1 && i >= 42 && i < 49) en /= 2;
 		//if ((fabs( angle(1)) < 0.5) && ((i < 26) || (i >= 57 && i < 84))) be = 3, en = slt_line[i].size() / 2;
 		//if ((fabs( angle(1)) < 0.5) && ((i >= 26 && i < 31) || (0))) be = 2, en = slt_line[i].size() / 3;
@@ -2442,7 +2497,8 @@ void test_upt_slt_angle(
 	std::vector<int> *slt_line, std::vector<std::pair<int, int> > *slt_point_rect,
 	Eigen::VectorXi &inner_land_cor) {
 	float pi = acos(-1);
-	float be = -pi / 2, en = pi / 2+0.1,step=pi/20;
+	float be = -pi / 2, step=pi/100;
+	float en = pi / 2 + step - 0.000000001;
 
 #ifdef test_posit_by2dland
 	FILE *fp;
@@ -2463,7 +2519,7 @@ void test_upt_slt_angle(
 
 	Eigen::Vector3f angle;
 	angle.setZero();
-
+	angle << -0.0035, -0.08, -0.07;
 
 	int i = 1,which=0;
 	for (float ag = be; ag < en; ag += step, i++) {
@@ -2479,7 +2535,7 @@ void test_upt_slt_angle(
 #endif // test_posit_by2dland
 	}
 	printf("i %d\n", i);
-	angle(which) = 0;
+	angle(which) = -0.0035;
 	which = 1;
 	for (float ag = be; ag < en; ag += step, i++) {
 		angle(which) = ag;
@@ -2494,7 +2550,7 @@ void test_upt_slt_angle(
 #endif // test_posit_by2dland
 	}
 	printf("i %d\n", i);
-	angle(which) = 0;
+	angle(which) = -0.08;
 	which = 2;
 	for (float ag = be; ag < en; ag += step, i++) {
 		angle(which) = ag;

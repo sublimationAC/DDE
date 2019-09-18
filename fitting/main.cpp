@@ -16,8 +16,9 @@ Eigen :: MatrixXf bldshps(G_iden_num,G_nShape*3*G_nVerts);
 	std::string test_path = "D:/sydney/first/data_me/test";
 
 	std::string test_path_one = "D:/sydney/first/data_me/test_only_one_2d_right";
+	//std::string test_path_one = "D:/sydney/first/data_me/test_only_one_2d_me";
 	//std::string test_path_one = "D:/sydney/first/data_me/test_only_one_2d_errbig";
-
+	
 
 
 	std::string bldshps_path = "D:\\sydney\\first\\code\\2017\\deal_data_2\\deal_data/blendshape_ide_svd_30.lv";
